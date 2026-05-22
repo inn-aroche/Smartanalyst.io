@@ -1,0 +1,30 @@
+---
+const { title, description } = Astro.props;
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — SmartAnalyst.io</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={Astro.url.href} />
+  </head>
+  <body>
+    <header>
+      <a href="/">SmartAnalyst.io</a>
+      <nav>
+        <a href="/product">Produit</a>
+        <a href="/pricing">Tarifs</a>
+        <a href="/securite">Sécurité</a>
+        <a href="https://app.smartanalyst.io">Se connecter</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <p>© {new Date().getFullYear()} SmartAnalyst.io — L’analyste marketing IA en français.</p>
+    </footer>
+  </body>
+</html>

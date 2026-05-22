@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+import { PLANS, PLAN_ORDER } from '@smartanalyst/shared/pricing';
+---
+<Base
+  title="Tarifs"
+  description="Plans Découverte, Starter, Pro et Agence. Sans engagement, paiement mensuel."
+>
+  <section>
+    <h1>Tarifs</h1>
+    <div class="plans">
+      {PLAN_ORDER.map((key) => {
+        const plan = PLANS[key];
+        return (
+          <article class="plan">
+            <h2>{plan.label}</h2>
+            <p class="price">{plan.priceEurMonth} € <small>/ mois</small></p>
+            <ul>
+              <li>{plan.quotas.connectors} connecteurs</li>
+              <li>{plan.quotas.questionsPerMonth} questions / mois</li>
+              <li>{plan.quotas.reportsPerMonth} rapports PDF / mois</li>
+              <li>{plan.quotas.seatsIncluded} utilisateur(s) inclus</li>
+            </ul>
+          </article>
+        );
+      })}
+    </div>
+  </section>
+</Base>

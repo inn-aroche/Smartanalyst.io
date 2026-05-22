@@ -1,12 +1,18 @@
-# Dependencies
+# Dependencies (hoisted to root by npm workspaces)
 node_modules/
 .pnp
 .pnp.js
 
-# Env
+# Env (per-workspace)
 .env
 .env.local
 .env.*.local
+apps/*/.env
+apps/*/.env.local
+
+# Astro build output
+apps/marketing/dist/
+apps/marketing/.astro/
 
 # Logs
 logs/
