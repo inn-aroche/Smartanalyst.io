@@ -1,12 +1,132 @@
 ---
 import Base from '../layouts/Base.astro';
+import { FEATURES } from '@smartanalyst/shared/features';
+import { TRIAL_DAYS } from '@smartanalyst/shared/pricing';
 ---
 <Base
   title="Produit"
-  description="Comment SmartAnalyst.io connecte GA4, Meta Ads, Google Ads, Stripe et Search Console pour répondre à tes questions marketing en français."
+  description="Comment SmartAnalyst.io connecte GA4, Meta Ads, Google Ads, Stripe et Search Console pour répondre à tes questions marketing en français — avec des recommandations concrètes."
 >
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Le produit</span>
+      <h1>Une IA qui comprend ton business. Pas un dashboard de plus.</h1>
+      <p class="lead">
+        SmartAnalyst se branche sur tes outils, normalise tes données, et te
+        sert un analyste IA qui parle français et connaît ton secteur. Voici ce
+        qu’il y a sous le capot.
+      </p>
+    </div>
+  </section>
+
   <section>
-    <h1>Le produit</h1>
-    <p>Page produit — à rédiger.</p>
+    <div class="container">
+      <h2 style="text-align:center">Comment ça marche</h2>
+      <div class="grid cols-4" style="margin-top:2rem">
+        <div class="card">
+          <h3>1. Signup</h3>
+          <p>Email + mot de passe. Pas de carte bancaire. {TRIAL_DAYS} jours d’essai sur toutes les features.</p>
+        </div>
+        <div class="card">
+          <h3>2. Profil business</h3>
+          <p>Tu donnes l’URL de ton site. On détecte automatiquement secteur, marché et outils (Shopify, GA4, Meta Pixel…).</p>
+        </div>
+        <div class="card">
+          <h3>3. Connecteurs</h3>
+          <p>OAuth en 1 clic : GA4, Meta Ads, Google Ads, Stripe, Search Console. Les données arrivent en quelques secondes.</p>
+        </div>
+        <div class="card">
+          <h3>4. Insights live</h3>
+          <p>Premier insight visible en moins de 3 minutes après signup. Le chat IA est actif immédiatement.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="container">
+      <h2 style="text-align:center">Les 8 piliers du produit</h2>
+      <p class="lead" style="text-align:center">
+        Par ordre d’importance — l’analyse conversationnelle est le cœur.
+      </p>
+      <div class="grid cols-2" style="margin-top:2.5rem">
+        {FEATURES.product.map((f, i) => (
+          <div class="card">
+            <h3>{i + 1}. {f.label}</h3>
+            <p>{f.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2 style="text-align:center">Sous le capot : Canonical Metrics</h2>
+      <p class="lead" style="text-align:center">
+        Le détail technique qui change tout : un schéma universel commun à
+        toutes les sources de données.
+      </p>
+      <div class="grid cols-2" style="margin-top:2rem">
+        <div class="card">
+          <h3>Le problème</h3>
+          <p>
+            GA4 appelle ça "sessions". Meta dit "reach". Google Ads dit
+            "impressions". Stripe parle de "successful_payments". Chaque outil
+            a son vocabulaire. Une IA naïve s’y perd, donne le mauvais chiffre,
+            ou compare des choux et des carottes.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Notre approche</h3>
+          <p>
+            Chaque connecteur publie ses données vers un <strong>schéma
+            canonique</strong> unique : <code>traffic</code>, <code>conversions</code>,
+            <code>spend</code>, <code>revenue</code>, etc. L’IA ne parle qu’à ce
+            schéma — jamais aux sources brutes. Conséquence : les
+            comparaisons cross-source sont possibles, fiables et explicables.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="container">
+      <h2 style="text-align:center">Conçu pour 4 profils précis</h2>
+      <div class="grid cols-4" style="margin-top:2rem">
+        <div class="card">
+          <h3>📊 Agence</h3>
+          <p><strong>5-50 clients.</strong> Tu passes 4-8h par client en reporting. Gain : zéro temps, valeur agence renforcée.</p>
+        </div>
+        <div class="card">
+          <h3>🎯 Freelance</h3>
+          <p><strong>2-8 clients.</strong> Ton rapport pro justifie ton TJM mais prend du temps. Gain : aspect pro supérieur, en deux clics.</p>
+        </div>
+        <div class="card">
+          <h3>🚀 Startup</h3>
+          <p><strong>Fondateur.</strong> Tu prépares ton investor update mensuel à la main. Gain : synthèse Stripe + GA4 + CRM en 10 clics.</p>
+        </div>
+        <div class="card">
+          <h3>🏪 TPE</h3>
+          <p><strong>Gérant qui fait son propre marketing.</strong> Tu ne sais pas si ton budget pub est bien alloué. Gain : un analyste qui te répond en français.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container" style="text-align:center">
+      <h2>Voir par toi-même</h2>
+      <p class="lead">
+        Le meilleur moyen de juger un analyste IA, c’est de lui poser une
+        question. Essaie {TRIAL_DAYS} jours, sans carte.
+      </p>
+      <p>
+        <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Démarrer gratuitement</a>
+        {' '}
+        <a href="/pricing" class="btn btn-secondary">Voir les tarifs</a>
+      </p>
+    </div>
   </section>
 </Base>
