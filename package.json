@@ -13,7 +13,7 @@
     "worker": "node src/queue-jobs/index.js",
     "lint": "eslint 'src/**/*.js'",
     "format": "prettier --write 'src/**/*.js' 'frontend/**/*.{js,html,css}' 'vitrine/**/*.{js,html,css}'",
-    "test": "node --test tests/",
+    "test": "node --test 'tests/**/*.test.js'",
     "migrate": "echo 'Use Supabase CLI: supabase db push (see docs/04_SCHEMA_DONNEES_COMPLET.md)' && exit 1"
   },
   "dependencies": {
