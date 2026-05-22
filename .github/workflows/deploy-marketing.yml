@@ -1,0 +1,81 @@
+name: Deploy marketing site
+
+# Deploys apps/marketing/ to Hostinger Cloud via rsync over SSH.
+# Triggers on push to main, only when marketing files or shared deps change.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   HOSTINGER_SSH_HOST          e.g. 145.223.xxx.xxx (or your SSH hostname)
+#   HOSTINGER_SSH_PORT          Hostinger default is 65002 (not 22)
+#   HOSTINGER_SSH_USER          your Hostinger SSH username (e.g. u123456789)
+#   HOSTINGER_SSH_PRIVATE_KEY   PEM contents of the private key authorized on the server
+#   HOSTINGER_DEPLOY_PATH       absolute path on server, e.g. /home/u123456789/domains/smartanalyst.io/public_html
+#
+# See docs/DEPLOYMENT.md for the one-time setup procedure.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/marketing/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-marketing.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-marketing
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production-marketing
+      url: https://smartanalyst.io
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Build marketing site
+        run: npm run build --workspace=@smartanalyst/marketing
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+
+      - name: Trust Hostinger host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.HOSTINGER_SSH_PORT }}" -H "${{ secrets.HOSTINGER_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy via rsync
+        # --delete keeps the server in mirror with dist/, but we exclude:
+        #   .well-known/  → used by Let's Encrypt / Hostinger SSL renewal
+        #   .htaccess     → in case Hostinger lays one down for the domain
+        #   cgi-bin/      → server-side dir we should never touch
+        run: |
+          rsync -avz --delete \
+            --exclude='.well-known/' \
+            --exclude='.htaccess' \
+            --exclude='cgi-bin/' \
+            -e "ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}" \
+            apps/marketing/dist/ \
+            "${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
+
+      - name: Summary
+        run: |
+          echo "### Marketing deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Site: https://smartanalyst.io" >> $GITHUB_STEP_SUMMARY
