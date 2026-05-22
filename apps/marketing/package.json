@@ -1,0 +1,18 @@
+{
+  "name": "@smartanalyst/marketing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SmartAnalyst.io marketing site — static Astro build deployed to Hostinger Cloud.",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@smartanalyst/shared": "*"
+  },
+  "devDependencies": {
+    "astro": "^5.0.0"
+  }
+}

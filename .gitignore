@@ -1,0 +1,51 @@
+# Dependencies (hoisted to root by npm workspaces)
+node_modules/
+.pnp
+.pnp.js
+
+# Env (per-workspace)
+.env
+.env.local
+.env.*.local
+apps/*/.env
+apps/*/.env.local
+
+# Astro build output
+apps/marketing/dist/
+apps/marketing/.astro/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pino-*.log
+
+# Runtime
+.DS_Store
+Thumbs.db
+coverage/
+.nyc_output/
+dist/
+build/
+.cache/
+
+# PM2
+.pm2/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.AppleDouble
+.LSOverride
+
+# Generated PDFs (local dev)
+reports/output/

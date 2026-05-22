@@ -1,0 +1,151 @@
+---
+import Base from '../layouts/Base.astro';
+import { TRIAL_DAYS, TRIAL_REQUIRES_CARD } from '@smartanalyst/shared/pricing';
+
+const trialNote = TRIAL_REQUIRES_CARD
+  ? `Essai gratuit ${TRIAL_DAYS} jours`
+  : `Essai gratuit ${TRIAL_DAYS} jours · sans carte bancaire`;
+---
+<Base
+  title="home"
+  description="L’analyste marketing IA en français. Branche tes outils une fois. Pose tes questions. Reçois des insights contextualisés avec recommandations concrètes."
+>
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">L’analyste marketing IA · en français</span>
+      <h1>L’analyste marketing dont tu as besoin au quotidien.</h1>
+      <p class="lead">
+        Branche GA4, Meta Ads, Google Ads et Stripe une fois. Pose tes questions
+        en français. Reçois des insights contextualisés avec recommandations
+        concrètes. Tes rapports clients partent tout seuls le 1<sup>er</sup> du mois.
+      </p>
+      <p>
+        <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Démarrer gratuitement</a>
+        {' '}
+        <a href="/product" class="btn btn-secondary">Voir le produit</a>
+      </p>
+      <p style="font-size:0.9rem; margin-top:1rem; color: var(--text-muted)">
+        {trialNote}
+      </p>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="container">
+      <h2 style="text-align:center">Le reporting marketing ne devrait pas te coûter 8h par mois.</h2>
+      <p class="lead" style="text-align:center">
+        Aujourd’hui : tu jongles entre Looker Studio, GA4, Meta Business
+        Manager, et un export Excel. Tu sors un PDF que personne ne lit.
+        Demain : tu poses ta question en français, l’IA répond avec le bon
+        chiffre <em>et</em> la bonne recommandation.
+      </p>
+      <div class="grid cols-3" style="margin-top:2.5rem">
+        <div class="card">
+          <h3>📊 Aujourd’hui</h3>
+          <p>4-8h par client par mois en reporting manuel. Des données dispersées sur 5 outils. Des PDF statiques qui ne disent pas <em>pourquoi</em>.</p>
+        </div>
+        <div class="card">
+          <h3>🤖 Avec SmartAnalyst</h3>
+          <p>Premier insight visible en moins de 3 minutes après signup. Rapports auto le 1<sup>er</sup> du mois. Tu lis, tu valides, tu envoies.</p>
+        </div>
+        <div class="card">
+          <h3>🇫🇷 En français, vraiment</h3>
+          <p>Pas un dashboard traduit. Une IA qui comprend ton secteur (e-commerce, agence, SaaS) et parle ta langue, avec tes nuances.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2 style="text-align:center">Ce que tu peux demander, en français naturel</h2>
+      <p class="lead" style="text-align:center">
+        Trois exemples parmi des centaines. Réponse en quelques secondes,
+        sourcée, avec une recommandation actionnable.
+      </p>
+      <div class="grid cols-3" style="margin-top:2rem">
+        <div class="card">
+          <p class="quote">« Quelle est ma campagne Meta la plus rentable ce mois ? »</p>
+          <p style="font-size:0.9rem">→ Campagne, ROAS, spend, contexte vs mois précédent, recommandation de budget.</p>
+        </div>
+        <div class="card">
+          <p class="quote">« Mon budget Google Ads est-il bien alloué ? »</p>
+          <p style="font-size:0.9rem">→ Répartition par campagne, performance relative, suggestion de réallocation chiffrée.</p>
+        </div>
+        <div class="card">
+          <p class="quote">« Quel article de blog ramène le plus de conversions ? »</p>
+          <p style="font-size:0.9rem">→ Top pages GA4 par conversions, source de trafic, idées de contenu complémentaire.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="container">
+      <h2 style="text-align:center">Pourquoi on est différents</h2>
+      <table class="compare">
+        <thead>
+          <tr>
+            <th></th>
+            <th>SmartAnalyst</th>
+            <th>AgencyAnalytics</th>
+            <th>Looker Studio</th>
+            <th>ChatGPT</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Langue</td>
+            <td>🇫🇷 Français natif</td>
+            <td>🇬🇧 Anglais uniquement</td>
+            <td>Interface FR, IA non</td>
+            <td>Multilingue</td>
+          </tr>
+          <tr>
+            <td>IA conversationnelle</td>
+            <td>✅ Contextualisée secteur</td>
+            <td>❌ Reporting statique</td>
+            <td>❌ Dashboards</td>
+            <td>✅ Mais pas connectée</td>
+          </tr>
+          <tr>
+            <td>Données live</td>
+            <td>✅ Sync automatique</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>❌ Tu copies-colles</td>
+          </tr>
+          <tr>
+            <td>Recommandations actionnables</td>
+            <td>✅ "Réduis X, teste Y"</td>
+            <td>❌ Chiffres seuls</td>
+            <td>❌ Chiffres seuls</td>
+            <td>~ Sans contexte business</td>
+          </tr>
+          <tr>
+            <td>Rapports auto le 1<sup>er</sup></td>
+            <td>✅ Zéro clic</td>
+            <td>✅</td>
+            <td>❌ Export manuel</td>
+            <td>❌</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="container" style="text-align:center">
+      <h2>Prêt à arrêter de pondre des PDF à la main ?</h2>
+      <p class="lead">
+        {TRIAL_DAYS} jours d’essai, toutes les features, sans carte bancaire.
+        Premier insight visible en moins de 3 minutes.
+      </p>
+      <p>
+        <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Démarrer gratuitement</a>
+        {' '}
+        <a href="/pricing" class="btn btn-secondary">Voir les tarifs</a>
+      </p>
+    </div>
+  </section>
+</Base>

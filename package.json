@@ -1,0 +1,24 @@
+{
+  "name": "smartanalyst-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SmartAnalyst.io monorepo — backend API, SaaS frontend, marketing site, shared packages.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@smartanalyst/api",
+    "dev:worker": "npm run worker --workspace=@smartanalyst/api",
+    "dev:marketing": "npm run dev --workspace=@smartanalyst/marketing",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"apps/*/src/**/*.{js,ts,astro,html,css}\" \"packages/*/src/**/*.{js,ts}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.0"
+  }
+}

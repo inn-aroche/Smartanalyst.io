@@ -1,0 +1,51 @@
+name: CI
+
+# Runs quality gates on every PR and on pushes to main.
+# Keeps deploy decisions separate (see deploy-marketing.yml).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prettier (format check)
+        # NOTE: informative-only for now. Two things must land before this can block PRs:
+        #   1. Add `prettier-plugin-astro` to root devDeps + declare it in .prettierrc
+        #      (otherwise .astro files report "No parser could be inferred")
+        #   2. Run `npm run format` once to reformat existing files to match Prettier defaults
+        # Then remove `continue-on-error` here.
+        continue-on-error: true
+        run: npx prettier --check "apps/*/src/**/*.{js,ts,astro,html,css}" "packages/*/src/**/*.{js,ts}"
+
+      - name: Lint
+        # NOTE: apps/api defines `lint` (eslint v9) but no eslint.config.js exists yet.
+        # Informative-only until that config lands; then remove `continue-on-error`.
+        continue-on-error: true
+        run: npm run lint --workspaces --if-present
+
+      - name: Tests
+        run: npm run test --workspaces --if-present
+
+      - name: Marketing build (smoke)
+        # Catches Astro template / shared-package breakage before deploy.
+        run: npm run build --workspace=@smartanalyst/marketing
