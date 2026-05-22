@@ -34,9 +34,12 @@ function getConnector(workspaceId, connectorRecord) {
       const GA4Connector = require('./ga4.connector')
       return new GA4Connector(workspaceId, connectorRecord)
     }
+    case 'stripe': {
+      const StripeConnector = require('./stripe.connector')
+      return new StripeConnector(workspaceId, connectorRecord)
+    }
     // TODO: case 'meta_ads': return new (require('./meta-ads.connector'))(workspaceId, connectorRecord)
     // TODO: case 'google_ads': return new (require('./google-ads.connector'))(workspaceId, connectorRecord)
-    // TODO: case 'stripe': return new (require('./stripe.connector'))(workspaceId, connectorRecord)
     // TODO: case 'search_console': return new (require('./search-console.connector'))(workspaceId, connectorRecord)
     default:
       throw new UserFacingError(

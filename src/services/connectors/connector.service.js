@@ -15,6 +15,27 @@ const { getConnector, SUPPORTED_SOURCES } = require('../../connectors')
 
 const TABLE = 'connectors'
 
+// Validation de format de clé API par source. Fait au niveau service (pas du
+// connecteur concret) pour rejeter au plus tôt avant chiffrement et insert DB.
+const API_KEY_FORMATS = {
+  stripe: {
+    pattern: /^(sk_(test|live)_|rk_(test|live)_)[A-Za-z0-9]+$/,
+    hint: 'Format attendu: sk_test_... / sk_live_... / rk_test_... / rk_live_... (restricted key recommandée).',
+  },
+  // Brevo, Notion, etc. à venir avec leurs propres regex
+}
+
+function validateApiKeyFormat(source, apiKey) {
+  const spec = API_KEY_FORMATS[source]
+  if (!spec) return // pas de format imposé pour cette source
+  if (!spec.pattern.test(apiKey)) {
+    throw new UserFacingError(`Format de clé API invalide pour ${source}. ${spec.hint}`, {
+      statusCode: 400,
+      code: 'INVALID_API_KEY_FORMAT',
+    })
+  }
+}
+
 // Champs jamais exposés au client (tokens chiffrés)
 const SENSITIVE = ['access_token', 'refresh_token']
 
@@ -74,6 +95,8 @@ async function addApiKeyConnector({
       code: 'MISSING_FIELDS',
     })
   }
+
+  validateApiKeyFormat(source, apiKey)
 
   const supabase = getServiceRoleClient()
   const encrypted = await vault.encrypt(apiKey)
