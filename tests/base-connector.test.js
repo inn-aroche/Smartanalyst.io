@@ -74,7 +74,7 @@ test('refreshTokenIfNeeded calls _doRefresh when token expires within 7 days', a
 test('connector factory throws UserFacingError for unimplemented source', () => {
   const { getConnector } = require('../src/connectors')
   assert.throws(
-    () => getConnector('ws-id', { id: 'c-id', source: 'ga4' }),
+    () => getConnector('ws-id', { id: 'c-id', source: 'meta_ads' }),
     /CONNECTOR_NOT_IMPLEMENTED|pas encore disponible/,
   )
 })

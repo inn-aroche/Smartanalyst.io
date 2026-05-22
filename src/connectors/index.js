@@ -30,7 +30,10 @@ function getConnector(workspaceId, connectorRecord) {
   }
 
   switch (connectorRecord.source) {
-    // TODO: case 'ga4': return new (require('./ga4.connector'))(workspaceId, connectorRecord)
+    case 'ga4': {
+      const GA4Connector = require('./ga4.connector')
+      return new GA4Connector(workspaceId, connectorRecord)
+    }
     // TODO: case 'meta_ads': return new (require('./meta-ads.connector'))(workspaceId, connectorRecord)
     // TODO: case 'google_ads': return new (require('./google-ads.connector'))(workspaceId, connectorRecord)
     // TODO: case 'stripe': return new (require('./stripe.connector'))(workspaceId, connectorRecord)
