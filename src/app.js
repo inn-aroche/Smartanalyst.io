@@ -89,12 +89,13 @@ function createApp() {
     res.json({ name: 'SmartAnalyst API', version: '0.1.0' })
   })
 
-  // TODO: monter les routes (auth, onboarding, connectors, chat, reports)
-  // app.use('/auth', require('./routes/auth.routes'))
-  // app.use('/api/onboarding', require('./routes/onboarding.routes'))
-  // app.use('/api/connectors', require('./routes/connectors.routes'))
-  // app.use('/api/chat', require('./routes/chat.routes'))
-  // app.use('/api/reports', require('./routes/reports.routes'))
+  // Routes
+  app.use('/api/v1/auth', require('./routes/auth.routes'))
+  // TODO: onboarding, connectors, chat, reports
+  // app.use('/api/v1/onboarding', require('./routes/onboarding.routes'))
+  // app.use('/api/v1/connectors', require('./routes/connectors.routes'))
+  // app.use('/api/v1/chat', require('./routes/chat.routes'))
+  // app.use('/api/v1/reports', require('./routes/reports.routes'))
 
   // 404 + error handler (toujours en dernier)
   app.use(notFoundHandler)
