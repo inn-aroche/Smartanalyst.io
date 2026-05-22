@@ -1,0 +1,41 @@
+{
+  "name": "smartanalyst",
+  "version": "0.1.0",
+  "private": true,
+  "description": "L'analyste marketing IA en français. Connecte tes outils, pose tes questions, reçois tes insights.",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "worker": "node src/queue-jobs/index.js",
+    "lint": "eslint 'src/**/*.js'",
+    "format": "prettier --write 'src/**/*.js' 'frontend/**/*.{js,html,css}' 'vitrine/**/*.{js,html,css}'",
+    "test": "node --test tests/",
+    "migrate": "echo 'Use Supabase CLI: supabase db push (see docs/04_SCHEMA_DONNEES_COMPLET.md)' && exit 1"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "bullmq": "^5.20.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "express-validator": "^7.2.0",
+    "handlebars": "^4.7.8",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "playwright": "^1.48.0",
+    "resend": "^4.0.0",
+    "stripe": "^17.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.13.0",
+    "prettier": "^3.3.0"
+  }
+}
