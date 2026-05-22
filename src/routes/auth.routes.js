@@ -6,10 +6,10 @@
 
 const express = require('express')
 const rateLimit = require('express-rate-limit')
-const { body, validationResult } = require('express-validator')
+const { body } = require('express-validator')
 
-const { UserFacingError } = require('../lib/error-handler')
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
+const { runValidation } = require('../middleware/validation.middleware')
 const authService = require('../services/auth/auth.service')
 
 const router = express.Router()
@@ -44,27 +44,12 @@ const signupLimiter = rateLimit({
   },
 })
 
-function assertValid(req) {
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) {
-    const first = errors.array()[0]
-    throw new UserFacingError(first.msg, {
-      statusCode: 400,
-      code: 'VALIDATION_FAILED',
-      meta: { field: first.path, errors: errors.array() },
-    })
-  }
-}
-
 // ━━━ POST /signup ━━━
 router.post(
   '/signup',
   signupLimiter,
   [
-    body('email')
-      .isEmail()
-      .withMessage('Email invalide.')
-      .normalizeEmail(),
+    body('email').isEmail().withMessage('Email invalide.').normalizeEmail(),
     body('password')
       .isLength({ min: 12 })
       .withMessage('Le mot de passe doit faire au moins 12 caractères.'),
@@ -75,9 +60,9 @@ router.post(
       .isLength({ max: 100 })
       .withMessage('Nom d’organisation trop long (100 caractères max).'),
   ],
+  runValidation,
   async (req, res, next) => {
     try {
-      assertValid(req)
       const result = await authService.signup({
         email: req.body.email,
         password: req.body.password,
@@ -103,9 +88,9 @@ router.post(
     body('email').isEmail().withMessage('Email invalide.').normalizeEmail(),
     body('password').notEmpty().withMessage('Mot de passe requis.'),
   ],
+  runValidation,
   async (req, res, next) => {
     try {
-      assertValid(req)
       const result = await authService.login({
         email: req.body.email,
         password: req.body.password,
@@ -130,9 +115,9 @@ router.post(
       .isString()
       .withMessage('Refresh token invalide.'),
   ],
+  runValidation,
   async (req, res, next) => {
     try {
-      assertValid(req)
       const result = await authService.refresh(req.body.refreshToken)
       res.json(result)
     } catch (err) {
