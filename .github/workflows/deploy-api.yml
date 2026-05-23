@@ -1,0 +1,113 @@
+name: Deploy API to VPS
+
+# Builds the API workspace, rsyncs it to the Hostinger VPS, and reloads PM2.
+# Triggers on push to main, only when API / shared / lockfile changes.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   VPS_SSH_HOST          IP or hostname of the VPS (e.g. 2.24.9.186)
+#   VPS_SSH_PORT          22 (default) or whatever you've set
+#   VPS_SSH_USER          deploy
+#   VPS_SSH_PRIVATE_KEY   PEM contents of the private key authorized in /home/deploy/.ssh/authorized_keys
+#
+# Optional secrets (for the production .env, written to /srv/smartanalyst-api/.env at deploy):
+#   API_ENV_FILE          full multi-line contents of the production .env
+#
+# See docs/DEPLOYMENT_API.md for the one-time setup.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production-api
+      url: https://api.smartanalyst.io
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies (full, for tests)
+        run: npm ci
+
+      - name: Run API tests
+        run: npm run test --workspace=@smartanalyst/api
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Trust VPS host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.VPS_SSH_PORT }}" -H "${{ secrets.VPS_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Rsync source to VPS
+        # We ship the monorepo subset the API needs: apps/api, packages/shared, root manifest,
+        # ecosystem config. node_modules is rebuilt on the server (npm ci --omit=dev).
+        run: |
+          rsync -avz --delete \
+            --exclude='node_modules/' \
+            --exclude='.git/' \
+            --exclude='coverage/' \
+            --exclude='test-results/' \
+            --exclude='playwright-report/' \
+            --exclude='logs/' \
+            -e "ssh -p ${{ secrets.VPS_SSH_PORT }}" \
+            apps/api \
+            packages \
+            package.json \
+            package-lock.json \
+            .nvmrc \
+            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}:/srv/smartanalyst-api/"
+
+      - name: Write production .env (if provided)
+        if: ${{ env.HAS_ENV_FILE == 'true' }}
+        env:
+          HAS_ENV_FILE: ${{ secrets.API_ENV_FILE != '' }}
+          API_ENV_FILE: ${{ secrets.API_ENV_FILE }}
+        run: |
+          ssh -p "${{ secrets.VPS_SSH_PORT }}" \
+            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
+            "umask 077 && cat > /srv/smartanalyst-api/apps/api/.env" <<< "$API_ENV_FILE"
+
+      - name: Install prod deps + reload PM2 on VPS
+        run: |
+          ssh -p "${{ secrets.VPS_SSH_PORT }}" \
+            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
+            bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /srv/smartanalyst-api
+          npm ci --omit=dev --workspaces --include-workspace-root
+          # Reload (zero-downtime if already running, otherwise start)
+          pm2 reload apps/api/ecosystem.config.cjs --update-env || \
+            pm2 start apps/api/ecosystem.config.cjs
+          pm2 save
+          pm2 status
+          REMOTE
+
+      - name: Summary
+        run: |
+          echo "### API deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- API: https://api.smartanalyst.io" >> $GITHUB_STEP_SUMMARY
