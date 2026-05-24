@@ -1,0 +1,46 @@
+---
+import { STRINGS, localizedPath, altLocalePath } from '../i18n/strings.js';
+
+const { locale = 'en' } = Astro.props;
+const t = STRINGS[locale];
+const lp = (p) => localizedPath(p, locale);
+const alt = altLocalePath(Astro.url.pathname, locale);
+---
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href={lp('/')} class="brand">
+      <span class="brand-mark"></span>
+      <span class="brand-name">SmartAnalyst</span>
+    </a>
+    <div class="nav-links">
+      <a href={lp('/product')}>{t.nav.product}</a>
+      <a href={lp('/pricing')}>{t.nav.pricing}</a>
+      <a href={lp('/security')}>{t.nav.security}</a>
+    </div>
+    <a href={alt} class="lang-switch" aria-label={STRINGS[locale === 'en' ? 'fr' : 'en'].langSwitchFull}>
+      {t.langSwitch}
+    </a>
+    <a href={lp('/#cta')} class="btn btn-primary btn-sm">{t.nav.cta}</a>
+  </div>
+</nav>
+
+<style is:global>
+  .lang-switch {
+    margin-right: 16px;
+    font-size: 12px;
+    font-family: var(--ff-m);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+  .lang-switch:hover {
+    color: var(--text-1);
+    border-color: var(--border-br);
+  }
+  @media (max-width: 900px) {
+    .lang-switch { margin-right: 8px; }
+  }
+</style>

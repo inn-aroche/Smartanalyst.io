@@ -1,0 +1,72 @@
+---
+import '../styles/dark.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { STRINGS, altLocalePath } from '../i18n/strings.js';
+
+const { title, description, locale = 'en' } = Astro.props;
+const siteName = 'SmartAnalyst';
+const fullTitle = title === 'home'
+  ? (locale === 'fr'
+      ? `${siteName} — Ton analyste marketing IA`
+      : `${siteName} — Your AI Marketing Data Analyst`)
+  : `${title} — ${siteName}`;
+
+const altPath = altLocalePath(Astro.url.pathname, locale);
+const altLocale = locale === 'en' ? 'fr' : 'en';
+const canonical = new URL(Astro.url.pathname, Astro.site || 'https://smartanalyst.io').href;
+const altHref = new URL(altPath, Astro.site || 'https://smartanalyst.io').href;
+---
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang={locale} href={canonical} />
+    <link rel="alternate" hreflang={altLocale} href={altHref} />
+    <link rel="alternate" hreflang="x-default" href={new URL(locale === 'en' ? Astro.url.pathname : altPath, Astro.site || 'https://smartanalyst.io').href} />
+
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={locale === 'fr' ? 'fr_FR' : 'en_US'} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <Nav locale={locale} />
+    <slot />
+    <Footer locale={locale} />
+
+    <script is:inline>
+      // Nav: blur + background once scrolled
+      (() => {
+        const nav = document.getElementById('nav');
+        if (!nav) return;
+        const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 30);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      })();
+      // Reveal-on-scroll for .sa-fade elements
+      (() => {
+        const els = document.querySelectorAll('.sa-fade');
+        if (!els.length) return;
+        const io = new IntersectionObserver(
+          (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+          { threshold: 0.08 },
+        );
+        els.forEach((el) => io.observe(el));
+      })();
+    </script>
+  </body>
+</html>

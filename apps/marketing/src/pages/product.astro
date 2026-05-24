@@ -1,132 +1,136 @@
 ---
-import Base from '../layouts/Base.astro';
-import { FEATURES } from '@smartanalyst/shared/features';
+import DarkBase from '../layouts/DarkBase.astro';
 import { TRIAL_DAYS } from '@smartanalyst/shared/pricing';
+
+const features = [
+  { label: 'Conversational analysis in plain language',
+    desc:  'Ask in natural language. The AI answers with sourced, contextualized data and a concrete recommendation.' },
+  { label: 'Real-time dashboard',
+    desc:  'Global health score, key KPIs, active alerts. Answer "are we okay?" in 3 seconds.' },
+  { label: 'Proactive weekly insights',
+    desc:  'Without any action from you, the AI detects anomalies and delivers 3-5 insights per week with recommendations.' },
+  { label: 'Competitive benchmark',
+    desc:  'Your performance compared to your industry — auto-detected during onboarding.' },
+  { label: 'Business health score (0-100)',
+    desc:  'A weekly score synthesizing paid, organic, conversion and revenue. Tracked over 12 months.' },
+  { label: 'Automated PDF reports',
+    desc:  'On the 1st of every month, client reports leave automatically. White-label, AI exec summary, benchmark included.' },
+  { label: 'OAuth connectors',
+    desc:  'GA4, Meta Ads, Google Ads, Stripe, Search Console. One-click connect — no engineering required.' },
+  { label: 'Audit trail & data export',
+    desc:  'Every sensitive action is logged. Export your data anytime in JSON. No lock-in.' },
+];
 ---
-<Base
-  title="Produit"
-  description="Comment SmartAnalyst.io connecte GA4, Meta Ads, Google Ads, Stripe et Search Console pour répondre à tes questions marketing en français — avec des recommandations concrètes."
+<DarkBase
+  title="Product"
+  description="How SmartAnalyst connects GA4, Meta Ads, Google Ads, Stripe and Search Console to answer your marketing questions — with concrete recommendations."
+  locale="en"
 >
-  <section class="hero">
-    <div class="container">
-      <span class="eyebrow">Le produit</span>
-      <h1>Une IA qui comprend ton business. Pas un dashboard de plus.</h1>
+  <section class="page-hero">
+    <div class="glow" style="width:700px;height:500px;top:-100px;left:50%;transform:translateX(-50%);opacity:0.55"></div>
+    <div class="container" style="position:relative;z-index:1">
+      <div class="eyebrow">The product</div>
+      <h1>An AI that understands your business.<br /><span class="gradient-text">Not just another dashboard.</span></h1>
       <p class="lead">
-        SmartAnalyst se branche sur tes outils, normalise tes données, et te
-        sert un analyste IA qui parle français et connaît ton secteur. Voici ce
-        qu’il y a sous le capot.
+        SmartAnalyst plugs into your tools, normalizes your data, and gives you an AI analyst that knows your industry. Here’s what’s under the hood.
       </p>
     </div>
   </section>
 
-  <section>
+  <section class="page-section sa-fade">
     <div class="container">
-      <h2 style="text-align:center">Comment ça marche</h2>
-      <div class="grid cols-4" style="margin-top:2rem">
-        <div class="card">
-          <h3>1. Signup</h3>
-          <p>Email + mot de passe. Pas de carte bancaire. {TRIAL_DAYS} jours d’essai sur toutes les features.</p>
+      <h2>How it works</h2>
+      <p class="lead">From signup to your first insight in under 3 minutes.</p>
+      <div class="grid cols-4">
+        <div class="sa-card">
+          <h3>1. Sign up</h3>
+          <div class="card-body">Email + password. No credit card. {TRIAL_DAYS}-day trial on all features.</div>
         </div>
-        <div class="card">
-          <h3>2. Profil business</h3>
-          <p>Tu donnes l’URL de ton site. On détecte automatiquement secteur, marché et outils (Shopify, GA4, Meta Pixel…).</p>
+        <div class="sa-card">
+          <h3>2. Business profile</h3>
+          <div class="card-body">Give us your website URL. We auto-detect industry, market and tools (Shopify, GA4, Meta Pixel…).</div>
         </div>
-        <div class="card">
-          <h3>3. Connecteurs</h3>
-          <p>OAuth en 1 clic : GA4, Meta Ads, Google Ads, Stripe, Search Console. Les données arrivent en quelques secondes.</p>
+        <div class="sa-card">
+          <h3>3. Connectors</h3>
+          <div class="card-body">One-click OAuth: GA4, Meta Ads, Google Ads, Stripe, Search Console. Data flows in within seconds.</div>
         </div>
-        <div class="card">
-          <h3>4. Insights live</h3>
-          <p>Premier insight visible en moins de 3 minutes après signup. Le chat IA est actif immédiatement.</p>
+        <div class="sa-card">
+          <h3>4. Live insights</h3>
+          <div class="card-body">First insight visible in under 3 minutes. AI chat is active immediately.</div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="alt">
+  <section class="page-section alt sa-fade">
     <div class="container">
-      <h2 style="text-align:center">Les 8 piliers du produit</h2>
-      <p class="lead" style="text-align:center">
-        Par ordre d’importance — l’analyse conversationnelle est le cœur.
-      </p>
-      <div class="grid cols-2" style="margin-top:2.5rem">
-        {FEATURES.product.map((f, i) => (
-          <div class="card">
+      <h2>The 8 product pillars</h2>
+      <p class="lead">In order of importance — conversational analysis is the core.</p>
+      <div class="grid cols-2">
+        {features.map((f, i) => (
+          <div class="sa-card">
             <h3>{i + 1}. {f.label}</h3>
-            <p>{f.description}</p>
+            <div class="card-body">{f.desc}</div>
           </div>
         ))}
       </div>
     </div>
   </section>
 
-  <section>
+  <section class="page-section sa-fade">
     <div class="container">
-      <h2 style="text-align:center">Sous le capot : Canonical Metrics</h2>
-      <p class="lead" style="text-align:center">
-        Le détail technique qui change tout : un schéma universel commun à
-        toutes les sources de données.
-      </p>
-      <div class="grid cols-2" style="margin-top:2rem">
-        <div class="card">
-          <h3>Le problème</h3>
-          <p>
-            GA4 appelle ça "sessions". Meta dit "reach". Google Ads dit
-            "impressions". Stripe parle de "successful_payments". Chaque outil
-            a son vocabulaire. Une IA naïve s’y perd, donne le mauvais chiffre,
-            ou compare des choux et des carottes.
-          </p>
+      <h2>Under the hood: Canonical Metrics</h2>
+      <p class="lead">The technical detail that changes everything: a universal schema across every data source.</p>
+      <div class="grid cols-2">
+        <div class="sa-card">
+          <h3>The problem</h3>
+          <div class="card-body">
+            GA4 calls it "sessions". Meta says "reach". Google Ads says "impressions". Stripe talks about "successful_payments". Every tool has its own vocabulary. A naive AI gets lost, returns the wrong number, or compares apples to oranges.
+          </div>
         </div>
-        <div class="card">
-          <h3>Notre approche</h3>
-          <p>
-            Chaque connecteur publie ses données vers un <strong>schéma
-            canonique</strong> unique : <code>traffic</code>, <code>conversions</code>,
-            <code>spend</code>, <code>revenue</code>, etc. L’IA ne parle qu’à ce
-            schéma — jamais aux sources brutes. Conséquence : les
-            comparaisons cross-source sont possibles, fiables et explicables.
-          </p>
+        <div class="sa-card">
+          <h3>Our approach</h3>
+          <div class="card-body">
+            Every connector publishes data to a single <strong>canonical schema</strong>: <code>traffic</code>, <code>conversions</code>, <code>spend</code>, <code>revenue</code>, etc. The AI only talks to this schema — never to the raw sources. Consequence: cross-source comparisons are possible, reliable, and explainable.
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="alt">
+  <section class="page-section alt sa-fade">
     <div class="container">
-      <h2 style="text-align:center">Conçu pour 4 profils précis</h2>
-      <div class="grid cols-4" style="margin-top:2rem">
-        <div class="card">
-          <h3>📊 Agence</h3>
-          <p><strong>5-50 clients.</strong> Tu passes 4-8h par client en reporting. Gain : zéro temps, valeur agence renforcée.</p>
+      <h2>Built for 4 specific profiles</h2>
+      <p class="lead">Marketing teams, freelancers, founders, small businesses — same product, different superpowers.</p>
+      <div class="grid cols-4">
+        <div class="sa-card">
+          <h3>Agency</h3>
+          <div class="card-body"><strong>5-50 clients.</strong> You spend 4-8h per client on reporting. Gain: zero time, stronger agency value.</div>
         </div>
-        <div class="card">
-          <h3>🎯 Freelance</h3>
-          <p><strong>2-8 clients.</strong> Ton rapport pro justifie ton TJM mais prend du temps. Gain : aspect pro supérieur, en deux clics.</p>
+        <div class="sa-card">
+          <h3>Freelance</h3>
+          <div class="card-body"><strong>2-8 clients.</strong> Your pro report justifies your rate but takes time. Gain: superior pro feel, in two clicks.</div>
         </div>
-        <div class="card">
-          <h3>🚀 Startup</h3>
-          <p><strong>Fondateur.</strong> Tu prépares ton investor update mensuel à la main. Gain : synthèse Stripe + GA4 + CRM en 10 clics.</p>
+        <div class="sa-card">
+          <h3>Startup</h3>
+          <div class="card-body"><strong>Founder.</strong> You prep your monthly investor update by hand. Gain: Stripe + GA4 + CRM synthesis in 10 clicks.</div>
         </div>
-        <div class="card">
-          <h3>🏪 TPE</h3>
-          <p><strong>Gérant qui fait son propre marketing.</strong> Tu ne sais pas si ton budget pub est bien alloué. Gain : un analyste qui te répond en français.</p>
+        <div class="sa-card">
+          <h3>SMB</h3>
+          <div class="card-body"><strong>Owner-marketer.</strong> You don’t know if your ad budget is well allocated. Gain: an analyst who answers in your language.</div>
         </div>
       </div>
     </div>
   </section>
 
-  <section>
-    <div class="container" style="text-align:center">
-      <h2>Voir par toi-même</h2>
-      <p class="lead">
-        Le meilleur moyen de juger un analyste IA, c’est de lui poser une
-        question. Essaie {TRIAL_DAYS} jours, sans carte.
-      </p>
-      <p>
-        <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Démarrer gratuitement</a>
-        {' '}
-        <a href="/pricing" class="btn btn-secondary">Voir les tarifs</a>
-      </p>
+  <section class="page-section sa-fade" style="text-align:center">
+    <div class="container">
+      <h2>See for yourself</h2>
+      <p class="lead">The best way to judge an AI analyst is to ask it a question. Try {TRIAL_DAYS} days, no card.</p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+        <a href="/#cta" class="btn btn-primary">Request early access</a>
+        <a href="/pricing" class="btn">See pricing</a>
+      </div>
     </div>
   </section>
-</Base>
+</DarkBase>

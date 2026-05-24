@@ -1,0 +1,22 @@
+---
+import { STRINGS, localizedPath } from '../i18n/strings.js';
+
+const { locale = 'en' } = Astro.props;
+const t = STRINGS[locale];
+const lp = (p) => localizedPath(p, locale);
+const year = new Date().getFullYear();
+---
+<footer class="footer">
+  <div class="footer-inner">
+    <a href={lp('/')} class="brand">
+      <span class="brand-mark" style="width:22px;height:22px;border-radius:5px"></span>
+      <span class="brand-name" style="font-size:14px">SmartAnalyst</span>
+    </a>
+    <div class="footer-copy">{t.footer.copyright(year)}</div>
+    <div class="footer-links">
+      <a href={lp('/security')}>{t.footer.privacy}</a>
+      <a href={lp('/security')}>{t.footer.terms}</a>
+      <a href="mailto:contact@smartanalyst.io">{t.footer.contact}</a>
+    </div>
+  </div>
+</footer>
