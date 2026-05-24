@@ -1,0 +1,82 @@
+name: Deploy web app
+
+# Deploys apps/web/ to Hostinger Cloud via rsync over SSH.
+# Triggers on push to main when web files or shared deps change.
+#
+# Required GitHub secrets:
+#   HOSTINGER_SSH_HOST          same host as the marketing deploy
+#   HOSTINGER_SSH_PORT          65002 (Hostinger default)
+#   HOSTINGER_SSH_USER          same user as the marketing deploy
+#   HOSTINGER_SSH_PRIVATE_KEY   same private key as the marketing deploy
+#   HOSTINGER_WEB_DEPLOY_PATH   absolute path to the app subdomain's public_html,
+#                               e.g. /home/u123456789/domains/app.smartanalyst.io/public_html
+#
+# See docs/DEPLOYMENT_WEB.md for the one-time setup.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production-web
+      url: https://app.smartanalyst.io
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build --workspace=@smartanalyst/web
+        env:
+          VITE_API_URL: https://api.smartanalyst.io
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+
+      - name: Trust Hostinger host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.HOSTINGER_SSH_PORT }}" -H "${{ secrets.HOSTINGER_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy via rsync
+        # The web app is a SPA: ship the contents of dist/ to the subdomain root.
+        # Preserve .well-known/ (Let's Encrypt) and .htaccess (SPA fallback) on the server.
+        run: |
+          rsync -avz --delete \
+            --exclude='.well-known/' \
+            --exclude='.htaccess' \
+            --exclude='cgi-bin/' \
+            -e "ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}" \
+            apps/web/dist/ \
+            "${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_WEB_DEPLOY_PATH }}/"
+
+      - name: Summary
+        run: |
+          echo "### Web app deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- App: https://app.smartanalyst.io" >> $GITHUB_STEP_SUMMARY

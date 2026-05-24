@@ -46,9 +46,16 @@ function createApp() {
   )
 
   // CORS restrictif (doc 02 §2.4)
+  // Allowed origins resolve from CORS_ALLOWED_ORIGINS (comma-separated) if set,
+  // otherwise from APP_URL. Empty/unset = allow any origin (dev only).
+  const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
+    ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+    : process.env.APP_URL
+      ? [process.env.APP_URL]
+      : null
   app.use(
     cors({
-      origin: process.env.APP_URL || true,
+      origin: corsOrigins ?? true,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
       allowedHeaders: ['Content-Type', 'Authorization'],

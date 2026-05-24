@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-bg-0 text-text-1;
+  }
+  body {
+    @apply font-body antialiased;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .sa-card {
+    @apply rounded-xl border border-border bg-card p-6 transition-all duration-200;
+  }
+  .sa-card:hover {
+    @apply border-border-bright bg-card-hover;
+  }
+
+  .sa-btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-transparent px-5 py-2.5 font-body text-sm font-semibold text-white transition-all duration-200;
+  }
+  .sa-btn:hover {
+    @apply border-border-bright;
+  }
+  .sa-btn-primary {
+    @apply border-0 bg-brand-blue;
+    box-shadow: 0 0 26px rgba(61, 130, 255, 0.28);
+  }
+  .sa-btn-primary:hover {
+    background: #5592ff;
+    box-shadow: 0 0 44px rgba(61, 130, 255, 0.42);
+  }
+
+  .sa-input {
+    @apply w-full rounded-lg border border-border bg-bg-2 px-4 py-2.5 text-sm text-text-1 outline-none transition-all duration-150;
+  }
+  .sa-input:focus {
+    @apply border-brand-blue;
+    box-shadow: 0 0 0 3px rgba(61, 130, 255, 0.15);
+  }
+  .sa-input::placeholder {
+    @apply text-text-3;
+  }
+
+  .sa-label {
+    @apply mb-1.5 block font-mono text-xs uppercase tracking-wider text-text-3;
+  }
+}

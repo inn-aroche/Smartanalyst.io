@@ -1,0 +1,66 @@
+// Fetch wrapper for the SmartAnalyst API.
+// - Reads the JWT from the AuthProvider (passed in via setAuthToken).
+// - Base URL comes from VITE_API_URL at build time; empty in dev so the Vite
+//   proxy can forward /api → http://localhost:3000.
+
+const BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
+let currentToken: string | null = null
+export function setAuthToken(token: string | null) {
+  currentToken = token
+}
+
+export class ApiError extends Error {
+  status: number
+  body: unknown
+  constructor(message: string, status: number, body: unknown) {
+    super(message)
+    this.status = status
+    this.body = body
+  }
+}
+
+type RequestOptions = {
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  body?: unknown
+  signal?: AbortSignal
+  auth?: boolean
+}
+
+export async function apiFetch<T>(
+  path: string,
+  { method = 'GET', body, signal, auth = true }: RequestOptions = {},
+): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (auth && currentToken) headers.Authorization = `Bearer ${currentToken}`
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal,
+  })
+
+  const text = await res.text()
+  const parsed = text ? safeJson(text) : null
+
+  if (!res.ok) {
+    const message =
+      (parsed as { error?: string; message?: string })?.error ??
+      (parsed as { error?: string; message?: string })?.message ??
+      `${res.status} ${res.statusText}`
+    throw new ApiError(message, res.status, parsed)
+  }
+  return parsed as T
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
