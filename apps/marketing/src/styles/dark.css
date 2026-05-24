@@ -1,5 +1,5 @@
-/* SmartAnalyst — Dark "Immersive" landing design system.
-   Used by DarkBase.astro / the homepage. Light pages keep global.css. */
+/* SmartAnalyst — Dark "Immersive" design system.
+   Used site-wide via DarkBase.astro. */
 
 :root {
   --bg-0: #06060b;

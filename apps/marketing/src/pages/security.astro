@@ -1,0 +1,188 @@
+---
+import DarkBase from '../layouts/DarkBase.astro';
+---
+<DarkBase
+  title="Security & GDPR"
+  description="EU hosting, encrypted OAuth tokens, Postgres Row-Level Security, GDPR compliance. Security at SmartAnalyst, without the marketing bullshit."
+  locale="en"
+>
+  <section class="page-hero">
+    <div class="glow" style="width:700px;height:500px;top:-100px;left:50%;transform:translateX(-50%);opacity:0.55"></div>
+    <div class="container" style="position:relative;z-index:1">
+      <div class="eyebrow">Security & GDPR</div>
+      <h1>Your client data,<br /><span class="gradient-text">treated like our own.</span></h1>
+      <p class="lead">
+        We process sensitive business data (revenue, ad spend, conversions) from your marketing tools. Here’s what we actually do to protect it — no jargon.
+      </p>
+    </div>
+  </section>
+
+  <section class="page-section sa-fade">
+    <div class="container">
+      <h2>Hosting & infrastructure</h2>
+      <div class="grid cols-2">
+        <div class="sa-card">
+          <h3>100% in Europe</h3>
+          <div class="card-body">
+            Database and storage on <strong>Supabase, Ireland region (eu-west-1)</strong>. No replication to the United States. Backups stay in Europe.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>Postgres + Row-Level Security</h3>
+          <div class="card-body">
+            Every row in the database is protected by a <strong>Row-Level Security policy</strong> at the Postgres level: impossible for a user to access a workspace that isn’t theirs, even in case of an application bug.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>Encrypted OAuth tokens</h3>
+          <div class="card-body">
+            Access tokens for your connectors (GA4, Meta Ads, Google Ads…) are stored <strong>encrypted via Supabase Vault</strong>. Never logged, never displayed in plaintext, never transmitted outside the server process.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>HTTPS everywhere</h3>
+          <div class="card-body">
+            TLS 1.2+ on all domains (app, api, smartanalyst.io). Strict security headers (HSTS, CSP, X-Frame-Options). Cookies set <code>HttpOnly</code> + <code>Secure</code> + <code>SameSite=Strict</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section alt sa-fade">
+    <div class="container">
+      <h2>GDPR — concretely</h2>
+      <div class="grid cols-2">
+        <div class="sa-card">
+          <h3>Explicit consent</h3>
+          <div class="card-body">
+            At signup, consent checkboxes are <strong>unchecked by default</strong>. You enable what you want, when you want. Every consent is timestamped and kept.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>Right to be forgotten</h3>
+          <div class="card-body">
+            Request account deletion? We process it in <strong>under 30 days</strong>. Immediate soft-delete, personal data anonymization, identifier purge.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>Data export</h3>
+          <div class="card-body">
+            At any moment, you can export all your data (insights, reports, metrics) in JSON format. No lock-in.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>Complete audit trail</h3>
+          <div class="card-body">
+            Every sensitive action (login, tool connection, report sent, plan change) is logged with user, timestamp, IP and user-agent. Available to you on request.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section sa-fade">
+    <div class="container">
+      <h2>What we don’t do</h2>
+      <div class="grid cols-3">
+        <div class="sa-card">
+          <h3>No data reselling</h3>
+          <div class="card-body">
+            Your data is never sold, never used to train a general-purpose AI model, never shared with a third party without your explicit consent.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>No third-party tracking</h3>
+          <div class="card-body">
+            No Google Analytics, no Meta Pixel, no Hotjar on authenticated spaces. We use <strong>Plausible</strong> (European analytics, cookieless) on public pages.
+          </div>
+        </div>
+        <div class="sa-card">
+          <h3>No human access to your data</h3>
+          <div class="card-body">
+            Our team never accesses your workspace content, unless you explicitly authorize us to for a support ticket. Access is logged and revocable.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section alt sa-fade">
+    <div class="container">
+      <h2>AI & confidentiality</h2>
+      <div class="sa-card" style="margin-top:24px">
+        <div class="card-body">
+          <p style="margin-bottom:12px">
+            SmartAnalyst uses <strong>Anthropic Claude models</strong> (Sonnet and Haiku) to generate insights and answers. Anthropic contractually commits to:
+          </p>
+          <ul>
+            <li>not train its models on requests sent through our API;</li>
+            <li>retain requests for a maximum of 30 days for operational security, then delete them;</li>
+            <li>not share content with third parties.</li>
+          </ul>
+          <p style="margin-top:14px">
+            We only transmit to the AI the metrics needed for the question asked — never personal identifiers (email, name, address). The AI talks to our <strong>canonical metrics schema</strong>, not to your raw data.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section sa-fade">
+    <div class="container">
+      <h2>Subprocessors & DPA</h2>
+      <p class="lead">The full list of our subprocessors, their role and hosting region — per GDPR Article 28.</p>
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Subprocessor</th>
+            <th>Role</th>
+            <th>Hosting</th>
+            <th>DPA signed</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Supabase</td>
+            <td>Database + auth + storage</td>
+            <td>Ireland (eu-west-1)</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>Anthropic</td>
+            <td>AI models (Claude)</td>
+            <td>United States (zero data retention)</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>Stripe</td>
+            <td>Payments</td>
+            <td>Ireland (EU entity)</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>Resend</td>
+            <td>Transactional email</td>
+            <td>Europe</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>Hostinger</td>
+            <td>Marketing site hosting</td>
+            <td>Europe</td>
+            <td>✓</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="page-section alt sa-fade" style="text-align:center">
+    <div class="container">
+      <h2>A question, an incident, a report?</h2>
+      <p class="lead">
+        Email us at <a href="mailto:security@smartanalyst.io" style="color:var(--blue);text-decoration:underline">security@smartanalyst.io</a>. For vulnerability reports, we commit to a first reply within 48 business hours.
+      </p>
+    </div>
+  </section>
+</DarkBase>

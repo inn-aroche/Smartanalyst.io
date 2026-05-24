@@ -1,63 +1,74 @@
 ---
-import Base from '../layouts/Base.astro';
-import {
-  PLANS,
-  PLAN_ORDER,
-  TRIAL_DAYS,
-  TRIAL_REQUIRES_CARD,
-  formatQuota,
-  formatWhiteLabel,
-} from '@smartanalyst/shared/pricing';
+import DarkBase from '../layouts/DarkBase.astro';
+import { PLANS, PLAN_ORDER, TRIAL_DAYS } from '@smartanalyst/shared/pricing';
 
-const trialNote = TRIAL_REQUIRES_CARD
-  ? `${TRIAL_DAYS} jours d’essai gratuit`
-  : `${TRIAL_DAYS} jours d’essai · sans carte bancaire`;
+// English UI strings for plans (the shared package is French-only for now).
+const PLAN_LABELS_EN = {
+  FREE:    { label: 'Discovery', tagline: 'To discover the product, no strings attached' },
+  STARTER: { label: 'Starter',   tagline: 'For the freelance or small business owning their marketing' },
+  PRO:     { label: 'Pro',       tagline: 'For the agency managing 5 to 20 clients' },
+  AGENCY:  { label: 'Agency',    tagline: 'For agencies with an unlimited client portfolio' },
+};
+
+function quotaEn(value) {
+  if (value === Infinity) return 'Unlimited';
+  if (value === 'all_p1') return 'All P1';
+  if (value === 'all')    return 'All';
+  return String(value);
+}
+
+function whiteLabelEn(level) {
+  switch (level) {
+    case 'none':        return 'SmartAnalyst branded';
+    case 'logo':        return 'Your logo';
+    case 'logo_colors': return 'Logo + colors';
+    case 'full':        return 'Full white-label';
+    default:            return level;
+  }
+}
 ---
-<Base
-  title="Tarifs"
-  description="Plans Découverte, Starter, Pro et Agence. 14 jours d’essai gratuit sans carte bancaire. IA incluse dans tous les plans."
+<DarkBase
+  title="Pricing"
+  description="Discovery, Starter, Pro and Agency plans. 14-day free trial, no credit card. AI included in every plan."
+  locale="en"
 >
-  <section class="hero">
-    <div class="container">
-      <span class="eyebrow">Tarifs</span>
-      <h1>Un prix par usage, pas par feature.</h1>
+  <section class="page-hero">
+    <div class="glow" style="width:700px;height:500px;top:-100px;left:50%;transform:translateX(-50%);opacity:0.55"></div>
+    <div class="container" style="position:relative;z-index:1">
+      <div class="eyebrow">Pricing</div>
+      <h1>One price per usage,<br /><span class="gradient-text">not per feature.</span></h1>
       <p class="lead">
-        L’IA est incluse dans <strong>tous les plans</strong> — c’est le cœur du
-        produit, pas une option premium. Tu choisis en fonction du nombre de
-        clients que tu gères, pas des features auxquelles tu accèdes.
+        AI is included in <strong>every plan</strong> — it’s the core of the product, not a premium add-on. Pick a plan based on the number of clients you manage, not the features you unlock.
       </p>
-      <p style="color: var(--text-muted)">{trialNote}</p>
+      <p class="lead" style="font-size:14px;color:var(--text-3)">{TRIAL_DAYS}-day free trial · no credit card</p>
     </div>
   </section>
 
-  <section>
+  <section class="page-section sa-fade">
     <div class="container">
       <div class="grid cols-4">
         {PLAN_ORDER.map((key) => {
           const plan = PLANS[key];
+          const en = PLAN_LABELS_EN[key];
           return (
             <article class={`plan ${plan.featured ? 'featured' : ''}`}>
-              {plan.featured && <span class="badge">Le plus choisi</span>}
-              <h3>{plan.label}</h3>
-              <p style="color: var(--text-muted); font-size: 0.95rem; min-height: 2.8em">
-                {plan.tagline}
-              </p>
-              <p class="price">
-                {plan.priceEurMonth} €<small> / mois</small>
-              </p>
+              {plan.featured && <span class="badge">Most popular</span>}
+              <h3>{en.label}</h3>
+              <p class="plan-tag">{en.tagline}</p>
+              <p class="price">€{plan.priceEurMonth}<small> / month</small></p>
               <ul>
-                <li>{formatQuota(plan.quotas.clients)} client{plan.quotas.clients !== 1 ? 's' : ''}</li>
-                <li>{formatQuota(plan.quotas.connectors)} connecteur{plan.quotas.connectors === 1 ? '' : 's'}</li>
-                <li>{formatQuota(plan.quotas.insightsPerMonth)} insights / mois</li>
-                <li>{formatWhiteLabel(plan.quotas.whiteLabel)}</li>
-                <li>{plan.quotas.autoSendReports ? 'Envoi auto des rapports le 1ᵉʳ' : 'Pas d’envoi auto'}</li>
-                <li>IA conversationnelle illimitée</li>
+                <li>{quotaEn(plan.quotas.clients)} client{plan.quotas.clients !== 1 ? 's' : ''}</li>
+                <li>{quotaEn(plan.quotas.connectors)} connector{plan.quotas.connectors === 1 ? '' : 's'}</li>
+                <li>{quotaEn(plan.quotas.insightsPerMonth)} insights / month</li>
+                <li>{whiteLabelEn(plan.quotas.whiteLabel)}</li>
+                <li>{plan.quotas.autoSendReports ? 'Auto-sent reports on the 1st' : 'No auto-send'}</li>
+                <li>Unlimited AI chat</li>
               </ul>
               {plan.priceEurMonth === 0 ? (
-                <a href="https://app.smartanalyst.io/signup" class="btn btn-secondary" style="text-align:center">Commencer</a>
+                <a href="/#cta" class="btn" style="justify-content:center">Get started</a>
               ) : (
-                <a href="https://app.smartanalyst.io/signup" class={`btn ${plan.featured ? 'btn-primary' : 'btn-secondary'}`} style="text-align:center">
-                  Essai {TRIAL_DAYS} jours
+                <a href="/#cta" class={`btn ${plan.featured ? 'btn-primary' : ''}`} style="justify-content:center">
+                  Try {TRIAL_DAYS} days
                 </a>
               )}
             </article>
@@ -67,103 +78,99 @@ const trialNote = TRIAL_REQUIRES_CARD
     </div>
   </section>
 
-  <section class="alt">
+  <section class="page-section alt sa-fade">
     <div class="container">
-      <h2 style="text-align:center">Détail des plans</h2>
+      <h2>Plan details</h2>
+      <p class="lead">Every feature, every quota — side by side.</p>
       <table class="compare">
         <thead>
           <tr>
             <th></th>
-            {PLAN_ORDER.map((key) => <th>{PLANS[key].label}</th>)}
+            {PLAN_ORDER.map((key) => <th>{PLAN_LABELS_EN[key].label}</th>)}
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Prix mensuel</td>
-            {PLAN_ORDER.map((key) => <td><strong>{PLANS[key].priceEurMonth} €</strong></td>)}
+            <td>Monthly price</td>
+            {PLAN_ORDER.map((key) => <td><strong>€{PLANS[key].priceEurMonth}</strong></td>)}
           </tr>
           <tr>
             <td>Clients</td>
-            {PLAN_ORDER.map((key) => <td>{formatQuota(PLANS[key].quotas.clients)}</td>)}
+            {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.clients)}</td>)}
           </tr>
           <tr>
-            <td>Connecteurs</td>
-            {PLAN_ORDER.map((key) => <td>{formatQuota(PLANS[key].quotas.connectors)}</td>)}
+            <td>Connectors</td>
+            {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.connectors)}</td>)}
           </tr>
           <tr>
-            <td>Insights par mois</td>
-            {PLAN_ORDER.map((key) => <td>{formatQuota(PLANS[key].quotas.insightsPerMonth)}</td>)}
+            <td>Insights / month</td>
+            {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.insightsPerMonth)}</td>)}
           </tr>
           <tr>
-            <td>Analyse conversationnelle</td>
-            {PLAN_ORDER.map(() => <td>✅</td>)}
+            <td>Conversational analysis</td>
+            {PLAN_ORDER.map(() => <td>✓</td>)}
           </tr>
           <tr>
-            <td>Dashboard temps réel</td>
-            {PLAN_ORDER.map(() => <td>✅</td>)}
+            <td>Real-time dashboard</td>
+            {PLAN_ORDER.map(() => <td>✓</td>)}
           </tr>
           <tr>
-            <td>Rapports auto le 1<sup>er</sup></td>
-            {PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✅' : '—'}</td>)}
+            <td>Auto-reports on the 1st</td>
+            {PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✓' : '—'}</td>)}
           </tr>
           <tr>
             <td>White-label</td>
-            {PLAN_ORDER.map((key) => <td>{formatWhiteLabel(PLANS[key].quotas.whiteLabel)}</td>)}
+            {PLAN_ORDER.map((key) => <td>{whiteLabelEn(PLANS[key].quotas.whiteLabel)}</td>)}
           </tr>
           <tr>
-            <td>Benchmark concurrentiel</td>
+            <td>Competitive benchmark</td>
             <td>—</td>
-            <td>✅</td>
-            <td>✅</td>
-            <td>✅</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <section>
+  <section class="page-section sa-fade">
     <div class="container">
-      <h2 style="text-align:center">Questions fréquentes</h2>
-      <div class="grid cols-2" style="margin-top:2rem">
-        <div class="card">
-          <h3>Est-ce que je peux annuler à tout moment ?</h3>
-          <p>Oui. Pas d’engagement, pas de pénalité. Tu gardes l’accès jusqu’à la fin de la période payée. Après expiration, tu as 7 jours en lecture seule pour exporter tes données — rien n’est supprimé brutalement.</p>
+      <h2>Frequently asked questions</h2>
+      <div class="grid cols-2">
+        <div class="sa-card">
+          <h3>Can I cancel anytime?</h3>
+          <div class="card-body">Yes. No commitment, no penalty. You keep access through the end of the paid period. After expiry, you have 7 days read-only to export your data — nothing is deleted abruptly.</div>
         </div>
-        <div class="card">
-          <h3>L’essai est vraiment sans carte bancaire ?</h3>
-          <p>Vraiment. Email + mot de passe, c’est tout. {TRIAL_DAYS} jours d’accès à toutes les features. Tu paies seulement si tu décides de continuer.</p>
+        <div class="sa-card">
+          <h3>Is the trial really card-free?</h3>
+          <div class="card-body">Really. Email + password, that’s it. {TRIAL_DAYS} days of full access. You only pay if you decide to continue.</div>
         </div>
-        <div class="card">
-          <h3>L’IA est-elle limitée sur le plan Découverte ?</h3>
-          <p>Non — l’IA conversationnelle est <strong>illimitée sur tous les plans</strong>. La limite Découverte porte sur le nombre d’insights proactifs auto-générés par mois (3 vs 100+ sur les plans payants) et sur les connecteurs (1 seul).</p>
+        <div class="sa-card">
+          <h3>Is AI limited on the Discovery plan?</h3>
+          <div class="card-body">No — conversational AI is <strong>unlimited on every plan</strong>. The Discovery limit is on auto-generated proactive insights (3/month vs 100+ on paid plans) and connectors (1 only).</div>
         </div>
-        <div class="card">
-          <h3>Mes données sont-elles en sécurité ?</h3>
-          <p>Hébergement européen (Supabase, région Irlande). Chiffrement des tokens OAuth via Supabase Vault. Row-Level Security sur toute la base. Conformité RGPD by design. <a href="/securite">Détails sur la page sécurité</a>.</p>
+        <div class="sa-card">
+          <h3>Is my data safe?</h3>
+          <div class="card-body">EU hosting (Supabase, Ireland region). OAuth tokens encrypted with Supabase Vault. Row-Level Security across the whole database. GDPR by design. <a href="/security">More details on the security page</a>.</div>
         </div>
-        <div class="card">
-          <h3>Quels connecteurs sont disponibles aujourd’hui ?</h3>
-          <p>GA4, Meta Ads (Facebook + Instagram), Google Ads, Stripe et Google Search Console. La roadmap inclut Shopify, HubSpot, Mailchimp et LinkedIn Ads.</p>
+        <div class="sa-card">
+          <h3>Which connectors are available today?</h3>
+          <div class="card-body">GA4, Meta Ads (Facebook + Instagram), Google Ads, Stripe and Google Search Console. Roadmap: Shopify, HubSpot, Mailchimp, LinkedIn Ads.</div>
         </div>
-        <div class="card">
-          <h3>Vous facturez en euros ?</h3>
-          <p>Oui, en euros, TTC. Facturation mensuelle via Stripe. TVA française appliquée selon ton statut. Factures téléchargeables dans le back-office.</p>
+        <div class="sa-card">
+          <h3>Do you bill in euros?</h3>
+          <div class="card-body">Yes, in euros, VAT included. Monthly billing via Stripe. French VAT applied based on your status. Invoices downloadable from your dashboard.</div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="alt">
-    <div class="container" style="text-align:center">
-      <h2>Toujours pas sûr ?</h2>
-      <p class="lead">
-        Le plan Découverte est gratuit pour toujours. Connecte 1 outil, pose
-        tes premières questions, juge sur pièce.
-      </p>
-      <p>
-        <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Démarrer gratuitement</a>
-      </p>
+  <section class="page-section alt sa-fade" style="text-align:center">
+    <div class="container">
+      <h2>Still not sure?</h2>
+      <p class="lead">The Discovery plan is free forever. Connect 1 tool, ask your first questions, judge for yourself.</p>
+      <a href="/#cta" class="btn btn-primary">Request early access</a>
     </div>
   </section>
-</Base>
+</DarkBase>
