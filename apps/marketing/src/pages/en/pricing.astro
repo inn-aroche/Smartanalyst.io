@@ -1,5 +1,5 @@
 ---
-import DarkBase from '../layouts/DarkBase.astro';
+import DarkBase from '../../layouts/DarkBase.astro';
 import { PLANS, PLAN_ORDER, TRIAL_DAYS } from '@smartanalyst/shared/pricing';
 
 // English UI strings for plans (the shared package is French-only for now).
@@ -65,9 +65,9 @@ function whiteLabelEn(level) {
                 <li>Unlimited AI chat</li>
               </ul>
               {plan.priceEurMonth === 0 ? (
-                <a href="/#cta" class="btn" style="justify-content:center">Get started</a>
+                <a href="/en/#cta" class="btn" style="justify-content:center">Get started</a>
               ) : (
-                <a href="/#cta" class={`btn ${plan.featured ? 'btn-primary' : ''}`} style="justify-content:center">
+                <a href="/en/#cta" class={`btn ${plan.featured ? 'btn-primary' : ''}`} style="justify-content:center">
                   Try {TRIAL_DAYS} days
                 </a>
               )}
@@ -152,7 +152,7 @@ function whiteLabelEn(level) {
         </div>
         <div class="sa-card">
           <h3>Is my data safe?</h3>
-          <div class="card-body">EU hosting (Supabase, Ireland region). OAuth tokens encrypted with Supabase Vault. Row-Level Security across the whole database. GDPR by design. <a href="/security">More details on the security page</a>.</div>
+          <div class="card-body">EU hosting (Supabase, Ireland region). OAuth tokens encrypted with Supabase Vault. Row-Level Security across the whole database. GDPR by design. <a href="/en/security">More details on the security page</a>.</div>
         </div>
         <div class="sa-card">
           <h3>Which connectors are available today?</h3>
@@ -170,7 +170,7 @@ function whiteLabelEn(level) {
     <div class="container">
       <h2>Still not sure?</h2>
       <p class="lead">The Discovery plan is free forever. Connect 1 tool, ask your first questions, judge for yourself.</p>
-      <a href="/#cta" class="btn btn-primary">Request early access</a>
+      <a href="/en/#cta" class="btn btn-primary">Request early access</a>
     </div>
   </section>
 </DarkBase>

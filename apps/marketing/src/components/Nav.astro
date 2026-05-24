@@ -1,10 +1,10 @@
 ---
-import { STRINGS, localizedPath, altLocalePath } from '../i18n/strings.js';
+import { STRINGS, LOCALES, localizedPath, switchLocalePath } from '../i18n/strings.js';
 
 const { locale = 'en' } = Astro.props;
 const t = STRINGS[locale];
 const lp = (p) => localizedPath(p, locale);
-const alt = altLocalePath(Astro.url.pathname, locale);
+const current = LOCALES.find((l) => l.code === locale);
 ---
 <nav class="nav" id="nav">
   <div class="nav-inner">
@@ -17,30 +17,112 @@ const alt = altLocalePath(Astro.url.pathname, locale);
       <a href={lp('/pricing')}>{t.nav.pricing}</a>
       <a href={lp('/security')}>{t.nav.security}</a>
     </div>
-    <a href={alt} class="lang-switch" aria-label={STRINGS[locale === 'en' ? 'fr' : 'en'].langSwitchFull}>
-      {t.langSwitch}
-    </a>
+    <div class="lang-select" id="lang-select">
+      <button class="lang-trigger" id="lang-trigger" aria-haspopup="listbox" aria-expanded="false">
+        <span class="lang-flag">{current.flag}</span>
+        <span class="lang-code">{locale.toUpperCase()}</span>
+        <span class="lang-caret">▾</span>
+      </button>
+      <ul class="lang-menu" id="lang-menu" role="listbox" hidden>
+        {LOCALES.map((l) => (
+          <li role="option" aria-selected={l.code === locale}>
+            <a href={switchLocalePath(Astro.url.pathname, l.code)} class={l.code === locale ? 'active' : ''}>
+              <span class="lang-flag">{l.flag}</span>
+              <span class="lang-name">{l.label}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
     <a href={lp('/#cta')} class="btn btn-primary btn-sm">{t.nav.cta}</a>
   </div>
 </nav>
 
+<script is:inline>
+  (() => {
+    const trigger = document.getElementById('lang-trigger');
+    const menu = document.getElementById('lang-menu');
+    if (!trigger || !menu) return;
+    const close = () => { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); };
+    const open  = () => { menu.hidden = false; trigger.setAttribute('aria-expanded', 'true'); };
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.hidden ? open() : close();
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#lang-select')) close();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  })();
+</script>
+
 <style is:global>
-  .lang-switch {
-    margin-right: 16px;
-    font-size: 12px;
-    font-family: var(--ff-m);
-    color: var(--text-2);
+  .lang-select {
+    position: relative;
+    margin-right: 14px;
+  }
+  .lang-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
     border: 1px solid var(--border);
-    border-radius: 5px;
-    padding: 5px 10px;
-    letter-spacing: 0.05em;
+    color: var(--text-2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: var(--ff-b);
+    cursor: pointer;
     transition: all 0.15s;
   }
-  .lang-switch:hover {
+  .lang-trigger:hover {
     color: var(--text-1);
     border-color: var(--border-br);
+    background: var(--card);
   }
+  .lang-flag {
+    font-size: 14px;
+    line-height: 1;
+  }
+  .lang-code {
+    font-family: var(--ff-m);
+    letter-spacing: 0.05em;
+    font-size: 11px;
+  }
+  .lang-caret {
+    font-size: 9px;
+    opacity: 0.6;
+  }
+  .lang-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    background: var(--bg-2);
+    border: 1px solid var(--border-br);
+    border-radius: 8px;
+    min-width: 160px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+    z-index: 220;
+  }
+  .lang-menu li { margin: 0; }
+  .lang-menu a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 13px;
+    color: var(--text-2);
+    transition: all 0.12s;
+  }
+  .lang-menu a:hover { background: var(--card-h); color: var(--text-1); }
+  .lang-menu a.active { color: var(--text-1); background: rgba(61, 130, 255, 0.1); }
+  .lang-menu .lang-name { font-family: var(--ff-b); }
   @media (max-width: 900px) {
-    .lang-switch { margin-right: 8px; }
+    .lang-select { margin-right: 8px; }
+    .lang-trigger { padding: 5px 8px; }
   }
 </style>

@@ -1,6 +1,11 @@
 // Centralized UI strings for nav + footer.
 // Per-page content lives in each page file (it's bigger and tightly coupled to layout).
 
+export const LOCALES = [
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+];
+
 export const STRINGS = {
   en: {
     nav: {
@@ -16,10 +21,7 @@ export const STRINGS = {
       privacy: 'Privacy',
       terms: 'Terms',
       contact: 'Contact',
-      language: 'English',
     },
-    langSwitch: 'FR',
-    langSwitchFull: 'Français',
   },
   fr: {
     nav: {
@@ -35,37 +37,38 @@ export const STRINGS = {
       privacy: 'Confidentialité',
       terms: 'CGU',
       contact: 'Contact',
-      language: 'Français',
     },
-    langSwitch: 'EN',
-    langSwitchFull: 'English',
   },
 };
 
-// Locale-aware URL helpers — pages live at /path (en) and /fr/path (fr).
+// Pages now live at /<locale>/<path> for all locales (prefixDefaultLocale: true).
+// Root '/' is a redirect page that picks the user's language.
 export function localizedPath(path, locale) {
-  // Normalize leading slash
   const clean = path.startsWith('/') ? path : `/${path}`;
-  if (locale === 'fr') {
-    if (clean === '/') return '/fr';
-    return `/fr${clean}`;
-  }
-  return clean;
+  if (clean === '/') return `/${locale}`;
+  // Anchor-only paths like '/#cta' should preserve the anchor on the locale home
+  if (clean.startsWith('/#')) return `/${locale}${clean.slice(1)}`;
+  return `/${locale}${clean}`;
 }
 
-// Given the current pathname, return the equivalent in the alt locale.
-export function altLocalePath(pathname, currentLocale) {
-  // Strip trailing slash for comparison, but keep root as '/'.
+// Strip the leading /locale segment and return the path that's "shared" across locales
+// (e.g. '/en/pricing' → '/pricing', '/fr' → '/').
+export function stripLocale(pathname) {
   const p = pathname.replace(/\/$/, '') || '/';
-  if (currentLocale === 'fr') {
-    if (p === '/fr') return '/';
-    return p.replace(/^\/fr/, '') || '/';
-  }
-  if (p === '/') return '/fr';
-  return `/fr${p}`;
+  const m = p.match(/^\/(en|fr)(\/.*)?$/);
+  if (!m) return p;
+  return m[2] || '/';
 }
 
-// Detect locale from a pathname (used in Nav / Footer that don't always get a prop).
+// Build the URL of the current page in another locale.
+export function switchLocalePath(pathname, targetLocale) {
+  const inner = stripLocale(pathname);
+  if (inner === '/') return `/${targetLocale}`;
+  return `/${targetLocale}${inner}`;
+}
+
+// Detect locale from a pathname (used in components that don't always get a prop).
 export function detectLocale(pathname) {
-  return pathname.startsWith('/fr') ? 'fr' : 'en';
+  const m = pathname.match(/^\/(en|fr)(\/|$)/);
+  return m ? m[1] : 'en';
 }

@@ -2,7 +2,7 @@
 import '../styles/dark.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
-import { STRINGS, altLocalePath } from '../i18n/strings.js';
+import { STRINGS, switchLocalePath } from '../i18n/strings.js';
 
 const { title, description, locale = 'en' } = Astro.props;
 const siteName = 'SmartAnalyst';
@@ -12,8 +12,8 @@ const fullTitle = title === 'home'
       : `${siteName} — Your AI Marketing Data Analyst`)
   : `${title} — ${siteName}`;
 
-const altPath = altLocalePath(Astro.url.pathname, locale);
 const altLocale = locale === 'en' ? 'fr' : 'en';
+const altPath = switchLocalePath(Astro.url.pathname, altLocale);
 const canonical = new URL(Astro.url.pathname, Astro.site || 'https://smartanalyst.io').href;
 const altHref = new URL(altPath, Astro.site || 'https://smartanalyst.io').href;
 ---
