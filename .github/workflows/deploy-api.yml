@@ -64,8 +64,10 @@ jobs:
       - name: Rsync source to VPS
         # We ship the monorepo subset the API needs: apps/api, packages/shared, root manifest,
         # ecosystem config. node_modules is rebuilt on the server (npm ci --omit=dev).
+        # -R preserves the relative path so apps/api lands at <dest>/apps/api (not <dest>/api),
+        # keeping the workspace layout intact for `npm ci --workspaces` on the VPS.
         run: |
-          rsync -avz --delete \
+          rsync -avzR --delete \
             --exclude='node_modules/' \
             --exclude='.git/' \
             --exclude='coverage/' \
