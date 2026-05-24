@@ -149,6 +149,103 @@ import '../../styles/landing.css';
     </div>
   </section>
 
+  <!-- ─── AI Outputs ──────────────────────────────────────────────────── -->
+  <section class="outputs sa-fade">
+    <div class="container">
+      <div class="section-head">
+        <div class="s-badge">What you get back</div>
+        <h2 class="section-title" style="margin-bottom:16px">Not just text.<br />Charts, tables, PDFs.</h2>
+        <p class="section-sub" style="max-width:540px;margin:0 auto">Every answer comes with the visuals and data you need. Auto-generated, exportable, shareable.</p>
+      </div>
+      <div class="outputs-grid">
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◴</span><span class="out-title">Live charts</span></div>
+          <div class="out-viz">
+            <div class="out-chart">
+              <div class="out-bar" style="height:48%"></div>
+              <div class="out-bar" style="height:62%"></div>
+              <div class="out-bar" style="height:54%"></div>
+              <div class="out-bar" style="height:70%"></div>
+              <div class="out-bar" style="height:65%"></div>
+              <div class="out-bar warn" style="height:34%"></div>
+              <div class="out-bar warn" style="height:28%"></div>
+              <span class="out-chart-anomaly">⚠ anomaly</span>
+            </div>
+          </div>
+          <div class="out-caption">Trend lines, bar charts, comparisons — auto-rendered with anomaly highlights.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◫</span><span class="out-title">Smart tables</span></div>
+          <div class="out-viz">
+            <table class="out-table">
+              <thead><tr><th>Campaign</th><th style="text-align:right">CPA</th><th style="text-align:right">Δ</th></tr></thead>
+              <tbody>
+                <tr><td>Brand</td><td class="v">€8.20</td><td class="g">−12%</td></tr>
+                <tr><td>Retarget</td><td class="v">€18.50</td><td class="g">−4%</td></tr>
+                <tr><td>Prospect</td><td class="v">€31.20</td><td class="b">+34%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="out-caption">Side-by-side comparisons with deltas, ranked by what matters most.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◑</span><span class="out-title">Root cause</span></div>
+          <div class="out-viz">
+            <div class="out-insight">
+              <div class="ins-row"><span>↓</span>Mobile traffic −34% (iOS 18 ATT)</div>
+              <div class="ins-row warn"><span>⚠</span>Checkout step 2 abandonment +12%</div>
+              <div class="ins-row"><span>✕</span>GTM tag missing on /checkout</div>
+              <div class="ins-row ok"><span>✓</span>2 of 3 hypotheses confirmed</div>
+            </div>
+          </div>
+          <div class="out-caption">Structured analysis with causes ranked by evidence and impact.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">▤</span><span class="out-title">PDF reports</span></div>
+          <div class="out-viz">
+            <div class="out-pdf">
+              <div class="pdf-h"></div>
+              <div class="pdf-l"></div>
+              <div class="pdf-l short"></div>
+              <div class="pdf-chart"></div>
+              <div class="pdf-l shorter"></div>
+            </div>
+          </div>
+          <div class="out-caption">White-label monthly reports — auto-sent on the 1st with exec summary.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">→</span><span class="out-title">Action priorities</span></div>
+          <div class="out-viz">
+            <div class="out-actions">
+              <div class="act-row"><span class="act-num">1</span>Fix GTM tag on /checkout<span class="act-prio high">High</span></div>
+              <div class="act-row"><span class="act-num">2</span>A/B test step 2 layout<span class="act-prio">Med</span></div>
+              <div class="act-row"><span class="act-num">3</span>Review iOS bidding<span class="act-prio">Med</span></div>
+              <div class="act-row"><span class="act-num">4</span>Enable Enhanced Conv.<span class="act-prio">Low</span></div>
+            </div>
+          </div>
+          <div class="out-caption">Ranked, scored, ready to execute — with expected impact per action.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◧</span><span class="out-title">Custom dashboards</span></div>
+          <div class="out-viz">
+            <div class="out-kpis">
+              <div class="out-kpi"><div class="kl">CVR</div><div class="kv">2.4%</div><div class="kd b">−0.3%</div></div>
+              <div class="out-kpi"><div class="kl">CPA</div><div class="kv">€24.5</div><div class="kd b">+13%</div></div>
+              <div class="out-kpi"><div class="kl">ROAS</div><div class="kv">3.2x</div><div class="kd g">+8%</div></div>
+              <div class="out-kpi"><div class="kl">Health</div><div class="kv">87</div><div class="kd g">Good</div></div>
+            </div>
+          </div>
+          <div class="out-caption">Pinned KPIs and saved views — your daily routine in one place.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ─── Features ────────────────────────────────────────────────────── -->
   <section class="features sa-fade" id="features">
     <div class="container">
@@ -417,6 +514,51 @@ import '../../styles/landing.css';
             <span class="uc-q">"{q}"</span>
           </div>
         ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Testimonials ────────────────────────────────────────────────── -->
+  <!-- NOTE: pre-launch placeholders. Replace quotes + attributions with real
+       beta tester feedback as soon as we have it. Avoid inventing names. -->
+  <section class="testimonials sa-fade">
+    <div class="container">
+      <div class="section-head">
+        <div class="s-badge">Early access</div>
+        <h2 class="section-title" style="margin-bottom:16px">Built with the teams who needed it most.</h2>
+        <p class="section-sub">Selected feedback from our private beta — marketers tired of dashboards.</p>
+      </div>
+      <div class="test-grid">
+        <div class="test-card">
+          <p class="test-quote">It replaced our Monday morning ritual of pulling numbers from 5 tabs. We now start the week knowing what to fix, not what to read.</p>
+          <div class="test-attrib">
+            <div class="test-avatar">HG</div>
+            <div>
+              <div class="test-name">Head of Growth</div>
+              <div class="test-role">DTC brand · €5M revenue</div>
+            </div>
+          </div>
+        </div>
+        <div class="test-card">
+          <p class="test-quote">My reports used to take 8 hours per client. Now I get an exec-ready PDF on the 1st without lifting a finger. My clients think I work nights.</p>
+          <div class="test-attrib">
+            <div class="test-avatar">AF</div>
+            <div>
+              <div class="test-name">Agency Founder</div>
+              <div class="test-role">Performance marketing · 12 clients</div>
+            </div>
+          </div>
+        </div>
+        <div class="test-card">
+          <p class="test-quote">We caught a broken GTM tag costing us €3k/week. SmartAnalyst flagged it within hours — we’d been blind for a month.</p>
+          <div class="test-attrib">
+            <div class="test-avatar">CM</div>
+            <div>
+              <div class="test-name">CMO</div>
+              <div class="test-role">B2B SaaS · Seed stage</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>

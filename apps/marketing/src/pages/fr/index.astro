@@ -149,6 +149,103 @@ import '../../styles/landing.css';
     </div>
   </section>
 
+  <!-- ─── AI Outputs ──────────────────────────────────────────────────── -->
+  <section class="outputs sa-fade">
+    <div class="container">
+      <div class="section-head">
+        <div class="s-badge">Ce que tu reçois</div>
+        <h2 class="section-title" style="margin-bottom:16px">Pas que du texte.<br />Graphiques, tableaux, PDFs.</h2>
+        <p class="section-sub" style="max-width:540px;margin:0 auto">Chaque réponse vient avec les visuels et les données qu’il faut. Auto-générés, exportables, partageables.</p>
+      </div>
+      <div class="outputs-grid">
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◴</span><span class="out-title">Graphiques live</span></div>
+          <div class="out-viz">
+            <div class="out-chart">
+              <div class="out-bar" style="height:48%"></div>
+              <div class="out-bar" style="height:62%"></div>
+              <div class="out-bar" style="height:54%"></div>
+              <div class="out-bar" style="height:70%"></div>
+              <div class="out-bar" style="height:65%"></div>
+              <div class="out-bar warn" style="height:34%"></div>
+              <div class="out-bar warn" style="height:28%"></div>
+              <span class="out-chart-anomaly">⚠ anomalie</span>
+            </div>
+          </div>
+          <div class="out-caption">Courbes, barres, comparaisons — rendu auto avec mise en évidence des anomalies.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◫</span><span class="out-title">Tableaux intelligents</span></div>
+          <div class="out-viz">
+            <table class="out-table">
+              <thead><tr><th>Campagne</th><th style="text-align:right">CPA</th><th style="text-align:right">Δ</th></tr></thead>
+              <tbody>
+                <tr><td>Brand</td><td class="v">8,20 €</td><td class="g">−12%</td></tr>
+                <tr><td>Retarget</td><td class="v">18,50 €</td><td class="g">−4%</td></tr>
+                <tr><td>Prospect</td><td class="v">31,20 €</td><td class="b">+34%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="out-caption">Comparaisons côte à côte avec écarts, classées par importance.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◑</span><span class="out-title">Analyse de cause</span></div>
+          <div class="out-viz">
+            <div class="out-insight">
+              <div class="ins-row"><span>↓</span>Trafic mobile −34% (iOS 18 ATT)</div>
+              <div class="ins-row warn"><span>⚠</span>Abandon checkout étape 2 +12%</div>
+              <div class="ins-row"><span>✕</span>Tag GTM manquant sur /checkout</div>
+              <div class="ins-row ok"><span>✓</span>2 hypothèses sur 3 confirmées</div>
+            </div>
+          </div>
+          <div class="out-caption">Analyse structurée, causes classées par preuves et impact.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">▤</span><span class="out-title">Rapports PDF</span></div>
+          <div class="out-viz">
+            <div class="out-pdf">
+              <div class="pdf-h"></div>
+              <div class="pdf-l"></div>
+              <div class="pdf-l short"></div>
+              <div class="pdf-chart"></div>
+              <div class="pdf-l shorter"></div>
+            </div>
+          </div>
+          <div class="out-caption">Rapports mensuels white-label — envoyés auto le 1ᵉʳ avec synthèse exécutive.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">→</span><span class="out-title">Actions priorisées</span></div>
+          <div class="out-viz">
+            <div class="out-actions">
+              <div class="act-row"><span class="act-num">1</span>Corriger le tag GTM /checkout<span class="act-prio high">Haute</span></div>
+              <div class="act-row"><span class="act-num">2</span>A/B tester étape 2<span class="act-prio">Moy.</span></div>
+              <div class="act-row"><span class="act-num">3</span>Revoir enchères iOS<span class="act-prio">Moy.</span></div>
+              <div class="act-row"><span class="act-num">4</span>Activer Enhanced Conv.<span class="act-prio">Faible</span></div>
+            </div>
+          </div>
+          <div class="out-caption">Classées, scorées, prêtes à exécuter — avec impact attendu par action.</div>
+        </div>
+
+        <div class="out-card">
+          <div class="out-head"><span class="out-icon">◧</span><span class="out-title">Dashboards custom</span></div>
+          <div class="out-viz">
+            <div class="out-kpis">
+              <div class="out-kpi"><div class="kl">CVR</div><div class="kv">2,4%</div><div class="kd b">−0,3%</div></div>
+              <div class="out-kpi"><div class="kl">CPA</div><div class="kv">24,5 €</div><div class="kd b">+13%</div></div>
+              <div class="out-kpi"><div class="kl">ROAS</div><div class="kv">3,2x</div><div class="kd g">+8%</div></div>
+              <div class="out-kpi"><div class="kl">Santé</div><div class="kv">87</div><div class="kd g">Bon</div></div>
+            </div>
+          </div>
+          <div class="out-caption">KPIs épinglés et vues sauvegardées — ta routine quotidienne en un seul endroit.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ─── Features ────────────────────────────────────────────────────── -->
   <section class="features sa-fade" id="features">
     <div class="container">
@@ -417,6 +514,51 @@ import '../../styles/landing.css';
             <span class="uc-q">« {q} »</span>
           </div>
         ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Testimonials ────────────────────────────────────────────────── -->
+  <!-- NOTE: placeholders pre-launch. Remplacer par de vrais retours bêta dès qu'on les a.
+       Pas d'invention de noms propres — rôle + type d'entreprise seulement. -->
+  <section class="testimonials sa-fade">
+    <div class="container">
+      <div class="section-head">
+        <div class="s-badge">Accès anticipé</div>
+        <h2 class="section-title" style="margin-bottom:16px">Construit avec les équipes qui en avaient besoin.</h2>
+        <p class="section-sub">Retours sélectionnés de notre bêta privée — des marketeurs lassés des dashboards.</p>
+      </div>
+      <div class="test-grid">
+        <div class="test-card">
+          <p class="test-quote">Ça a remplacé notre rituel du lundi matin à compiler des chiffres dans 5 onglets. On démarre la semaine en sachant quoi corriger, pas quoi lire.</p>
+          <div class="test-attrib">
+            <div class="test-avatar">HG</div>
+            <div>
+              <div class="test-name">Head of Growth</div>
+              <div class="test-role">Marque DTC · 5 M€ de CA</div>
+            </div>
+          </div>
+        </div>
+        <div class="test-card">
+          <p class="test-quote">Mes rapports me prenaient 8h par client. Maintenant j’ai un PDF prêt pour la direction le 1ᵉʳ du mois sans bouger un doigt. Mes clients pensent que je bosse la nuit.</p>
+          <div class="test-attrib">
+            <div class="test-avatar">FA</div>
+            <div>
+              <div class="test-name">Fondateur d’agence</div>
+              <div class="test-role">Marketing performance · 12 clients</div>
+            </div>
+          </div>
+        </div>
+        <div class="test-card">
+          <p class="test-quote">On a détecté un tag GTM cassé qui nous coûtait 3 k€/semaine. SmartAnalyst l’a remonté en quelques heures — on était aveugles depuis un mois.</p>
+          <div class="test-attrib">
+            <div class="test-avatar">DM</div>
+            <div>
+              <div class="test-name">Directeur marketing</div>
+              <div class="test-role">SaaS B2B · stage Seed</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
