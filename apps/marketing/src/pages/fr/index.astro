@@ -1,33 +1,33 @@
 ---
-import DarkBase from '../layouts/DarkBase.astro';
-import '../styles/landing.css';
+import DarkBase from '../../layouts/DarkBase.astro';
+import '../../styles/landing.css';
 ---
 <DarkBase
   title="home"
-  description="Ask any question about your marketing performance. Get structured answers with root causes, evidence and recommended actions — instantly."
-  locale="en"
+  description="Pose n’importe quelle question sur tes performances marketing. Reçois des réponses structurées avec causes racines, preuves et actions recommandées — instantanément."
+  locale="fr"
 >
   <!-- ─── Hero ────────────────────────────────────────────────────────── -->
   <section class="hero">
     <div class="glow hero-glow"></div>
     <div class="hero-inner">
       <div class="hero-copy">
-        <div class="s-badge">Marketing Intelligence OS</div>
+        <div class="s-badge">OS d’intelligence marketing</div>
         <h1>
-          Your marketing data,<br />
-          <span class="gradient-text">finally understood.</span>
+          Tes données marketing,<br />
+          <span class="gradient-text">enfin comprises.</span>
         </h1>
         <p class="hero-lead">
-          Ask any question about your marketing performance.<br />
-          Get structured answers with root causes, evidence<br />
-          and recommended actions — instantly.
+          Pose n’importe quelle question sur tes performances marketing.<br />
+          Reçois des réponses structurées avec causes, preuves<br />
+          et actions recommandées — instantanément.
         </p>
         <div class="hero-ctas">
-          <a href="#cta" class="btn btn-primary">Request early access</a>
-          <a href="#features" class="btn">See how it works ↓</a>
+          <a href="#cta" class="btn btn-primary">Demander un accès</a>
+          <a href="#features" class="btn">Voir comment ça marche ↓</a>
         </div>
         <div class="hero-connects">
-          <span class="hero-connects-label">Connects with:</span>
+          <span class="hero-connects-label">Se connecte à :</span>
           {['Google Ads','Meta','GA4','Shopify','GTM','CRM','CMP','Server-side'].map((s) => (
             <span class="conn-pill">{s}</span>
           ))}
@@ -51,22 +51,22 @@ import '../styles/landing.css';
           </div>
           <div class="chat-body">
             <div class="chat-user">
-              <div class="chat-bubble user">"Why did our conversion rate drop this week?"</div>
+              <div class="chat-bubble user">« Pourquoi notre taux de conversion a baissé cette semaine ? »</div>
             </div>
             <div class="chat-typing" id="chat-typing" hidden>
               <span></span><span></span><span></span>
             </div>
             <div class="chat-response" id="chat-response" hidden>
-              <div class="chat-label">Analysis — 3 causes identified</div>
+              <div class="chat-label">Analyse — 3 causes identifiées</div>
               <div class="chat-causes">
-                <div class="cause"><span class="cause-icon red">↓</span><div><strong>Mobile traffic −34%</strong> — iOS 18 attribution window change</div></div>
-                <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Checkout abandonment +12%</strong> — Step 2 friction since Tuesday</div></div>
-                <div class="cause"><span class="cause-icon red">⚠</span><div><strong>GTM tag missing on /checkout</strong> — Active since Nov 18</div></div>
+                <div class="cause"><span class="cause-icon red">↓</span><div><strong>Trafic mobile −34%</strong> — changement de fenêtre d’attribution iOS 18</div></div>
+                <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Abandon checkout +12%</strong> — friction étape 2 depuis mardi</div></div>
+                <div class="cause"><span class="cause-icon red">⚠</span><div><strong>Tag GTM manquant sur /checkout</strong> — actif depuis le 18 nov.</div></div>
               </div>
               <div class="chat-actions">
-                <span class="chat-action">Fix GTM tag →</span>
-                <span class="chat-action">A/B test step 2</span>
-                <span class="chat-action">Review iOS bids</span>
+                <span class="chat-action">Corriger le tag GTM →</span>
+                <span class="chat-action">A/B tester étape 2</span>
+                <span class="chat-action">Revoir les enchères iOS</span>
               </div>
             </div>
           </div>
@@ -80,39 +80,39 @@ import '../styles/landing.css';
     <div class="container">
       <div class="section-head">
         <h2 class="section-title">
-          Your team runs on 12+ tools.<br />Gets answers from none of them.
+          Ton équipe jongle avec 12+ outils.<br />Aucun ne donne la réponse.
         </h2>
-        <p class="section-sub">Every morning, same chaos. Same unanswered question: "Why?"</p>
+        <p class="section-sub">Chaque matin, même chaos. Même question sans réponse : « Pourquoi ? »</p>
       </div>
       <div class="ba">
         <div class="ba-before">
-          <div class="ba-label">Before — your current stack</div>
+          <div class="ba-label">Avant — ton stack actuel</div>
           <div class="ba-tools">
-            {['GA4','Google Tag Manager','Meta Ads','Google Ads','Shopify','CRM','Looker Studio','Hotjar','CMP','Search Console','Spreadsheets','Klaviyo'].map(t => (
+            {['GA4','Google Tag Manager','Meta Ads','Google Ads','Shopify','CRM','Looker Studio','Hotjar','CMP','Search Console','Tableurs','Klaviyo'].map(t => (
               <span class="tool-pill">{t}</span>
             ))}
-            <span class="tool-pill ghost">+ 5 more</span>
+            <span class="tool-pill ghost">+ 5 autres</span>
           </div>
           <ul class="ba-points red">
-            <li>No unified view</li>
-            <li>Manual analysis takes days</li>
-            <li>Questions without answers</li>
-            <li>3,000 KPIs — 0 priorities</li>
+            <li>Pas de vue unifiée</li>
+            <li>L’analyse manuelle prend des jours</li>
+            <li>Des questions sans réponses</li>
+            <li>3 000 KPI — 0 priorités</li>
           </ul>
         </div>
         <div class="ba-arrow"><span>→</span></div>
         <div class="ba-after">
-          <div class="ba-label ba-label-cyan">After — SmartAnalyst</div>
+          <div class="ba-label ba-label-cyan">Après — SmartAnalyst</div>
           <div class="ba-quote">
             <div class="ba-quote-head"><span class="dot"></span><strong>SmartAnalyst</strong></div>
-            <div class="ba-quote-q">"Why did our conversion rate drop?"</div>
-            <div class="ba-quote-a">→ 3 causes found. 3 actions ready.</div>
+            <div class="ba-quote-q">« Pourquoi notre taux de conversion a baissé ? »</div>
+            <div class="ba-quote-a">→ 3 causes trouvées. 3 actions prêtes.</div>
           </div>
           <ul class="ba-points green">
-            <li>Single source of truth</li>
-            <li>Instant analysis, real-time</li>
-            <li>Clear causes + priorities</li>
-            <li>Recommended next actions</li>
+            <li>Une seule source de vérité</li>
+            <li>Analyse instantanée, temps réel</li>
+            <li>Causes claires + priorités</li>
+            <li>Actions recommandées</li>
           </ul>
         </div>
       </div>
@@ -124,20 +124,20 @@ import '../styles/landing.css';
     <div class="glow" style="width:700px;height:700px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.6"></div>
     <div class="container">
       <div class="section-head">
-        <div class="s-badge">The product</div>
-        <h2 class="section-title">Your AI marketing data analyst.</h2>
+        <div class="s-badge">Le produit</div>
+        <h2 class="section-title">Ton analyste marketing IA.</h2>
         <p class="section-sub" style="max-width:490px;margin:0 auto">
-          Not a dashboard. Not a BI tool. An intelligent layer that understands your business and speaks in plain language.
+          Pas un dashboard. Pas un outil BI. Une couche intelligente qui comprend ton business et parle en langage naturel.
         </p>
       </div>
       <div class="cap-grid">
         {[
-          { i:'◑', t:'Understand performance',   d:'Instant context on any metric, any timeframe or channel' },
-          { i:'⚡', t:'Identify anomalies',       d:'Detected automatically, with full root cause analysis' },
-          { i:'◎', t:'Explain variations',       d:'Why things changed, backed by cross-source evidence' },
-          { i:'→', t:'Prioritize actions',       d:'Ranked recommendations, scored by expected impact' },
-          { i:'◈', t:'Track impact',             d:'Before/after measurement on every change you make' },
-          { i:'◉', t:'Optimize your data stack', d:'GTM, consent mode, attribution — all continuously monitored' },
+          { i:'◑', t:'Comprendre les performances', d:'Contexte instantané sur toute métrique, période ou canal' },
+          { i:'⚡', t:'Identifier les anomalies',    d:'Détectées automatiquement, avec analyse de cause racine' },
+          { i:'◎', t:'Expliquer les variations',    d:'Pourquoi ça a changé, avec preuves cross-sources' },
+          { i:'→', t:'Prioriser les actions',       d:'Recommandations classées, scorées par impact attendu' },
+          { i:'◈', t:'Mesurer l’impact',            d:'Avant/après pour chaque changement effectué' },
+          { i:'◉', t:'Optimiser ton stack data',    d:'GTM, consent mode, attribution — monitoring continu' },
         ].map((c) => (
           <div class="sa-card">
             <div class="cap-icon">{c.i}</div>
@@ -153,8 +153,8 @@ import '../styles/landing.css';
   <section class="features sa-fade" id="features">
     <div class="container">
       <div class="section-head">
-        <div class="s-badge">Features</div>
-        <h2 class="section-title">Everything you need.<br />Nothing you don't.</h2>
+        <div class="s-badge">Fonctionnalités</div>
+        <h2 class="section-title">Tout ce dont tu as besoin.<br />Rien de plus.</h2>
       </div>
 
       <!-- Feature 01 — Ask -->
@@ -167,31 +167,31 @@ import '../styles/landing.css';
               <div class="chat-pills"><span class="chat-pill on">GA4</span><span class="chat-pill on">Meta</span><span class="chat-pill on">GTM</span><span class="chat-pill">+4</span></div>
             </div>
             <div class="chat-body">
-              <div class="chat-user"><div class="chat-bubble user">"Why did our conversion rate drop this week?"</div></div>
+              <div class="chat-user"><div class="chat-bubble user">« Pourquoi notre taux de conversion a baissé cette semaine ? »</div></div>
               <div class="chat-response visible">
-                <div class="chat-label">Analysis — 3 causes identified</div>
+                <div class="chat-label">Analyse — 3 causes identifiées</div>
                 <div class="chat-causes">
-                  <div class="cause"><span class="cause-icon red">↓</span><div><strong>Mobile traffic −34%</strong> — iOS 18 attribution window change</div></div>
-                  <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Checkout abandonment +12%</strong> — Step 2 friction since Tuesday</div></div>
-                  <div class="cause"><span class="cause-icon red">⚠</span><div><strong>GTM tag missing on /checkout</strong> — Active since Nov 18</div></div>
+                  <div class="cause"><span class="cause-icon red">↓</span><div><strong>Trafic mobile −34%</strong> — fenêtre d’attribution iOS 18</div></div>
+                  <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Abandon checkout +12%</strong> — friction étape 2 depuis mardi</div></div>
+                  <div class="cause"><span class="cause-icon red">⚠</span><div><strong>Tag GTM manquant sur /checkout</strong> — depuis le 18 nov.</div></div>
                 </div>
                 <div class="chat-actions">
-                  <span class="chat-action">Fix GTM tag →</span>
-                  <span class="chat-action">A/B test step 2</span>
-                  <span class="chat-action">Review iOS bids</span>
+                  <span class="chat-action">Corriger le tag GTM →</span>
+                  <span class="chat-action">A/B tester étape 2</span>
+                  <span class="chat-action">Revoir enchères iOS</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">01 — Ask</div>
-          <h3 class="feat-title">Ask your data anything.</h3>
-          <p class="feat-desc">No SQL. No analyst. No ticket queue. Just ask. SmartAnalyst understands your marketing context and returns structured, evidence-backed answers with causes, comparisons and next steps.</p>
+          <div class="feat-eyebrow">01 — Demander</div>
+          <h3 class="feat-title">Pose n’importe quelle question à tes données.</h3>
+          <p class="feat-desc">Pas de SQL. Pas d’analyste. Pas de ticket à ouvrir. Tu poses la question. SmartAnalyst comprend ton contexte marketing et te renvoie des réponses structurées, sourcées, avec causes, comparaisons et prochaines étapes.</p>
           <ul class="feat-bullets">
-            <li>Natural language — no query syntax needed</li>
-            <li>Cross-source answers in seconds</li>
-            <li>Cited sources and confidence levels</li>
+            <li>Langage naturel — aucune syntaxe à apprendre</li>
+            <li>Réponses cross-sources en quelques secondes</li>
+            <li>Sources citées et niveaux de confiance</li>
           </ul>
         </div>
       </div>
@@ -201,34 +201,34 @@ import '../styles/landing.css';
         <div class="feat-ui">
           <div class="alert-feed">
             <div class="alert-head">
-              <span>Alerts — Last 24h</span>
-              <span class="alert-tag-crit">3 critical</span>
+              <span>Alertes — Dernières 24h</span>
+              <span class="alert-tag-crit">3 critiques</span>
             </div>
             <div class="alert-item">
               <span class="alert-dot crit"></span>
-              <div class="alert-body"><strong>CPA spiked +34%</strong><span>€31.20 vs €23.50 avg</span></div>
-              <div class="alert-meta"><span class="alert-src">Google Ads</span><span class="alert-time">12m ago</span></div>
+              <div class="alert-body"><strong>CPA en hausse de +34%</strong><span>31,20 € vs 23,50 € en moy.</span></div>
+              <div class="alert-meta"><span class="alert-src">Google Ads</span><span class="alert-time">il y a 12m</span></div>
             </div>
             <div class="alert-item">
               <span class="alert-dot warn"></span>
-              <div class="alert-body"><strong>Checkout CVR ↓12%</strong><span>Step 2 abandonment: 44%</span></div>
-              <div class="alert-meta"><span class="alert-src">Site</span><span class="alert-time">1h ago</span></div>
+              <div class="alert-body"><strong>CVR checkout ↓12%</strong><span>Abandon étape 2 : 44%</span></div>
+              <div class="alert-meta"><span class="alert-src">Site</span><span class="alert-time">il y a 1h</span></div>
             </div>
             <div class="alert-item last">
               <span class="alert-dot crit"></span>
-              <div class="alert-body"><strong>GTM tag missing</strong><span>/checkout since Nov 18</span></div>
-              <div class="alert-meta"><span class="alert-src">Tracking</span><span class="alert-time">3d ago</span></div>
+              <div class="alert-body"><strong>Tag GTM manquant</strong><span>/checkout depuis le 18 nov.</span></div>
+              <div class="alert-meta"><span class="alert-src">Tracking</span><span class="alert-time">il y a 3j</span></div>
             </div>
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">02 — Detect</div>
-          <h3 class="feat-title">Know before it hurts.</h3>
-          <p class="feat-desc">CPA spike, conversion drop, tracking failure — SmartAnalyst monitors your entire stack 24/7 and surfaces anomalies the moment they appear, with full context and severity ranking.</p>
+          <div class="feat-eyebrow">02 — Détecter</div>
+          <h3 class="feat-title">Sache avant que ça fasse mal.</h3>
+          <p class="feat-desc">Hausse de CPA, chute de conversion, panne de tracking — SmartAnalyst monitore ton stack en continu 24/7 et fait remonter les anomalies au moment où elles apparaissent, avec contexte et sévérité.</p>
           <ul class="feat-bullets">
-            <li>CPA, CVR, ROAS and volume monitoring</li>
-            <li>Tracking integrity and consent alerts</li>
-            <li>Smart severity and impact scoring</li>
+            <li>Monitoring CPA, CVR, ROAS et volumes</li>
+            <li>Alertes intégrité tracking et consentement</li>
+            <li>Scoring intelligent sévérité × impact</li>
           </ul>
         </div>
       </div>
@@ -250,19 +250,19 @@ import '../styles/landing.css';
               <div class="sa-conn">
                 <div class={`conn-badge ${c.ok ? 'on' : 'off'}`} style={`--c:${c.col};--cbg:${c.col}18;--cbd:${c.col}33`}>{c.k}</div>
                 <div class={`conn-name ${c.ok ? 'on' : 'off'}`}>{c.n}</div>
-                <div class={`conn-status ${c.ok ? 'on' : 'off'}`}>{c.ok ? '● live' : '○ setup →'}</div>
+                <div class={`conn-status ${c.ok ? 'on' : 'off'}`}>{c.ok ? '● actif' : '○ config →'}</div>
               </div>
             ))}
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">03 — Connect</div>
-          <h3 class="feat-title">Your entire stack, unified.</h3>
-          <p class="feat-desc">One-click integrations with everything your marketing team already uses. No engineering resources. No ETL pipelines. Go from zero to insights in minutes, not months.</p>
+          <div class="feat-eyebrow">03 — Connecter</div>
+          <h3 class="feat-title">Tout ton stack, unifié.</h3>
+          <p class="feat-desc">Intégrations en un clic avec tout ce que ton équipe utilise déjà. Pas de ressource tech. Pas d’ETL. De zéro à insights en quelques minutes, pas en mois.</p>
           <ul class="feat-bullets">
             <li>Google Ads, Meta, GA4, Shopify, CRM</li>
-            <li>GTM, CMP, server-side tracking</li>
-            <li>Custom data source connectors</li>
+            <li>GTM, CMP, tracking server-side</li>
+            <li>Connecteurs custom sur demande</li>
           </ul>
         </div>
       </div>
@@ -272,30 +272,30 @@ import '../styles/landing.css';
         <div class="feat-ui">
           <div class="health">
             <div class="health-top">
-              <div class="health-label">Data health score</div>
+              <div class="health-label">Score de santé des données</div>
               <div class="health-score">
                 <span class="health-num">87</span><span class="health-of">/100</span>
-                <span class="health-good">● Good</span>
+                <span class="health-good">● Bon</span>
               </div>
               <div class="health-bar"><div class="health-bar-fill"></div></div>
             </div>
             <div class="health-checks">
-              <div class="hcheck ok"><span>✓</span>GTM events firing correctly</div>
-              <div class="hcheck ok"><span>✓</span>Consent mode v2 active</div>
-              <div class="hcheck warn"><span>⚠</span>Enhanced Conversions partial</div>
-              <div class="hcheck err"><span>✕</span>Server-side pixel not connected</div>
-              <div class="hcheck ok"><span>✓</span>Data layer: 18/20 events valid</div>
+              <div class="hcheck ok"><span>✓</span>Events GTM remontent correctement</div>
+              <div class="hcheck ok"><span>✓</span>Consent mode v2 actif</div>
+              <div class="hcheck warn"><span>⚠</span>Enhanced Conversions partiel</div>
+              <div class="hcheck err"><span>✕</span>Pixel server-side non connecté</div>
+              <div class="hcheck ok"><span>✓</span>Data layer : 18/20 events valides</div>
             </div>
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">04 — Monitor</div>
-          <h3 class="feat-title">Data you can actually trust.</h3>
-          <p class="feat-desc">Your analytics are only as good as your tracking. SmartAnalyst continuously monitors data quality — GTM health, consent mode compliance, event accuracy and attribution coverage.</p>
+          <div class="feat-eyebrow">04 — Monitorer</div>
+          <h3 class="feat-title">Des données vraiment fiables.</h3>
+          <p class="feat-desc">Tes analytics ne valent que ce que vaut ton tracking. SmartAnalyst monitore la qualité de tes données en continu — santé GTM, conformité consent mode, précision des events et couverture d’attribution.</p>
           <ul class="feat-bullets">
-            <li>Real-time tracking health score</li>
-            <li>Event coverage and data layer audits</li>
-            <li>Consent mode v2 and attribution gaps</li>
+            <li>Score de santé tracking en temps réel</li>
+            <li>Audit couverture events et data layer</li>
+            <li>Consent mode v2 et trous d’attribution</li>
           </ul>
         </div>
       </div>
@@ -306,10 +306,10 @@ import '../styles/landing.css';
   <section class="saas sa-fade">
     <div class="container">
       <div class="section-head">
-        <div class="s-badge">The product</div>
-        <h2 class="section-title" style="margin-bottom:16px">A new way to work with your data.</h2>
+        <div class="s-badge">Le produit</div>
+        <h2 class="section-title" style="margin-bottom:16px">Une nouvelle façon de travailler avec tes données.</h2>
         <p class="section-sub" style="max-width:500px;margin:0 auto">
-          Clean. Focused. Opinionated. Built for marketing teams who need answers, not configuration.
+          Épuré. Focalisé. Décidé. Conçu pour les équipes marketing qui veulent des réponses, pas de la config.
         </p>
       </div>
       <div class="app-frame">
@@ -325,10 +325,10 @@ import '../styles/landing.css';
             </div>
             <div class="app-nav">
               <button class="snav active" data-tab="dash"><span class="snav-icon">◫</span>Dashboard</button>
-              <button class="snav" data-tab="ask"><span class="snav-icon">◉</span>Ask AI</button>
+              <button class="snav" data-tab="ask"><span class="snav-icon">◉</span>Demander à l’IA</button>
               <button class="snav" data-tab="alerts"><span class="snav-icon">⚠</span>Anomalies<span class="snav-badge">3</span></button>
-              <button class="snav" data-tab="conn"><span class="snav-icon">◈</span>Connectors</button>
-              <button class="snav" data-tab="health"><span class="snav-icon">◑</span>Data Health</button>
+              <button class="snav" data-tab="conn"><span class="snav-icon">◈</span>Connecteurs</button>
+              <button class="snav" data-tab="health"><span class="snav-icon">◑</span>Santé des données</button>
               <button class="snav" data-tab="actions"><span class="snav-icon">→</span>Actions</button>
             </div>
             <div class="app-user">john@acme.com</div>
@@ -337,34 +337,34 @@ import '../styles/landing.css';
             <div class="app-header">
               <span class="app-title">Dashboard</span>
               <div class="app-header-ctas">
-                <span class="app-pill">Last 7 days ▾</span>
-                <span class="app-pill blue">Ask AI →</span>
+                <span class="app-pill">7 derniers jours ▾</span>
+                <span class="app-pill blue">Demander à l’IA →</span>
               </div>
             </div>
             <div class="kpis">
               <div class="kpi">
-                <div class="kpi-l">Conversion Rate</div>
-                <div class="kpi-v">2.4%</div>
-                <div class="kpi-d red">−0.3% vs prev</div>
+                <div class="kpi-l">Taux de conversion</div>
+                <div class="kpi-v">2,4%</div>
+                <div class="kpi-d red">−0,3% vs préc.</div>
               </div>
               <div class="kpi">
                 <div class="kpi-l">CPA — Google</div>
-                <div class="kpi-v">€24.50</div>
-                <div class="kpi-d red">+€3.20 vs prev</div>
+                <div class="kpi-v">24,50 €</div>
+                <div class="kpi-d red">+3,20 € vs préc.</div>
               </div>
               <div class="kpi">
                 <div class="kpi-l">Sessions</div>
-                <div class="kpi-v">48,234</div>
-                <div class="kpi-d green">+8% vs prev</div>
+                <div class="kpi-v">48 234</div>
+                <div class="kpi-d green">+8% vs préc.</div>
               </div>
               <div class="kpi accent">
-                <div class="kpi-l">Data Health</div>
+                <div class="kpi-l">Santé des données</div>
                 <div class="kpi-v">87/100</div>
-                <div class="kpi-d blue">Good →</div>
+                <div class="kpi-d blue">Bon →</div>
               </div>
             </div>
             <div class="chart">
-              <div class="chart-label">Performance — 7 days</div>
+              <div class="chart-label">Performance — 7 jours</div>
               <div class="chart-bars">
                 {[40,55,45,62,56,48,70].map(h => (
                   <div class="bar-group">
@@ -376,17 +376,17 @@ import '../styles/landing.css';
             </div>
             <div class="panels">
               <div class="panel">
-                <div class="panel-title">Latest insights</div>
-                <div class="panel-row"><span class="dot red"></span><span>CVR dropped 12% — checkout issue</span><span class="t">2h</span></div>
-                <div class="panel-row"><span class="dot orange"></span><span>Meta CPA up 18% this week</span><span class="t">5h</span></div>
-                <div class="panel-row"><span class="dot gray"></span><span>iOS traffic down — review attribution</span><span class="t">1d</span></div>
+                <div class="panel-title">Derniers insights</div>
+                <div class="panel-row"><span class="dot red"></span><span>CVR a chuté de 12% — souci checkout</span><span class="t">2h</span></div>
+                <div class="panel-row"><span class="dot orange"></span><span>CPA Meta en hausse de 18% cette semaine</span><span class="t">5h</span></div>
+                <div class="panel-row"><span class="dot gray"></span><span>Trafic iOS en baisse — revoir attribution</span><span class="t">1j</span></div>
               </div>
               <div class="panel panel-blue">
-                <div class="panel-title">Recommended actions</div>
-                <div class="panel-row"><span class="num">1.</span>Fix GTM tag on /checkout</div>
-                <div class="panel-row"><span class="num">2.</span>A/B test checkout step 2</div>
-                <div class="panel-row"><span class="num">3.</span>Review iOS bid strategy</div>
-                <div class="panel-row"><span class="num">4.</span>Enable Enhanced Conversions</div>
+                <div class="panel-title">Actions recommandées</div>
+                <div class="panel-row"><span class="num">1.</span>Corriger le tag GTM sur /checkout</div>
+                <div class="panel-row"><span class="num">2.</span>A/B tester étape 2 du checkout</div>
+                <div class="panel-row"><span class="num">3.</span>Revoir la stratégie d’enchères iOS</div>
+                <div class="panel-row"><span class="num">4.</span>Activer Enhanced Conversions</div>
               </div>
             </div>
           </main>
@@ -399,22 +399,22 @@ import '../styles/landing.css';
   <section class="usecases sa-fade" id="use-cases">
     <div class="container">
       <div class="section-head">
-        <div class="s-badge">Use cases</div>
-        <h2 class="section-title" style="margin-bottom:16px">Ask what actually matters.</h2>
-        <p class="section-sub">Real questions. Structured answers. No dashboard configuration required.</p>
+        <div class="s-badge">Cas d’usage</div>
+        <h2 class="section-title" style="margin-bottom:16px">Pose les vraies questions.</h2>
+        <p class="section-sub">Vraies questions. Réponses structurées. Aucune config de dashboard requise.</p>
       </div>
       <div class="uc-grid">
         {[
-          'Why did my leads drop?',
-          'Which campaign is wasting budget?',
-          'Is my tracking reliable?',
-          'What should I optimize this week?',
-          'Which audience deserves more investment?',
-          'What data projects should I prioritize?',
+          'Pourquoi mes leads ont baissé ?',
+          'Quelle campagne gaspille du budget ?',
+          'Est-ce que mon tracking est fiable ?',
+          'Qu’est-ce que je devrais optimiser cette semaine ?',
+          'Quelle audience mérite plus d’investissement ?',
+          'Quels projets data prioriser ?',
         ].map(q => (
           <div class="sa-feat uc-card">
             <div class="uc-icon">→</div>
-            <span class="uc-q">"{q}"</span>
+            <span class="uc-q">« {q} »</span>
           </div>
         ))}
       </div>
@@ -426,16 +426,16 @@ import '../styles/landing.css';
     <div class="glow" style="width:600px;height:600px;bottom:-200px;right:-80px;opacity:0.45"></div>
     <div class="container" style="position:relative;z-index:1">
       <div class="section-head">
-        <h2 class="section-title" style="margin-bottom:16px">Built to be trusted.</h2>
-        <p class="section-sub">A serious platform for serious teams.</p>
+        <h2 class="section-title" style="margin-bottom:16px">Conçu pour être de confiance.</h2>
+        <p class="section-sub">Une plateforme sérieuse pour des équipes sérieuses.</p>
       </div>
       <div class="trust-grid">
         {[
-          { i:'◎', t:'Built for marketing teams', d:'Designed around how marketers work — not data engineers.' },
-          { i:'◑', t:'Privacy-conscious',         d:'Consent-aware, GDPR-friendly, privacy-first by design.' },
-          { i:'◈', t:'Decision-first analytics',  d:'Every output drives a clear, actionable next step.' },
-          { i:'◉', t:'Modern stack compatible',   d:'Server-side, cookieless, enhanced conversions — all supported.' },
-          { i:'→', t:'Designed for performance',  d:'Real-time signals, fast answers, low-latency dashboards.' },
+          { i:'◎', t:'Conçu pour le marketing',     d:'Pensé pour les marketeurs — pas pour les data engineers.' },
+          { i:'◑', t:'Respectueux de la vie privée', d:'Consent-aware, RGPD-friendly, privacy-first by design.' },
+          { i:'◈', t:'Analytics orientée décision',  d:'Chaque output propose une action concrète à prendre.' },
+          { i:'◉', t:'Compatible stack moderne',     d:'Server-side, cookieless, Enhanced Conversions — tout supporté.' },
+          { i:'→', t:'Pensé pour la performance',    d:'Signaux temps réel, réponses rapides, dashboards à faible latence.' },
         ].map(p => (
           <div class="sa-card trust-card">
             <div class="cap-icon">{p.i}</div>
@@ -452,30 +452,27 @@ import '../styles/landing.css';
     <div class="glow" style="width:960px;height:720px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
     <div class="cta-inner">
       <h2 class="cta-title">
-        Stop reading dashboards.<br />
-        <span class="gradient-text">Start asking your data.</span>
+        Arrête de lire des dashboards.<br />
+        <span class="gradient-text">Pose des questions à tes données.</span>
       </h2>
       <p class="cta-sub">
-        Join marketing teams replacing their dashboard routine<br />with a single question.
+        Rejoins les équipes marketing qui remplacent leur routine dashboard<br />par une simple question.
       </p>
-      <a href="mailto:contact@smartanalyst.io?subject=Early%20access" class="btn btn-primary" style="font-size:16px;padding:14px 36px">Request early access</a>
+      <a href="mailto:contact@smartanalyst.io?subject=Acc%C3%A8s%20anticip%C3%A9" class="btn btn-primary" style="font-size:16px;padding:14px 36px">Demander un accès</a>
       <div class="cta-fine">
-        Free early access · No credit card required · Setup in minutes
+        Accès anticipé gratuit · Sans carte bancaire · Setup en quelques minutes
       </div>
     </div>
   </section>
 
   <!-- ─── Interactivity specific to the landing ──────────────────────── -->
   <script is:inline>
-    // Hero chat animation: user → typing dots (900ms) → response (2400ms)
     const typing = document.getElementById('chat-typing');
     const response = document.getElementById('chat-response');
     if (typing && response) {
       setTimeout(() => { typing.hidden = false; }, 900);
       setTimeout(() => { typing.hidden = true; response.hidden = false; }, 2400);
     }
-
-    // SaaS preview sidebar tabs (cosmetic — switches active state + title)
     const tabs = document.querySelectorAll('.snav');
     const titleEl = document.querySelector('.app-title');
     const labels = {
@@ -490,5 +487,4 @@ import '../styles/landing.css';
       if (titleEl && labels[lang][k]) titleEl.textContent = labels[lang][k];
     }));
   </script>
-
 </DarkBase>
