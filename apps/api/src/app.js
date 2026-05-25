@@ -100,6 +100,7 @@ function createApp() {
   app.use('/api/v1/auth', require('./routes/auth.routes'))
   app.use('/api/v1/connectors', require('./routes/connectors.routes'))
   app.use('/api/v1/onboarding', require('./routes/onboarding.routes'))
+  app.use('/api/v1/metrics', require('./routes/metrics.routes'))
   // TODO: chat, reports
   // app.use('/api/v1/chat', require('./routes/chat.routes'))
   // app.use('/api/v1/reports', require('./routes/reports.routes'))
