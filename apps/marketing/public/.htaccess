@@ -1,0 +1,13 @@
+# Marketing site (Astro static, multi-page). No SPA fallback — Apache serves
+# /pricing → /pricing/index.html via DirectoryIndex (default on Hostinger).
+# This file exists to OVERRIDE any leftover .htaccess from a misrouted web
+# app deploy. Keep it minimal.
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|woff2?|svg|png|jpg|jpeg|webp|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

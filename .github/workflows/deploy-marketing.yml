@@ -77,11 +77,10 @@ jobs:
           SSH_OPTS="ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}"
           REMOTE="${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
 
-          echo "▸ Pass 1: non-HTML assets (additive, no delete)"
+          echo "▸ Pass 1: non-HTML assets + .htaccess (additive, no delete)"
           rsync -avz \
             --exclude='*.html' \
             --exclude='.well-known/' \
-            --exclude='.htaccess' \
             --exclude='cgi-bin/' \
             --chmod=D755,F644 \
             -e "$SSH_OPTS" \
