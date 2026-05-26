@@ -62,17 +62,37 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.HOSTINGER_SSH_PORT }}" -H "${{ secrets.HOSTINGER_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy via rsync
-        # The web app is a SPA: ship the contents of dist/ to the subdomain root.
-        # Preserve .well-known/ (Let's Encrypt) and .htaccess (SPA fallback) on the server.
+      - name: Deploy via rsync (atomic, two-pass)
+        # SPA deploy. Same two-pass strategy as the marketing workflow:
+        #   Pass 1 — hashed assets in assets/ (additive, no --delete). Users who
+        #     loaded the previous index.html keep getting their old JS/CSS until
+        #     they refresh. No 404 mid-deploy.
+        #   Pass 2 — index.html alone (atomic per-file rename). Apache always
+        #     has an index file to serve → no 403 window.
+        #
+        # We preserve .well-known/ (SSL renewal) and .htaccess (SPA fallback).
         run: |
-          rsync -avz --delete \
+          set -euo pipefail
+          SSH_OPTS="ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}"
+          REMOTE="${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_WEB_DEPLOY_PATH }}/"
+
+          echo "▸ Pass 1: hashed assets (additive, no delete)"
+          rsync -avz \
+            --exclude='*.html' \
             --exclude='.well-known/' \
             --exclude='.htaccess' \
             --exclude='cgi-bin/' \
-            -e "ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}" \
-            apps/web/dist/ \
-            "${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_WEB_DEPLOY_PATH }}/"
+            --chmod=D755,F644 \
+            -e "$SSH_OPTS" \
+            apps/web/dist/ "$REMOTE"
+
+          echo "▸ Pass 2: index.html (atomic swap)"
+          rsync -avz \
+            --include='*/' --include='*.html' --exclude='*' \
+            --prune-empty-dirs \
+            --chmod=D755,F644 \
+            -e "$SSH_OPTS" \
+            apps/web/dist/ "$REMOTE"
 
       - name: Summary
         run: |

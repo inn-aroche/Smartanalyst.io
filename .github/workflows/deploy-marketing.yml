@@ -59,19 +59,41 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.HOSTINGER_SSH_PORT }}" -H "${{ secrets.HOSTINGER_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy via rsync
-        # --delete keeps the server in mirror with dist/, but we exclude:
-        #   .well-known/  → used by Let's Encrypt / Hostinger SSL renewal
-        #   .htaccess     → in case Hostinger lays one down for the domain
-        #   cgi-bin/      → server-side dir we should never touch
+      - name: Deploy via rsync (atomic, two-pass)
+        # Two-pass deploy to keep the live site responsive throughout the upload:
+        #   Pass 1 — non-HTML files (assets in _astro/, images, etc.) WITHOUT --delete.
+        #     Old hashed assets stay alongside the new ones so any user mid-navigation
+        #     still gets their assets. No 404 race.
+        #   Pass 2 — HTML files only. rsync uploads each file to a temp name then
+        #     renames it (POSIX atomic), so the index file is never absent → no 403.
+        # We deliberately drop --delete: orphaned hashed assets accumulate slowly
+        # and are cleaned up manually if needed. The 'mirror' workflow_dispatch
+        # below exists for full-sync runs when a page is removed.
+        #
+        # --chmod=D755,F644 forces sane Apache permissions; without this, rsync
+        # occasionally produces 600/700 perms that trip a 403.
         run: |
-          rsync -avz --delete \
+          set -euo pipefail
+          SSH_OPTS="ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}"
+          REMOTE="${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
+
+          echo "▸ Pass 1: non-HTML assets (additive, no delete)"
+          rsync -avz \
+            --exclude='*.html' \
             --exclude='.well-known/' \
             --exclude='.htaccess' \
             --exclude='cgi-bin/' \
-            -e "ssh -p ${{ secrets.HOSTINGER_SSH_PORT }}" \
-            apps/marketing/dist/ \
-            "${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
+            --chmod=D755,F644 \
+            -e "$SSH_OPTS" \
+            apps/marketing/dist/ "$REMOTE"
+
+          echo "▸ Pass 2: HTML files (atomic swap per file)"
+          rsync -avz \
+            --include='*/' --include='*.html' --exclude='*' \
+            --prune-empty-dirs \
+            --chmod=D755,F644 \
+            -e "$SSH_OPTS" \
+            apps/marketing/dist/ "$REMOTE"
 
       - name: Summary
         run: |
