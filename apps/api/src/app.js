@@ -46,13 +46,29 @@ function createApp() {
   )
 
   // CORS restrictif (doc 02 §2.4)
-  // Allowed origins resolve from CORS_ALLOWED_ORIGINS (comma-separated) if set,
-  // otherwise from APP_URL. Empty/unset = allow any origin (dev only).
-  const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
+  // Resolution order:
+  //   1. CORS_ALLOWED_ORIGINS (comma-separated) if set
+  //   2. APP_URL fallback
+  //   3. null → cors() allows any origin (dev only)
+  // In production we always merge KNOWN_PRODUCTION_ORIGINS in, so the marketing
+  // site and the web app stay allowed even if someone forgets to update the env
+  // file when a new prod origin is added.
+  const KNOWN_PRODUCTION_ORIGINS = [
+    'https://smartanalyst.io',
+    'https://www.smartanalyst.io',
+    'https://app.smartanalyst.io',
+  ]
+  const configuredOrigins = process.env.CORS_ALLOWED_ORIGINS
     ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
     : process.env.APP_URL
       ? [process.env.APP_URL]
       : null
+  const corsOrigins =
+    configuredOrigins === null
+      ? isProduction
+        ? KNOWN_PRODUCTION_ORIGINS
+        : null
+      : Array.from(new Set([...configuredOrigins, ...(isProduction ? KNOWN_PRODUCTION_ORIGINS : [])]))
   app.use(
     cors({
       origin: corsOrigins ?? true,
