@@ -1,13 +1,6 @@
-# Marketing site (Astro static, multi-page). No SPA fallback — Apache serves
-# /pricing → /pricing/index.html via DirectoryIndex (default on Hostinger).
-# This file exists to OVERRIDE any leftover .htaccess from a misrouted web
-# app deploy. Keep it minimal.
-
-<IfModule mod_headers.c>
-  <FilesMatch "\.(js|css|woff2?|svg|png|jpg|jpeg|webp|ico)$">
-    Header set Cache-Control "public, max-age=31536000, immutable"
-  </FilesMatch>
-  <FilesMatch "\.html$">
-    Header set Cache-Control "no-cache"
-  </FilesMatch>
-</IfModule>
+# Marketing site — empty .htaccess on purpose.
+# Exists only to overwrite a leftover SPA .htaccess (RewriteRule . /index.html)
+# that a misrouted web deploy left in this directory. Apache's defaults are
+# sufficient for the Astro static multi-page output: DirectoryIndex resolves
+# /pricing → /pricing/index.html on its own. Any caching headers belong in
+# server config, not here.
