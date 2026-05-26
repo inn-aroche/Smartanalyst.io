@@ -26,3 +26,7 @@ Le serveur dev tourne sur http://localhost:4321 par défaut.
 - `/product` — détail produit
 - `/pricing` — grille tarifaire (déjà câblée sur `@smartanalyst/shared`)
 - `/securite` — sécurité & RGPD
+
+## Workflow de déploiement
+
+Voir `.github/workflows/deploy-marketing.yml`. Trigger automatique sur push touchant `apps/marketing/**`. Path Hostinger lu depuis le secret `HOSTINGER_DEPLOY_PATH` (à ne PAS confondre avec `HOSTINGER_WEB_DEPLOY_PATH`, utilisé par l'app `app.smartanalyst.io`).

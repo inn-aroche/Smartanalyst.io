@@ -14,14 +14,11 @@ name: Deploy web app
 # See docs/DEPLOYMENT_WEB.md for the one-time setup.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/web/**'
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/deploy-web.yml'
+  # Auto-trigger on push is intentionally disabled until HOSTINGER_WEB_DEPLOY_PATH
+  # has been validated to point at app.smartanalyst.io's own public_html (NOT the
+  # marketing site's public_html). The previous run overwrote the marketing site
+  # because the path pointed at the wrong directory. Re-enable the push trigger
+  # once the secret is verified — see docs/DEPLOYMENT_WEB.md.
   workflow_dispatch:
 
 concurrency:
