@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import Brand from '@/components/Brand'
+import GoogleSignInButton, { OrSeparator } from '@/components/GoogleSignInButton'
 import { useAuth } from '@/lib/auth'
 
 export default function Signup() {
@@ -46,7 +47,13 @@ export default function Signup() {
             Get started in under a minute.
           </p>
 
-          <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="mt-7">
+            <GoogleSignInButton label="Sign up with Google" />
+          </div>
+
+          <OrSeparator />
+
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
               <label className="sa-label" htmlFor="organization">
                 Organization name

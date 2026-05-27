@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import Brand from '@/components/Brand'
+import GoogleSignInButton, { OrSeparator } from '@/components/GoogleSignInButton'
 import { useAuth } from '@/lib/auth'
 
 type LocationState = { from?: string }
@@ -50,7 +51,13 @@ export default function Login() {
             Sign in to your SmartAnalyst workspace.
           </p>
 
-          <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="mt-7">
+            <GoogleSignInButton returnTo={redirectTo} />
+          </div>
+
+          <OrSeparator />
+
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
               <label className="sa-label" htmlFor="email">
                 Email

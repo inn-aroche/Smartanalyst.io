@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import { usePageViewTracker } from './lib/gtm'
+import AuthCallback from './pages/AuthCallback'
 import Connectors from './pages/Connectors'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
@@ -14,6 +15,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/"
         element={
