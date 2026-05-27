@@ -3,13 +3,13 @@
 
 const express = require('express')
 const { query: queryMetrics } = require('../services/metrics/canonical-metrics.service')
-const jwtMiddleware = require('../middleware/jwt.middleware')
-const workspaceScopeMiddleware = require('../middleware/workspace-scope.middleware')
+const { jwtMiddleware } = require('../middleware/jwt.middleware')
+const { workspaceScope } = require('../middleware/workspace-scope.middleware')
 
 const router = express.Router()
 
 router.use(jwtMiddleware)
-router.use(workspaceScopeMiddleware)
+router.use(workspaceScope)
 
 // KPIs displayed on the dashboard. We sum/average each canonical metric over
 // the requested window and compute the delta vs. the previous window of the
