@@ -136,7 +136,7 @@ async function login({ email, password, ipAddress, userAgent }) {
 
   const user = data.user
 
-  const accessToken = signAccessToken({ userId: user.id, email: user.email })
+  const token = signAccessToken({ userId: user.id, email: user.email })
   const refreshToken = signRefreshToken({ userId: user.id })
 
   // Workspaces accessibles (via les memberships)
@@ -174,7 +174,7 @@ async function login({ email, password, ipAddress, userAgent }) {
   logger.info({ event: 'login_success', userId: user.id }, 'User logged in')
 
   return {
-    accessToken,
+    token,
     refreshToken,
     user: { id: user.id, email: user.email },
     workspaces,
@@ -190,8 +190,8 @@ async function refresh(refreshToken) {
     throw new AuthError('Refresh token manquant.')
   }
   const decoded = verifyToken(refreshToken, 'refresh')
-  const accessToken = signAccessToken({ userId: decoded.sub })
-  return { accessToken }
+  const token = signAccessToken({ userId: decoded.sub })
+  return { token }
 }
 
 /**

@@ -11,6 +11,7 @@ const { body } = require('express-validator')
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const authService = require('../services/auth/auth.service')
+const googleSigninService = require('../services/auth/google-signin.service')
 
 const router = express.Router()
 
@@ -153,7 +154,66 @@ router.get('/me', jwtMiddleware, async (req, res, next) => {
   }
 })
 
+// ━━━ GET /google/start ━━━
+// Returns the Google authorize URL. Frontend calls this then redirects the
+// browser to the URL. Optional ?returnTo=<path> is preserved via the state.
+router.get('/google/start', (req, res, next) => {
+  try {
+    const returnTo =
+      typeof req.query.returnTo === 'string' ? req.query.returnTo : null
+    const { authorizeUrl } = googleSigninService.buildAuthorizeUrl({ returnTo })
+    res.json({ authorize_url: authorizeUrl })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ━━━ GET /google/callback ━━━
+// Google redirects here after user consent. We exchange the code, sign the
+// user in via Supabase, bootstrap a workspace on first login, then redirect
+// to the SPA's /auth/callback with our tokens in the URL fragment (#…) so
+// they never hit a server log.
+router.get('/google/callback', async (req, res, next) => {
+  const appUrl = (process.env.APP_URL || '').replace(/\/$/, '')
+
+  if (req.query.error) {
+    const reason = encodeURIComponent(String(req.query.error))
+    return res.redirect(`${appUrl}/auth/callback#error=${reason}`)
+  }
+
+  const code = typeof req.query.code === 'string' ? req.query.code : null
+  const state = typeof req.query.state === 'string' ? req.query.state : null
+
+  if (!code || !state) {
+    return res.redirect(`${appUrl}/auth/callback#error=missing_code_or_state`)
+  }
+
+  try {
+    const result = await googleSigninService.handleCallback({
+      code,
+      state,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    })
+
+    const fragment = new URLSearchParams({
+      token: result.token,
+      refresh_token: result.refreshToken,
+      user: JSON.stringify(result.user),
+      workspaces: JSON.stringify(result.workspaces),
+    })
+    if (result.returnTo) fragment.set('return_to', result.returnTo)
+
+    return res.redirect(`${appUrl}/auth/callback#${fragment.toString()}`)
+  } catch (err) {
+    if (err && err.code && err.statusCode && err.statusCode < 500) {
+      const reason = encodeURIComponent(err.code)
+      return res.redirect(`${appUrl}/auth/callback#error=${reason}`)
+    }
+    return next(err)
+  }
+})
+
 // TODO: password reset (request + confirm) — dépend du service Resend
-// TODO: OAuth callbacks (Google, Meta) — déplacés dans connectors.routes pour le flux OAuth connecteur
 
 module.exports = router
