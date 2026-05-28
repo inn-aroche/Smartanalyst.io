@@ -1,10 +1,43 @@
 ---
 import { STRINGS, LOCALES, localizedPath, switchLocalePath } from '../i18n/strings.js';
+import { PRODUCT_FEATURES } from '../data/product-features.js';
+import { USE_CASES } from '../data/use-cases.js';
 
 const { locale = 'en' } = Astro.props;
 const t = STRINGS[locale];
 const lp = (p) => localizedPath(p, locale);
 const current = LOCALES.find((l) => l.code === locale);
+
+// Build the "mega" submenu data — shared between desktop dropdowns and the
+// mobile accordion. Keeps both renderers in sync from one source of truth.
+const PRODUCT_LINKS = PRODUCT_FEATURES.map((f) => ({
+  href: lp(`/product/${f.slug}`),
+  title: locale === 'fr' ? f.fr.kicker : f.en.kicker,
+  tagline: locale === 'fr' ? f.fr.tagline : f.en.tagline,
+  icon: f.icon,
+}));
+
+const USE_CASE_LINKS = USE_CASES.map((u) => ({
+  href: lp(`/use-cases/${u.slug}`),
+  title: locale === 'fr' ? u.fr.kicker : u.en.kicker,
+  tagline: locale === 'fr' ? u.fr.tagline : u.en.tagline,
+  icon: u.icon,
+}));
+
+const RESOURCE_LINKS = [
+  {
+    href: lp('/resources'),
+    title: locale === 'fr' ? 'Toutes les ressources' : 'All resources',
+    tagline: locale === 'fr' ? 'Glossaire, guides, blog' : 'Glossary, guides, blog',
+    icon: '◉',
+  },
+  {
+    href: lp('/resources/glossary'),
+    title: locale === 'fr' ? 'Glossaire marketing' : 'Marketing glossary',
+    tagline: locale === 'fr' ? '40+ termes essentiels' : '40+ essential terms',
+    icon: '◈',
+  },
+];
 ---
 <nav class="nav" id="nav">
   <div class="nav-inner">
@@ -13,12 +46,67 @@ const current = LOCALES.find((l) => l.code === locale);
       <span class="brand-name">SmartAnalyst</span>
     </a>
 
-    <!-- Desktop nav links -->
+    <!-- Desktop nav with dropdowns -->
     <div class="nav-links">
-      <a href={lp('/product')}>{t.nav.product}</a>
-      <a href={lp('/use-cases/agency')}>{t.nav.useCases}</a>
+      <div class="nav-item">
+        <a href={lp('/product')} class="nav-item-trigger" data-menu="product">
+          {t.nav.product}<span class="nav-item-caret">▾</span>
+        </a>
+        <div class="nav-mega" data-menu-panel="product">
+          <div class="nav-mega-inner">
+            {PRODUCT_LINKS.map((l) => (
+              <a href={l.href} class="nav-mega-link">
+                <span class="nav-mega-icon">{l.icon}</span>
+                <span class="nav-mega-copy">
+                  <span class="nav-mega-title">{l.title}</span>
+                  <span class="nav-mega-tagline">{l.tagline}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-item">
+        <a href={lp('/use-cases/agency')} class="nav-item-trigger" data-menu="use-cases">
+          {t.nav.useCases}<span class="nav-item-caret">▾</span>
+        </a>
+        <div class="nav-mega" data-menu-panel="use-cases">
+          <div class="nav-mega-inner nav-mega-narrow">
+            {USE_CASE_LINKS.map((l) => (
+              <a href={l.href} class="nav-mega-link">
+                <span class="nav-mega-icon">{l.icon}</span>
+                <span class="nav-mega-copy">
+                  <span class="nav-mega-title">{l.title}</span>
+                  <span class="nav-mega-tagline">{l.tagline}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <a href={lp('/pricing')}>{t.nav.pricing}</a>
-      <a href={lp('/resources')}>{t.nav.resources}</a>
+
+      <div class="nav-item">
+        <a href={lp('/resources')} class="nav-item-trigger" data-menu="resources">
+          {t.nav.resources}<span class="nav-item-caret">▾</span>
+        </a>
+        <div class="nav-mega" data-menu-panel="resources">
+          <div class="nav-mega-inner nav-mega-narrow">
+            {RESOURCE_LINKS.map((l) => (
+              <a href={l.href} class="nav-mega-link">
+                <span class="nav-mega-icon">{l.icon}</span>
+                <span class="nav-mega-copy">
+                  <span class="nav-mega-title">{l.title}</span>
+                  <span class="nav-mega-tagline">{l.tagline}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <a href={lp('/security')}>{t.nav.security}</a>
     </div>
 
@@ -49,15 +137,85 @@ const current = LOCALES.find((l) => l.code === locale);
       <span></span><span></span><span></span>
     </button>
   </div>
+</nav>
 
-  <!-- Mobile slide-down menu -->
-  <div class="nav-mobile" id="nav-mobile" hidden>
+<!-- Mobile drawer — MUST live outside <nav> to escape the backdrop-filter
+     containing-block trap (otherwise its position:fixed gets re-anchored
+     to the 64px-tall nav, making it invisible while scrolled). -->
+<div class="nav-mobile" id="nav-mobile" hidden>
+  <div class="nav-mobile-scroll">
     <div class="nav-mobile-inner">
-      <a href={lp('/product')} class="nav-mobile-link">{t.nav.product}</a>
-      <a href={lp('/use-cases/agency')} class="nav-mobile-link">{t.nav.useCases}</a>
-      <a href={lp('/pricing')} class="nav-mobile-link">{t.nav.pricing}</a>
-      <a href={lp('/resources')} class="nav-mobile-link">{t.nav.resources}</a>
-      <a href={lp('/security')} class="nav-mobile-link">{t.nav.security}</a>
+      <!-- Product accordion -->
+      <details class="nav-mobile-group" open>
+        <summary>
+          <span>{t.nav.product}</span>
+          <span class="nav-mobile-caret">▾</span>
+        </summary>
+        <div class="nav-mobile-sub">
+          <a href={lp('/product')} class="nav-mobile-sub-link nav-mobile-sub-overview">
+            {locale === 'fr' ? 'Vue d’ensemble' : 'Overview'} →
+          </a>
+          {PRODUCT_LINKS.map((l) => (
+            <a href={l.href} class="nav-mobile-sub-link">
+              <span class="nav-mobile-sub-icon">{l.icon}</span>
+              <span>
+                <span class="nav-mobile-sub-title">{l.title}</span>
+                <span class="nav-mobile-sub-tagline">{l.tagline}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </details>
+
+      <!-- Use cases accordion -->
+      <details class="nav-mobile-group">
+        <summary>
+          <span>{t.nav.useCases}</span>
+          <span class="nav-mobile-caret">▾</span>
+        </summary>
+        <div class="nav-mobile-sub">
+          {USE_CASE_LINKS.map((l) => (
+            <a href={l.href} class="nav-mobile-sub-link">
+              <span class="nav-mobile-sub-icon">{l.icon}</span>
+              <span>
+                <span class="nav-mobile-sub-title">{l.title}</span>
+                <span class="nav-mobile-sub-tagline">{l.tagline}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </details>
+
+      <!-- Pricing (flat) -->
+      <a href={lp('/pricing')} class="nav-mobile-flat">
+        <span>{t.nav.pricing}</span>
+        <span class="nav-mobile-caret">→</span>
+      </a>
+
+      <!-- Resources accordion -->
+      <details class="nav-mobile-group">
+        <summary>
+          <span>{t.nav.resources}</span>
+          <span class="nav-mobile-caret">▾</span>
+        </summary>
+        <div class="nav-mobile-sub">
+          {RESOURCE_LINKS.map((l) => (
+            <a href={l.href} class="nav-mobile-sub-link">
+              <span class="nav-mobile-sub-icon">{l.icon}</span>
+              <span>
+                <span class="nav-mobile-sub-title">{l.title}</span>
+                <span class="nav-mobile-sub-tagline">{l.tagline}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </details>
+
+      <!-- Security (flat) -->
+      <a href={lp('/security')} class="nav-mobile-flat">
+        <span>{t.nav.security}</span>
+        <span class="nav-mobile-caret">→</span>
+      </a>
 
       <div class="nav-mobile-sep"></div>
 
@@ -76,11 +234,11 @@ const current = LOCALES.find((l) => l.code === locale);
       <a href={lp('/#cta')} class="btn btn-primary nav-mobile-cta">{t.nav.cta}</a>
     </div>
   </div>
-</nav>
+</div>
 
 <script is:inline>
   (() => {
-    // Language dropdown (desktop)
+    // ━━━ Language dropdown (desktop) ━━━
     const trigger = document.getElementById('lang-trigger');
     const menu = document.getElementById('lang-menu');
     if (trigger && menu) {
@@ -96,7 +254,7 @@ const current = LOCALES.find((l) => l.code === locale);
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLang(); });
     }
 
-    // Mobile menu
+    // ━━━ Mobile drawer ━━━
     const burger = document.getElementById('nav-burger');
     const mobile = document.getElementById('nav-mobile');
     const nav = document.getElementById('nav');
@@ -106,24 +264,57 @@ const current = LOCALES.find((l) => l.code === locale);
         burger.setAttribute('aria-expanded', 'false');
         nav.classList.remove('nav-open');
         document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        const top = document.body.style.top;
+        document.body.style.top = '';
+        if (top) window.scrollTo(0, parseInt(top || '0', 10) * -1);
       };
       const openMobile = () => {
+        const scrollY = window.scrollY;
         mobile.hidden = false;
         burger.setAttribute('aria-expanded', 'true');
         nav.classList.add('nav-open');
-        document.body.style.overflow = 'hidden';
+        // Lock body scroll while keeping the visible scroll position.
+        // The combination of overflow:hidden + position:fixed + top is the
+        // standard recipe that survives iOS Safari's rubber-band behavior.
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
       };
       burger.addEventListener('click', () => {
         mobile.hidden ? openMobile() : closeMobile();
       });
-      // Close when a link is clicked
+      // Close when a link is clicked (not when an <details> summary toggles)
       mobile.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMobile));
-      // Close on resize back to desktop
       window.addEventListener('resize', () => {
         if (window.innerWidth > 900 && !mobile.hidden) closeMobile();
       });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !mobile.hidden) closeMobile(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !mobile.hidden) closeMobile();
+      });
     }
+
+    // ━━━ Desktop dropdowns (hover-intent + click for keyboard / touch) ━━━
+    const items = document.querySelectorAll('.nav-item');
+    items.forEach((item) => {
+      const trigger = item.querySelector('.nav-item-trigger');
+      let timer = null;
+      const open = () => {
+        clearTimeout(timer);
+        items.forEach((other) => other.classList.toggle('open', other === item));
+      };
+      const closeSoon = () => {
+        timer = setTimeout(() => item.classList.remove('open'), 120);
+      };
+      item.addEventListener('mouseenter', open);
+      item.addEventListener('mouseleave', closeSoon);
+      trigger?.addEventListener('focus', open);
+      trigger?.addEventListener('blur', closeSoon);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') items.forEach((i) => i.classList.remove('open'));
+    });
   })();
 </script>
 
@@ -152,19 +343,9 @@ const current = LOCALES.find((l) => l.code === locale);
     border-color: var(--border-br);
     background: var(--card);
   }
-  .lang-flag {
-    font-size: 14px;
-    line-height: 1;
-  }
-  .lang-code {
-    font-family: var(--ff-m);
-    letter-spacing: 0.05em;
-    font-size: 11px;
-  }
-  .lang-caret {
-    font-size: 9px;
-    opacity: 0.6;
-  }
+  .lang-flag { font-size: 14px; line-height: 1; }
+  .lang-code { font-family: var(--ff-m); letter-spacing: 0.05em; font-size: 11px; }
+  .lang-caret { font-size: 9px; opacity: 0.6; }
   .lang-menu {
     position: absolute;
     top: calc(100% + 6px);
@@ -193,6 +374,79 @@ const current = LOCALES.find((l) => l.code === locale);
   .lang-menu a:hover { background: var(--card-h); color: var(--text-1); }
   .lang-menu a.active { color: var(--text-1); background: rgba(61, 130, 255, 0.1); }
   .lang-menu .lang-name { font-family: var(--ff-b); }
+
+  /* ─── Desktop dropdown items (Product, Use cases, Resources) ─── */
+  .nav-item { position: relative; }
+  .nav-item-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .nav-item-caret { font-size: 9px; opacity: 0.55; transition: transform 0.15s; }
+  .nav-item.open .nav-item-caret { transform: rotate(180deg); }
+  .nav-mega {
+    position: absolute;
+    top: calc(100% + 14px);
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
+    z-index: 230;
+    /* Bridge the gap between trigger and panel so the panel doesn't close
+       when the cursor moves down to it */
+    padding-top: 14px;
+    margin-top: -14px;
+  }
+  .nav-item.open .nav-mega {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  .nav-mega-inner {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+    width: 540px;
+    background: var(--bg-1);
+    border: 1px solid var(--border-br);
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+  }
+  .nav-mega-narrow { grid-template-columns: 1fr; width: 320px; }
+  .nav-mega-link {
+    display: flex;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    color: var(--text-2);
+    align-items: flex-start;
+    transition: background 0.12s, color 0.12s;
+  }
+  .nav-mega-link:hover { background: var(--card-h); color: var(--text-1); }
+  .nav-mega-icon {
+    font-family: var(--ff-m);
+    font-size: 16px;
+    color: var(--cyan);
+    margin-top: 1px;
+    min-width: 18px;
+  }
+  .nav-mega-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .nav-mega-title {
+    font-family: var(--ff-h);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-1);
+    letter-spacing: -0.01em;
+  }
+  .nav-mega-tagline {
+    font-family: var(--ff-b);
+    font-size: 12px;
+    color: var(--text-3);
+    line-height: 1.4;
+  }
 
   /* ─── Mobile burger ─── */
   .nav-burger {
@@ -224,42 +478,124 @@ const current = LOCALES.find((l) => l.code === locale);
   .nav-open .nav-burger span:nth-child(2) { opacity: 0; }
   .nav-open .nav-burger span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
-  /* ─── Mobile menu drawer ─── */
+  /* ─── Mobile drawer ─── */
   .nav-mobile {
+    /* Outside <nav>, so backdrop-filter on .nav doesn't trap our fixed layer. */
     position: fixed;
     top: 64px;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(6, 6, 11, 0.96);
+    background: rgba(6, 6, 11, 0.97);
     -webkit-backdrop-filter: blur(18px);
     backdrop-filter: blur(18px);
-    z-index: 199;
+    z-index: 198; /* below the nav bar so the burger stays clickable */
+    /* The drawer itself takes the full viewport; we scroll its inner div. */
+    overflow: hidden;
+  }
+  .nav-mobile-scroll {
+    height: 100%;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .nav-mobile-inner {
-    padding: 32px 24px 48px;
+    padding: 24px 24px 48px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    max-width: 480px;
+    gap: 8px;
+    max-width: 540px;
     margin: 0 auto;
   }
-  .nav-mobile-link {
-    display: block;
-    padding: 14px 4px;
-    font-size: 22px;
+  .nav-mobile-group {
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .nav-mobile-group > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--ff-h);
+    font-size: 17px;
     font-weight: 600;
     color: var(--text-1);
-    border-bottom: 1px solid var(--border);
-    font-family: var(--ff-h);
+    user-select: none;
   }
-  .nav-mobile-link:hover { color: var(--blue); }
-  .nav-mobile-sep { height: 24px; }
+  .nav-mobile-group > summary::-webkit-details-marker { display: none; }
+  .nav-mobile-caret {
+    font-size: 12px;
+    opacity: 0.6;
+    transition: transform 0.2s;
+  }
+  .nav-mobile-group[open] .nav-mobile-caret { transform: rotate(180deg); }
+  .nav-mobile-sub {
+    padding: 4px 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-top: 1px solid var(--border);
+  }
+  .nav-mobile-sub-link {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--text-2);
+  }
+  .nav-mobile-sub-link:hover { background: var(--card-h); color: var(--text-1); }
+  .nav-mobile-sub-overview {
+    font-family: var(--ff-m);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+    padding: 8px 12px;
+  }
+  .nav-mobile-sub-icon {
+    font-family: var(--ff-m);
+    font-size: 14px;
+    color: var(--cyan);
+    min-width: 18px;
+    margin-top: 2px;
+  }
+  .nav-mobile-sub-title {
+    display: block;
+    font-family: var(--ff-h);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text-1);
+    margin-bottom: 1px;
+  }
+  .nav-mobile-sub-tagline {
+    display: block;
+    font-family: var(--ff-b);
+    font-size: 12.5px;
+    color: var(--text-3);
+    line-height: 1.4;
+  }
+  .nav-mobile-flat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 18px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 12px;
+    font-family: var(--ff-h);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-1);
+  }
+  .nav-mobile-sep { height: 16px; }
   .nav-mobile-langs {
     display: flex;
     gap: 8px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
   .nav-mobile-lang {
     flex: 1;
@@ -280,7 +616,6 @@ const current = LOCALES.find((l) => l.code === locale);
     border-color: rgba(61, 130, 255, 0.35);
   }
   .nav-mobile-cta {
-    margin-top: 8px;
     width: 100%;
     text-align: center;
     justify-content: center;
@@ -289,7 +624,6 @@ const current = LOCALES.find((l) => l.code === locale);
   @media (max-width: 900px) {
     .lang-select { margin-right: 8px; }
     .lang-trigger { padding: 5px 8px; }
-    /* Hide desktop chrome on mobile */
     .nav-links,
     .nav .lang-select,
     .nav .nav-cta {
