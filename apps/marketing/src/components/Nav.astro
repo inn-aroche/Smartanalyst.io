@@ -12,11 +12,15 @@ const current = LOCALES.find((l) => l.code === locale);
       <span class="brand-mark"></span>
       <span class="brand-name">SmartAnalyst</span>
     </a>
+
+    <!-- Desktop nav links -->
     <div class="nav-links">
       <a href={lp('/product')}>{t.nav.product}</a>
       <a href={lp('/pricing')}>{t.nav.pricing}</a>
       <a href={lp('/security')}>{t.nav.security}</a>
     </div>
+
+    <!-- Desktop language selector -->
     <div class="lang-select" id="lang-select">
       <button class="lang-trigger" id="lang-trigger" aria-haspopup="listbox" aria-expanded="false">
         <span class="lang-flag">{current.flag}</span>
@@ -34,29 +38,93 @@ const current = LOCALES.find((l) => l.code === locale);
         ))}
       </ul>
     </div>
-    <a href={lp('/#cta')} class="btn btn-primary btn-sm">{t.nav.cta}</a>
+
+    <!-- Desktop CTA -->
+    <a href={lp('/#cta')} class="btn btn-primary btn-sm nav-cta">{t.nav.cta}</a>
+
+    <!-- Mobile hamburger -->
+    <button class="nav-burger" id="nav-burger" aria-label="Menu" aria-expanded="false" aria-controls="nav-mobile">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- Mobile slide-down menu -->
+  <div class="nav-mobile" id="nav-mobile" hidden>
+    <div class="nav-mobile-inner">
+      <a href={lp('/product')} class="nav-mobile-link">{t.nav.product}</a>
+      <a href={lp('/pricing')} class="nav-mobile-link">{t.nav.pricing}</a>
+      <a href={lp('/security')} class="nav-mobile-link">{t.nav.security}</a>
+
+      <div class="nav-mobile-sep"></div>
+
+      <div class="nav-mobile-langs">
+        {LOCALES.map((l) => (
+          <a
+            href={switchLocalePath(Astro.url.pathname, l.code)}
+            class={`nav-mobile-lang ${l.code === locale ? 'active' : ''}`}
+          >
+            <span class="lang-flag">{l.flag}</span>
+            <span>{l.label}</span>
+          </a>
+        ))}
+      </div>
+
+      <a href={lp('/#cta')} class="btn btn-primary nav-mobile-cta">{t.nav.cta}</a>
+    </div>
   </div>
 </nav>
 
 <script is:inline>
   (() => {
+    // Language dropdown (desktop)
     const trigger = document.getElementById('lang-trigger');
     const menu = document.getElementById('lang-menu');
-    if (!trigger || !menu) return;
-    const close = () => { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); };
-    const open  = () => { menu.hidden = false; trigger.setAttribute('aria-expanded', 'true'); };
-    trigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.hidden ? open() : close();
-    });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('#lang-select')) close();
-    });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    if (trigger && menu) {
+      const closeLang = () => { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); };
+      const openLang  = () => { menu.hidden = false; trigger.setAttribute('aria-expanded', 'true'); };
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.hidden ? openLang() : closeLang();
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#lang-select')) closeLang();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLang(); });
+    }
+
+    // Mobile menu
+    const burger = document.getElementById('nav-burger');
+    const mobile = document.getElementById('nav-mobile');
+    const nav = document.getElementById('nav');
+    if (burger && mobile && nav) {
+      const closeMobile = () => {
+        mobile.hidden = true;
+        burger.setAttribute('aria-expanded', 'false');
+        nav.classList.remove('nav-open');
+        document.body.style.overflow = '';
+      };
+      const openMobile = () => {
+        mobile.hidden = false;
+        burger.setAttribute('aria-expanded', 'true');
+        nav.classList.add('nav-open');
+        document.body.style.overflow = 'hidden';
+      };
+      burger.addEventListener('click', () => {
+        mobile.hidden ? openMobile() : closeMobile();
+      });
+      // Close when a link is clicked
+      mobile.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMobile));
+      // Close on resize back to desktop
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 900 && !mobile.hidden) closeMobile();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !mobile.hidden) closeMobile(); });
+    }
   })();
 </script>
 
 <style is:global>
+  /* ─── Language selector (desktop) ─── */
   .lang-select {
     position: relative;
     margin-right: 14px;
@@ -121,8 +189,108 @@ const current = LOCALES.find((l) => l.code === locale);
   .lang-menu a:hover { background: var(--card-h); color: var(--text-1); }
   .lang-menu a.active { color: var(--text-1); background: rgba(61, 130, 255, 0.1); }
   .lang-menu .lang-name { font-family: var(--ff-b); }
+
+  /* ─── Mobile burger ─── */
+  .nav-burger {
+    display: none;
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 40px;
+    height: 36px;
+    padding: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.15s;
+  }
+  .nav-burger:hover { border-color: var(--border-br); background: var(--card); }
+  .nav-burger span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: var(--text-1);
+    border-radius: 1px;
+    transition: transform 0.2s, opacity 0.2s;
+  }
+  .nav-open .nav-burger span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-open .nav-burger span:nth-child(2) { opacity: 0; }
+  .nav-open .nav-burger span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+  /* ─── Mobile menu drawer ─── */
+  .nav-mobile {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(6, 6, 11, 0.96);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+    z-index: 199;
+    overflow-y: auto;
+  }
+  .nav-mobile-inner {
+    padding: 32px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .nav-mobile-link {
+    display: block;
+    padding: 14px 4px;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-1);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--ff-h);
+  }
+  .nav-mobile-link:hover { color: var(--blue); }
+  .nav-mobile-sep { height: 24px; }
+  .nav-mobile-langs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .nav-mobile-lang {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-2);
+    background: var(--card);
+  }
+  .nav-mobile-lang.active {
+    color: var(--text-1);
+    background: rgba(61, 130, 255, 0.1);
+    border-color: rgba(61, 130, 255, 0.35);
+  }
+  .nav-mobile-cta {
+    margin-top: 8px;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
   @media (max-width: 900px) {
     .lang-select { margin-right: 8px; }
     .lang-trigger { padding: 5px 8px; }
+    /* Hide desktop chrome on mobile */
+    .nav-links,
+    .nav .lang-select,
+    .nav .nav-cta {
+      display: none !important;
+    }
+    .nav-burger { display: flex; }
   }
 </style>

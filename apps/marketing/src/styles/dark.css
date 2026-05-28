@@ -37,6 +37,10 @@ html {
   scroll-behavior: smooth;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--bg-0);
   color: var(--text-1);
@@ -45,6 +49,19 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  /* Belt-and-suspenders against long unbreakable strings (URLs, very long
+     compound words in FR) escaping their container on narrow screens. */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+h1, h2, h3, h4, h5, h6, p, li, td, th, span, a {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+img, video, svg, iframe, table {
+  max-width: 100%;
 }
 
 a {

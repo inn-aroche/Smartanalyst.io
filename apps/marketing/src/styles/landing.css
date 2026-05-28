@@ -773,9 +773,22 @@
   .outputs-grid, .test-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
-  .hero h1 { font-size: 42px; }
+  /* Tighten horizontal padding on the sections that still had 48px desktop
+     padding — at 48px on a 320px screen there were only ~224px left for
+     content, which made long FR headlines overflow. */
+  .hero-inner,
+  .cta-inner { padding: 0 24px; }
+  .hero-copy { padding: 80px 0 40px; }
+  .hero-chat-wrap { padding-bottom: 60px; }
+  .hero h1 { font-size: 36px; }
   .hero-lead { font-size: 16px; }
-  .cta-title { font-size: 36px; }
+  /* Linebreaks in headlines / paragraphs were placed for desktop wrapping.
+     On mobile they create awkward ragged lines and make text feel cramped;
+     turn the <br> into a soft wrap. */
+  .hero h1 br,
+  .hero-lead br,
+  .cta-sub br { display: none; }
+  .cta-title { font-size: 30px; }
   .feat-row, .feat-row.reverse { grid-template-columns: 1fr; gap: 32px; }
   .feat-row.reverse .feat-ui, .feat-row.reverse .feat-copy { order: 0; }
   .feat-row .feat-ui { order: 1; }
@@ -792,4 +805,11 @@
   .snav { white-space: nowrap; border-left: none; border-bottom: 2px solid transparent; }
   .snav.active { border-left: none; border-bottom-color: var(--blue); }
   .app-user { display: none; }
+}
+@media (max-width: 480px) {
+  .hero h1 { font-size: 30px; }
+  .hero-lead { font-size: 15px; }
+  .cta-title { font-size: 26px; }
+  .conn-grid { grid-template-columns: 1fr 1fr; }
+  .trust-grid { grid-template-columns: 1fr; }
 }
