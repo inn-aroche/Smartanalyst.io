@@ -1,11 +1,37 @@
 ---
 import DarkBase from '../../layouts/DarkBase.astro';
 import '../../styles/landing.css';
+import { PLANS, PLAN_ORDER } from '@smartanalyst/shared/pricing';
+
+const softwareApplication = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'SmartAnalyst',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  url: 'https://smartanalyst.io/en',
+  description:
+    'Conversational AI marketing analyst. Connect GA4, Meta Ads, Google Ads, Stripe and Search Console and get structured answers about your performance — causes, evidence and recommended actions.',
+  offers: PLAN_ORDER.map((key) => ({
+    '@type': 'Offer',
+    name: PLANS[key].label,
+    price: PLANS[key].priceEurMonth,
+    priceCurrency: 'EUR',
+    priceSpecification: {
+      '@type': 'UnitPriceSpecification',
+      price: PLANS[key].priceEurMonth,
+      priceCurrency: 'EUR',
+      unitText: 'MONTH',
+    },
+    availability: 'https://schema.org/InStock',
+  })),
+};
 ---
 <DarkBase
   title="home"
   description="Ask any question about your marketing performance. Get structured answers with root causes, evidence and recommended actions — instantly."
   locale="en"
+  jsonLd={[softwareApplication]}
 >
   <!-- ─── Hero ────────────────────────────────────────────────────────── -->
   <section class="hero">

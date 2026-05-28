@@ -4,7 +4,7 @@ import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import { STRINGS, switchLocalePath } from '../i18n/strings.js';
 
-const { title, description, locale = 'en' } = Astro.props;
+const { title, description, locale = 'en', jsonLd = [] } = Astro.props;
 const siteName = 'SmartAnalyst';
 const fullTitle = title === 'home'
   ? (locale === 'fr'
@@ -14,8 +14,34 @@ const fullTitle = title === 'home'
 
 const altLocale = locale === 'en' ? 'fr' : 'en';
 const altPath = switchLocalePath(Astro.url.pathname, altLocale);
-const canonical = new URL(Astro.url.pathname, Astro.site || 'https://smartanalyst.io').href;
-const altHref = new URL(altPath, Astro.site || 'https://smartanalyst.io').href;
+const siteUrl = Astro.site || 'https://smartanalyst.io';
+const canonical = new URL(Astro.url.pathname, siteUrl).href;
+const altHref = new URL(altPath, siteUrl).href;
+const ogImage = new URL('/og-image.svg', siteUrl).href;
+
+// Org + WebSite JSON-LD shipped on every page. SoftwareApplication, FAQPage
+// and any page-specific entries come through the `jsonLd` prop.
+const baseJsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: siteName,
+    url: 'https://smartanalyst.io',
+    logo: new URL('/favicon.svg', siteUrl).href,
+    description:
+      locale === 'fr'
+        ? 'Analyste marketing IA. Connecte GA4, Meta Ads, Google Ads, Stripe et Search Console et obtient des réponses structurées sur tes performances marketing.'
+        : 'AI marketing data analyst. Connect GA4, Meta Ads, Google Ads, Stripe and Search Console and get structured answers about your marketing performance.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteName,
+    url: 'https://smartanalyst.io',
+    inLanguage: ['en', 'fr'],
+  },
+];
+const allJsonLd = [...baseJsonLd, ...jsonLd];
 ---
 <!doctype html>
 <html lang={locale}>
@@ -24,17 +50,29 @@ const altHref = new URL(altPath, Astro.site || 'https://smartanalyst.io').href;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={canonical} />
     <link rel="alternate" hreflang={locale} href={canonical} />
     <link rel="alternate" hreflang={altLocale} href={altHref} />
-    <link rel="alternate" hreflang="x-default" href={new URL(locale === 'en' ? Astro.url.pathname : altPath, Astro.site || 'https://smartanalyst.io').href} />
+    <link rel="alternate" hreflang="x-default" href={new URL(locale === 'en' ? Astro.url.pathname : altPath, siteUrl).href} />
 
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
     <meta property="og:locale" content={locale === 'fr' ? 'fr_FR' : 'en_US'} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content={siteName} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {allJsonLd.map((data) => (
+      <script type="application/ld+json" set:html={JSON.stringify(data)} />
+    ))}
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

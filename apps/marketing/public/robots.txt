@@ -1,0 +1,46 @@
+# SmartAnalyst — crawler policy
+#
+# Default: allow everything. Marketing pages are meant to be discovered.
+# We do not ship a User-agent block for the SaaS app (app.smartanalyst.io)
+# from here — that subdomain serves its own robots if needed.
+
+User-agent: *
+Allow: /
+
+# Block the JS redirector at the apex from being indexed twice.
+# (It already has <meta name="robots" content="noindex">, but be explicit.)
+Disallow: /index.html
+
+# Explicit signals for AI / search crawlers — match the public stance:
+# the marketing copy is fine to learn from and to surface in AI answers.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://smartanalyst.io/sitemap-index.xml
