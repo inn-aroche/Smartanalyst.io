@@ -26,7 +26,7 @@ const faqEntries = [
   },
   {
     q: 'L’IA est-elle limitée sur le plan Découverte ?',
-    a: "Non — l’IA conversationnelle est illimitée sur tous les plans. La limite Découverte porte sur le nombre d’insights proactifs auto-générés par mois (3 vs 100+ sur les plans payants) et sur les connecteurs (1 seul).",
+    a: "Oui — chaque plan inclut un quota mensuel de crédits IA (messages au modèle). Découverte est calibré pour évaluer le produit, Starter pour un usage solo régulier, Pro et Agence pour une utilisation intensive multi-clients. Tu vois ton solde en temps réel et reçois une alerte à 80 %. Pas de surfacturation surprise.",
   },
   {
     q: 'Mes données sont-elles en sécurité ?',
@@ -103,7 +103,7 @@ const productJsonLd = {
                 <li>{formatQuota(plan.quotas.insightsPerMonth)} insights / mois</li>
                 <li>{formatWhiteLabel(plan.quotas.whiteLabel)}</li>
                 <li>{plan.quotas.autoSendReports ? 'Envoi auto des rapports le 1ᵉʳ' : 'Pas d’envoi auto'}</li>
-                <li>IA conversationnelle illimitée</li>
+                <li>Quota IA mensuel inclus</li>
               </ul>
               {plan.priceEurMonth === 0 ? (
                 <a href="https://app.smartanalyst.io/signup" class="btn" style="justify-content:center">Commencer</a>
@@ -189,7 +189,7 @@ const productJsonLd = {
         </div>
         <div class="sa-card">
           <h3>L’IA est-elle limitée sur le plan Découverte ?</h3>
-          <div class="card-body">Non — l’IA conversationnelle est <strong>illimitée sur tous les plans</strong>. La limite Découverte porte sur le nombre d’insights proactifs auto-générés par mois (3 vs 100+ sur les plans payants) et sur les connecteurs (1 seul).</div>
+          <div class="card-body">Oui — chaque plan inclut un <strong>quota mensuel de crédits IA</strong> (messages au modèle). Découverte est calibré pour évaluer le produit, Starter pour un usage solo régulier, Pro et Agence pour une utilisation intensive multi-clients. Tu vois ton solde en temps réel et reçois une alerte à 80 %. Pas de surfacturation surprise.</div>
         </div>
         <div class="sa-card">
           <h3>Mes données sont-elles en sécurité ?</h3>

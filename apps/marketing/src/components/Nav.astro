@@ -16,7 +16,9 @@ const current = LOCALES.find((l) => l.code === locale);
     <!-- Desktop nav links -->
     <div class="nav-links">
       <a href={lp('/product')}>{t.nav.product}</a>
+      <a href={lp('/use-cases/agency')}>{t.nav.useCases}</a>
       <a href={lp('/pricing')}>{t.nav.pricing}</a>
+      <a href={lp('/resources')}>{t.nav.resources}</a>
       <a href={lp('/security')}>{t.nav.security}</a>
     </div>
 
@@ -52,7 +54,9 @@ const current = LOCALES.find((l) => l.code === locale);
   <div class="nav-mobile" id="nav-mobile" hidden>
     <div class="nav-mobile-inner">
       <a href={lp('/product')} class="nav-mobile-link">{t.nav.product}</a>
+      <a href={lp('/use-cases/agency')} class="nav-mobile-link">{t.nav.useCases}</a>
       <a href={lp('/pricing')} class="nav-mobile-link">{t.nav.pricing}</a>
+      <a href={lp('/resources')} class="nav-mobile-link">{t.nav.resources}</a>
       <a href={lp('/security')} class="nav-mobile-link">{t.nav.security}</a>
 
       <div class="nav-mobile-sep"></div>
