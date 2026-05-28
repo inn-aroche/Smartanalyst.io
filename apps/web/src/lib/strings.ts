@@ -1,0 +1,352 @@
+// Flat dictionary of all user-facing strings, EN + FR.
+// `fr` is typed `typeof en` so a missing translation is a compile error.
+// Keep keys grouped by prefix (login., dashboard., …) for readability.
+
+const en = {
+  // ━━━ Common ━━━
+  'common.signOut': 'Sign out',
+  'common.email': 'Email',
+  'common.password': 'Password',
+  'common.you': 'You',
+  'common.or': 'or',
+  'common.loading': 'Loading…',
+  'common.back': 'Back',
+
+  // ━━━ Nav / layout ━━━
+  'nav.workspace': 'Workspace',
+  'nav.noWorkspace': 'No workspace',
+  'nav.dashboard': 'Dashboard',
+  'nav.connectors': 'Connectors',
+  'nav.chat': 'Chat',
+  'nav.reports': 'Reports',
+  'nav.files': 'Files',
+  'nav.settings': 'Settings',
+  'nav.soon': 'soon',
+
+  // ━━━ Locale switcher ━━━
+  'locale.label': 'Language',
+  'locale.english': 'English',
+  'locale.french': 'Français',
+
+  // ━━━ Login ━━━
+  'login.welcomeBack': 'Welcome back.',
+  'login.subtitle': 'Sign in to your SmartAnalyst workspace.',
+  'login.emailPlaceholder': 'you@company.com',
+  'login.passwordPlaceholder': '••••••••••••',
+  'login.submit': 'Sign in',
+  'login.submitting': 'Signing in…',
+  'login.somethingWentWrong': 'Something went wrong',
+  'login.newToSmartAnalyst': 'New to SmartAnalyst?',
+  'login.createAccount': 'Create an account',
+  'login.googleButton': 'Continue with Google',
+  'login.googleRedirecting': 'Redirecting…',
+  'login.googleStartError': 'Could not start Google sign-in',
+
+  // ━━━ Signup ━━━
+  'signup.title': 'Create your workspace.',
+  'signup.subtitle': 'Get started in under a minute.',
+  'signup.organizationName': 'Organization name',
+  'signup.organizationPlaceholder': 'Acme Inc.',
+  'signup.workEmail': 'Work email',
+  'signup.passwordPlaceholder': 'At least 12 characters',
+  'signup.passwordHint': '12+ characters. Use a passphrase you’ll remember.',
+  'signup.submit': 'Create account',
+  'signup.submitting': 'Creating account…',
+  'signup.alreadyHaveAccount': 'Already have an account?',
+  'signup.signIn': 'Sign in',
+  'signup.googleButton': 'Sign up with Google',
+
+  // ━━━ Auth callback ━━━
+  'callback.signingIn': 'Signing you in…',
+  'callback.oneSec': 'One sec.',
+  'callback.failedTitle': 'Google sign-in failed',
+  'callback.backToLogin': 'Back to sign-in',
+  'callback.err.accessDenied': 'You denied access to Google.',
+  'callback.err.notConfigured':
+    'Google sign-in isn’t enabled on the server yet.',
+  'callback.err.codeExchange': 'Google rejected the authorization code. Try again.',
+  'callback.err.supabase':
+    'Supabase rejected the Google session. Check that the provider is enabled.',
+  'callback.err.stateInvalid':
+    'The link expired. Try again from the sign-in page.',
+  'callback.err.stateMissing': 'Invalid link. Try again.',
+  'callback.err.missingCodeOrState': 'Invalid Google response. Try again.',
+  'callback.err.missingResponse': 'Missing response.',
+  'callback.err.incompleteResponse': 'Incomplete response. Try again.',
+  'callback.err.malformed': 'Malformed response.',
+  'callback.err.generic': 'Google error: {{code}}',
+
+  // ━━━ Dashboard ━━━
+  'dashboard.overview': 'Overview',
+  'dashboard.greetingNamed': 'Hey {{name}}, here’s what changed.',
+  'dashboard.greeting': 'Hey there, here’s what changed.',
+  'dashboard.window.7d': '7d',
+  'dashboard.window.30d': '30d',
+  'dashboard.window.90d': '90d',
+  'dashboard.emptyConnectorsTitle': 'Connect a data source to start.',
+  'dashboard.emptyConnectorsBody':
+    'Plug GA4, Meta Ads or Stripe in 2 clicks. We’ll begin syncing the last 90 days so your dashboard fills up automatically.',
+  'dashboard.addConnector': 'Add a connector →',
+  'dashboard.couldNotLoad': 'Could not load metrics. {{message}}',
+  'dashboard.tile.syncing': 'Syncing…',
+  'dashboard.tile.noData': 'No data yet',
+  'dashboard.tile.noBaseline': 'vs. previous: no baseline',
+  'dashboard.tile.vsPrevious': 'vs. previous period',
+  'dashboard.next.01.title': 'Connect more sources',
+  'dashboard.next.01.body':
+    'The more data you connect, the sharper the AI’s cross-source insights become.',
+  'dashboard.next.01.cta': 'Open connectors',
+  'dashboard.next.02.title': 'Ask your first question',
+  'dashboard.next.02.body':
+    'Try “What changed this week?” or “Why did CVR drop yesterday?”.',
+  'dashboard.next.02.cta': 'Open chat',
+  'dashboard.next.03.title': 'Schedule a weekly report',
+  'dashboard.next.03.body':
+    'Auto-generated PDF, sent every Monday with an exec summary.',
+  'dashboard.next.03.cta': 'Configure',
+  'dashboard.tile.sessions': 'Sessions',
+  'dashboard.tile.conversions': 'Conversions',
+  'dashboard.tile.revenue': 'Revenue',
+  'dashboard.tile.adSpend': 'Ad spend',
+
+  // ━━━ Connectors ━━━
+  'connectors.kicker': 'Integrations',
+  'connectors.title': 'Connect your data sources.',
+  'connectors.subtitle':
+    '{{available}} live · {{soon}} on the roadmap. Don’t see yours?',
+  'connectors.tellUs': 'Tell us',
+  'connectors.searchPlaceholder': 'Search integrations…',
+  'connectors.category.all': 'All',
+  'connectors.category.Analytics': 'Analytics',
+  'connectors.category.Advertising': 'Advertising',
+  'connectors.category.Payments': 'Payments',
+  'connectors.category.CRM': 'CRM',
+  'connectors.category.Email & SMS': 'Email & SMS',
+  'connectors.category.Ecommerce': 'Ecommerce',
+  'connectors.category.Product & Events': 'Product & Events',
+  'connectors.category.SEO': 'SEO',
+  'connectors.category.Social': 'Social',
+  'connectors.category.Support': 'Support',
+  'connectors.category.Data warehouse': 'Data warehouse',
+  'connectors.category.Spreadsheet & Files': 'Spreadsheet & Files',
+  'connectors.section.available': 'Available',
+  'connectors.section.soon': 'Coming soon',
+  'connectors.emptyResults': 'No integration matches your search.',
+  'connectors.badge.connected': 'Connected',
+  'connectors.badge.soon': 'Soon',
+  'connectors.auth.oauth': 'OAuth',
+  'connectors.auth.apiKey': 'API key',
+  'connectors.action.connect': 'Connect',
+  'connectors.action.opening': 'Opening…',
+  'connectors.action.disconnect': 'Disconnect',
+  'connectors.action.disconnecting': 'Disconnecting…',
+  'connectors.action.notifyMe': 'Notify me',
+  'connectors.confirmDisconnect': 'Disconnect {{name}}?',
+  'connectors.err.startOauth': 'Could not start the OAuth flow',
+  'connectors.err.disconnect': 'Could not disconnect',
+
+  // ━━━ Settings ━━━
+  'settings.kicker': 'Settings',
+  'settings.title': 'Account & workspace.',
+  'settings.section.profile': 'Profile',
+  'settings.section.workspace': 'Workspace',
+  'settings.section.security': 'Security',
+  'settings.section.session': 'Session',
+  'settings.section.language': 'Language',
+  'settings.section.dangerZone': 'Danger zone',
+  'settings.field.fullName': 'Full name',
+  'settings.field.userId': 'User ID',
+  'settings.field.workspaceName': 'Name',
+  'settings.field.workspaceId': 'Workspace ID',
+  'settings.field.yourRole': 'Your role',
+  'settings.password.title': 'Password',
+  'settings.password.body':
+    'Reset your password via the email flow. We’ll send you a magic link.',
+  'settings.password.button': 'Reset password',
+  'settings.signOut.title': 'Sign out everywhere',
+  'settings.signOut.body': 'End this session and invalidate the refresh token.',
+  'settings.delete.title': 'Delete workspace',
+  'settings.delete.body':
+    'Permanently remove this workspace and all its data. This can’t be undone.',
+  'settings.delete.button': 'Delete',
+  'settings.language.body':
+    'Change the language of the interface. Your choice is saved on this device.',
+} as const
+
+const fr: Record<keyof typeof en, string> = {
+  // ━━━ Common ━━━
+  'common.signOut': 'Se déconnecter',
+  'common.email': 'Email',
+  'common.password': 'Mot de passe',
+  'common.you': 'Toi',
+  'common.or': 'ou',
+  'common.loading': 'Chargement…',
+  'common.back': 'Retour',
+
+  // ━━━ Nav / layout ━━━
+  'nav.workspace': 'Espace',
+  'nav.noWorkspace': 'Aucun espace',
+  'nav.dashboard': 'Tableau de bord',
+  'nav.connectors': 'Connecteurs',
+  'nav.chat': 'Chat',
+  'nav.reports': 'Rapports',
+  'nav.files': 'Fichiers',
+  'nav.settings': 'Paramètres',
+  'nav.soon': 'bientôt',
+
+  // ━━━ Locale switcher ━━━
+  'locale.label': 'Langue',
+  'locale.english': 'English',
+  'locale.french': 'Français',
+
+  // ━━━ Login ━━━
+  'login.welcomeBack': 'Bon retour.',
+  'login.subtitle': 'Connecte-toi à ton espace SmartAnalyst.',
+  'login.emailPlaceholder': 'toi@entreprise.com',
+  'login.passwordPlaceholder': '••••••••••••',
+  'login.submit': 'Se connecter',
+  'login.submitting': 'Connexion…',
+  'login.somethingWentWrong': 'Une erreur est survenue',
+  'login.newToSmartAnalyst': 'Nouveau sur SmartAnalyst ?',
+  'login.createAccount': 'Créer un compte',
+  'login.googleButton': 'Continuer avec Google',
+  'login.googleRedirecting': 'Redirection…',
+  'login.googleStartError': 'Impossible de démarrer la connexion Google',
+
+  // ━━━ Signup ━━━
+  'signup.title': 'Crée ton espace de travail.',
+  'signup.subtitle': 'Prêt en moins d’une minute.',
+  'signup.organizationName': 'Nom de ton organisation',
+  'signup.organizationPlaceholder': 'Acme SAS',
+  'signup.workEmail': 'Email pro',
+  'signup.passwordPlaceholder': 'Au moins 12 caractères',
+  'signup.passwordHint':
+    '12 caractères minimum. Une passphrase facile à retenir, c’est parfait.',
+  'signup.submit': 'Créer le compte',
+  'signup.submitting': 'Création…',
+  'signup.alreadyHaveAccount': 'Déjà un compte ?',
+  'signup.signIn': 'Se connecter',
+  'signup.googleButton': 'S’inscrire avec Google',
+
+  // ━━━ Auth callback ━━━
+  'callback.signingIn': 'Connexion en cours…',
+  'callback.oneSec': 'Une seconde.',
+  'callback.failedTitle': 'Connexion Google échouée',
+  'callback.backToLogin': 'Retour à la connexion',
+  'callback.err.accessDenied': 'Tu as refusé l’accès Google.',
+  'callback.err.notConfigured':
+    'La connexion Google n’est pas encore activée côté serveur.',
+  'callback.err.codeExchange':
+    'Google a refusé le code d’autorisation. Réessaie.',
+  'callback.err.supabase':
+    'Supabase a refusé la session Google. Vérifie que le provider est activé.',
+  'callback.err.stateInvalid':
+    'Le lien a expiré. Réessaie depuis la page de connexion.',
+  'callback.err.stateMissing': 'Lien invalide. Réessaie.',
+  'callback.err.missingCodeOrState': 'Réponse Google invalide. Réessaie.',
+  'callback.err.missingResponse': 'Réponse manquante.',
+  'callback.err.incompleteResponse': 'Réponse incomplète. Réessaie.',
+  'callback.err.malformed': 'Réponse mal formée.',
+  'callback.err.generic': 'Erreur Google : {{code}}',
+
+  // ━━━ Dashboard ━━━
+  'dashboard.overview': 'Vue d’ensemble',
+  'dashboard.greetingNamed':
+    'Hello {{name}}, voici ce qui a changé.',
+  'dashboard.greeting': 'Hello, voici ce qui a changé.',
+  'dashboard.window.7d': '7j',
+  'dashboard.window.30d': '30j',
+  'dashboard.window.90d': '90j',
+  'dashboard.emptyConnectorsTitle': 'Connecte une source pour démarrer.',
+  'dashboard.emptyConnectorsBody':
+    'Branche GA4, Meta Ads ou Stripe en 2 clics. On commence à synchroniser les 90 derniers jours pour remplir ton tableau de bord automatiquement.',
+  'dashboard.addConnector': 'Ajouter un connecteur →',
+  'dashboard.couldNotLoad':
+    'Impossible de charger les métriques. {{message}}',
+  'dashboard.tile.syncing': 'Synchronisation…',
+  'dashboard.tile.noData': 'Pas encore de données',
+  'dashboard.tile.noBaseline': 'vs précédent : pas de base de comparaison',
+  'dashboard.tile.vsPrevious': 'vs période précédente',
+  'dashboard.next.01.title': 'Connecte plus de sources',
+  'dashboard.next.01.body':
+    'Plus tu connectes de données, plus les insights cross-sources de l’IA deviennent précis.',
+  'dashboard.next.01.cta': 'Ouvrir les connecteurs',
+  'dashboard.next.02.title': 'Pose ta première question',
+  'dashboard.next.02.body':
+    'Essaie “Qu’est-ce qui a changé cette semaine ?” ou “Pourquoi le taux de conversion a chuté hier ?”.',
+  'dashboard.next.02.cta': 'Ouvrir le chat',
+  'dashboard.next.03.title': 'Planifie un rapport hebdo',
+  'dashboard.next.03.body':
+    'PDF généré automatiquement, envoyé chaque lundi avec un résumé exécutif.',
+  'dashboard.next.03.cta': 'Configurer',
+  'dashboard.tile.sessions': 'Sessions',
+  'dashboard.tile.conversions': 'Conversions',
+  'dashboard.tile.revenue': 'Revenus',
+  'dashboard.tile.adSpend': 'Dépenses pub',
+
+  // ━━━ Connectors ━━━
+  'connectors.kicker': 'Intégrations',
+  'connectors.title': 'Connecte tes sources de données.',
+  'connectors.subtitle':
+    '{{available}} disponibles · {{soon}} dans la roadmap. La tienne n’y est pas ?',
+  'connectors.tellUs': 'Dis-le nous',
+  'connectors.searchPlaceholder': 'Rechercher une intégration…',
+  'connectors.category.all': 'Toutes',
+  'connectors.category.Analytics': 'Analytics',
+  'connectors.category.Advertising': 'Publicité',
+  'connectors.category.Payments': 'Paiements',
+  'connectors.category.CRM': 'CRM',
+  'connectors.category.Email & SMS': 'Email & SMS',
+  'connectors.category.Ecommerce': 'E-commerce',
+  'connectors.category.Product & Events': 'Produit & Événements',
+  'connectors.category.SEO': 'SEO',
+  'connectors.category.Social': 'Social',
+  'connectors.category.Support': 'Support',
+  'connectors.category.Data warehouse': 'Data warehouse',
+  'connectors.category.Spreadsheet & Files': 'Tableurs & Fichiers',
+  'connectors.section.available': 'Disponibles',
+  'connectors.section.soon': 'Bientôt',
+  'connectors.emptyResults': 'Aucune intégration ne correspond à ta recherche.',
+  'connectors.badge.connected': 'Connecté',
+  'connectors.badge.soon': 'Bientôt',
+  'connectors.auth.oauth': 'OAuth',
+  'connectors.auth.apiKey': 'Clé API',
+  'connectors.action.connect': 'Connecter',
+  'connectors.action.opening': 'Ouverture…',
+  'connectors.action.disconnect': 'Déconnecter',
+  'connectors.action.disconnecting': 'Déconnexion…',
+  'connectors.action.notifyMe': 'Me prévenir',
+  'connectors.confirmDisconnect': 'Déconnecter {{name}} ?',
+  'connectors.err.startOauth': 'Impossible de démarrer le flow OAuth',
+  'connectors.err.disconnect': 'Impossible de déconnecter',
+
+  // ━━━ Settings ━━━
+  'settings.kicker': 'Paramètres',
+  'settings.title': 'Compte & espace.',
+  'settings.section.profile': 'Profil',
+  'settings.section.workspace': 'Espace',
+  'settings.section.security': 'Sécurité',
+  'settings.section.session': 'Session',
+  'settings.section.language': 'Langue',
+  'settings.section.dangerZone': 'Zone dangereuse',
+  'settings.field.fullName': 'Nom complet',
+  'settings.field.userId': 'ID utilisateur',
+  'settings.field.workspaceName': 'Nom',
+  'settings.field.workspaceId': 'ID de l’espace',
+  'settings.field.yourRole': 'Ton rôle',
+  'settings.password.title': 'Mot de passe',
+  'settings.password.body':
+    'Réinitialise ton mot de passe par email. On t’envoie un lien magique.',
+  'settings.password.button': 'Réinitialiser le mot de passe',
+  'settings.signOut.title': 'Se déconnecter partout',
+  'settings.signOut.body':
+    'Termine cette session et invalide le refresh token.',
+  'settings.delete.title': 'Supprimer l’espace',
+  'settings.delete.body':
+    'Supprime définitivement cet espace et toutes ses données. Action irréversible.',
+  'settings.delete.button': 'Supprimer',
+  'settings.language.body':
+    'Change la langue de l’interface. Ton choix est gardé sur cet appareil.',
+}
+
+export const STRINGS = { en, fr }

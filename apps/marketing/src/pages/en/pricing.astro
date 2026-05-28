@@ -26,11 +26,67 @@ function whiteLabelEn(level) {
     default:            return level;
   }
 }
+
+// FAQPage JSON-LD: rich results in Google + citable answers for LLMs.
+// Keep in sync with the visible FAQ block below — these are the same Q/A.
+const faqEntries = [
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes. No commitment, no penalty. You keep access through the end of the paid period. After expiry, you have 7 days read-only to export your data — nothing is deleted abruptly.',
+  },
+  {
+    q: 'Is the trial really card-free?',
+    a: `Really. Email + password, that's it. ${TRIAL_DAYS} days of full access. You only pay if you decide to continue.`,
+  },
+  {
+    q: 'Is AI limited on the Discovery plan?',
+    a: 'No — conversational AI is unlimited on every plan. The Discovery limit is on auto-generated proactive insights (3/month vs 100+ on paid plans) and connectors (1 only).',
+  },
+  {
+    q: 'Is my data safe?',
+    a: 'EU hosting (Supabase, Ireland region). OAuth tokens encrypted with Supabase Vault. Row-Level Security across the whole database. GDPR by design.',
+  },
+  {
+    q: 'Which connectors are available today?',
+    a: 'GA4, Meta Ads (Facebook + Instagram), Google Ads, Stripe and Google Search Console. Roadmap: Shopify, HubSpot, Mailchimp, LinkedIn Ads.',
+  },
+  {
+    q: 'Do you bill in euros?',
+    a: 'Yes, in euros, VAT included. Monthly billing via Stripe. French VAT applied based on your status. Invoices downloadable from your dashboard.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqEntries.map(({ q, a }) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
+};
+
+const productJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'SmartAnalyst',
+  description:
+    'AI marketing data analyst. Connect GA4, Meta Ads, Google Ads, Stripe and Search Console and get structured answers about your performance.',
+  brand: { '@type': 'Brand', name: 'SmartAnalyst' },
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'EUR',
+    lowPrice: 0,
+    highPrice: Math.max(...PLAN_ORDER.map((k) => PLANS[k].priceEurMonth)),
+    offerCount: PLAN_ORDER.length,
+  },
+};
 ---
 <DarkBase
   title="Pricing"
   description="Discovery, Starter, Pro and Agency plans. 14-day free trial, no credit card. AI included in every plan."
   locale="en"
+  jsonLd={[productJsonLd, faqJsonLd]}
 >
   <section class="page-hero">
     <div class="glow" style="width:700px;height:500px;top:-100px;left:50%;transform:translateX(-50%);opacity:0.55"></div>

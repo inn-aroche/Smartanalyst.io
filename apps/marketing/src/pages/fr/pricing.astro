@@ -12,11 +12,67 @@ import {
 const trialNote = TRIAL_REQUIRES_CARD
   ? `${TRIAL_DAYS} jours d’essai gratuit`
   : `${TRIAL_DAYS} jours d’essai · sans carte bancaire`;
+
+// FAQPage JSON-LD: rich results in Google + citable answers for LLMs.
+// Keep in sync with the visible FAQ block below — these are the same Q/A.
+const faqEntries = [
+  {
+    q: 'Est-ce que je peux annuler à tout moment ?',
+    a: "Oui. Pas d’engagement, pas de pénalité. Tu gardes l’accès jusqu’à la fin de la période payée. Après expiration, tu as 7 jours en lecture seule pour exporter tes données — rien n’est supprimé brutalement.",
+  },
+  {
+    q: 'L’essai est vraiment sans carte bancaire ?',
+    a: `Vraiment. Email + mot de passe, c’est tout. ${TRIAL_DAYS} jours d’accès à toutes les features. Tu paies seulement si tu décides de continuer.`,
+  },
+  {
+    q: 'L’IA est-elle limitée sur le plan Découverte ?',
+    a: "Non — l’IA conversationnelle est illimitée sur tous les plans. La limite Découverte porte sur le nombre d’insights proactifs auto-générés par mois (3 vs 100+ sur les plans payants) et sur les connecteurs (1 seul).",
+  },
+  {
+    q: 'Mes données sont-elles en sécurité ?',
+    a: 'Hébergement européen (Supabase, région Irlande). Chiffrement des tokens OAuth via Supabase Vault. Row-Level Security sur toute la base. Conformité RGPD by design.',
+  },
+  {
+    q: 'Quels connecteurs sont disponibles aujourd’hui ?',
+    a: 'GA4, Meta Ads (Facebook + Instagram), Google Ads, Stripe et Google Search Console. La roadmap inclut Shopify, HubSpot, Mailchimp et LinkedIn Ads.',
+  },
+  {
+    q: 'Vous facturez en euros ?',
+    a: 'Oui, en euros, TTC. Facturation mensuelle via Stripe. TVA française appliquée selon ton statut. Factures téléchargeables dans le back-office.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqEntries.map(({ q, a }) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
+};
+
+const productJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'SmartAnalyst',
+  description:
+    'Analyste marketing IA. Connecte GA4, Meta Ads, Google Ads, Stripe et Search Console et obtient des réponses structurées sur tes performances.',
+  brand: { '@type': 'Brand', name: 'SmartAnalyst' },
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'EUR',
+    lowPrice: 0,
+    highPrice: Math.max(...PLAN_ORDER.map((k) => PLANS[k].priceEurMonth)),
+    offerCount: PLAN_ORDER.length,
+  },
+};
 ---
 <DarkBase
   title="Tarifs"
   description="Plans Découverte, Starter, Pro et Agence. 14 jours d’essai gratuit sans carte bancaire. IA incluse dans tous les plans."
   locale="fr"
+  jsonLd={[productJsonLd, faqJsonLd]}
 >
   <section class="page-hero">
     <div class="glow" style="width:700px;height:500px;top:-100px;left:50%;transform:translateX(-50%);opacity:0.55"></div>

@@ -3,7 +3,9 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import Brand from '@/components/Brand'
 import GoogleSignInButton, { OrSeparator } from '@/components/GoogleSignInButton'
+import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
+import { useT } from '@/lib/i18n'
 
 type LocationState = { from?: string }
 
@@ -11,6 +13,7 @@ export default function Login() {
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const t = useT()
   const redirectTo = (location.state as LocationState | null)?.from ?? '/'
 
   const [email, setEmail] = useState('')
@@ -30,7 +33,7 @@ export default function Login() {
       await login(email, password)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : t('login.somethingWentWrong'))
     } finally {
       setSubmitting(false)
     }
@@ -38,6 +41,9 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-6 py-12">
+      <div className="absolute right-5 top-5 z-20">
+        <LocaleSwitcher />
+      </div>
       <BackgroundGlow />
       <div className="relative z-10 w-full max-w-md">
         <div className="mb-10 flex justify-center">
@@ -45,11 +51,9 @@ export default function Login() {
         </div>
         <div className="sa-card">
           <h1 className="font-head text-2xl font-bold text-text-1">
-            Welcome back.
+            {t('login.welcomeBack')}
           </h1>
-          <p className="mt-1 text-sm text-text-2">
-            Sign in to your SmartAnalyst workspace.
-          </p>
+          <p className="mt-1 text-sm text-text-2">{t('login.subtitle')}</p>
 
           <div className="mt-7">
             <GoogleSignInButton returnTo={redirectTo} />
@@ -60,7 +64,7 @@ export default function Login() {
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
               <label className="sa-label" htmlFor="email">
-                Email
+                {t('common.email')}
               </label>
               <input
                 id="email"
@@ -70,12 +74,12 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder={t('login.emailPlaceholder')}
               />
             </div>
             <div>
               <label className="sa-label" htmlFor="password">
-                Password
+                {t('common.password')}
               </label>
               <input
                 id="password"
@@ -85,7 +89,7 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder={t('login.passwordPlaceholder')}
               />
             </div>
 
@@ -100,17 +104,17 @@ export default function Login() {
               disabled={submitting}
               className="sa-btn sa-btn-primary mt-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? 'Signing in…' : 'Sign in'}
+              {submitting ? t('login.submitting') : t('login.submit')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-text-2">
-            New to SmartAnalyst?{' '}
+            {t('login.newToSmartAnalyst')}{' '}
             <Link
               to="/signup"
               className="text-brand-blue hover:text-brand-cyan"
             >
-              Create an account
+              {t('login.createAccount')}
             </Link>
           </p>
         </div>

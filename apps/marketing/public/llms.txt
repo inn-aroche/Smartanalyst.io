@@ -1,0 +1,53 @@
+# SmartAnalyst
+
+> SmartAnalyst is an AI-powered marketing analyst that turns raw data from GA4, Meta Ads, Google Ads, Stripe and Search Console into clear answers — with causes, evidence and recommended actions.
+
+Ask any question about your marketing performance ("Why did conversions drop yesterday?", "Which campaign drove revenue last week?") and get a structured, source-cited answer in seconds. No more switching between five dashboards to build a story by hand.
+
+## What it does
+
+- **Cross-source intelligence**: connects GA4, Meta Ads, Facebook + Instagram, Google Ads, Stripe, Google Search Console (roadmap: Shopify, HubSpot, Mailchimp, LinkedIn Ads)
+- **Canonical metrics layer**: normalizes "sessions" (GA4) / "reach" (Meta) / "impressions" (Google Ads) / "successful_payments" (Stripe) into one consistent vocabulary so the AI never confuses apples and oranges
+- **Conversational analyst**: ask in plain French or English; answers come with the underlying metric values, time range and contributing factors
+- **Proactive insights**: weekly Monday email surfacing anomalies, opportunities and risks across all connected sources
+- **Reports**: auto-generated monthly PDFs with executive summary, ready to send to stakeholders or clients
+- **White-label**: agencies on Pro/Agency plans can rebrand the dashboard and reports with their logo and colors
+
+## Who it's for
+
+- **Marketing freelancers** piloting their own performance
+- **Agencies** managing 5–20+ client portfolios (white-label, multi-workspace)
+- **Startup / SMB founders** preparing monthly investor updates without a data team
+
+## Pricing
+
+- **Découverte (Free)** — 1 workspace, 1 connector, 3 proactive insights / month. No card required. 14-day full-feature trial.
+- **Starter — 99 €/month HT** — 5 workspaces, 3 connectors, 100 insights, auto-send reports, logo white-label.
+- **Pro — 199 €/month HT** — 20 workspaces, all P1 connectors, 500 insights, logo + colors white-label. ★ recommended for agencies.
+- **Agency — 399 €/month HT** — unlimited workspaces, all connectors, unlimited insights, full white-label.
+
+All plans include unlimited AI conversation. Cancel anytime, EU hosting (Supabase Ireland), invoices in euros incl. VAT.
+
+## Architecture & security
+
+- Frontend: Astro (marketing) + React/Vite (SaaS app at app.smartanalyst.io)
+- Backend: Node + Express, Postgres via Supabase, BullMQ workers, Redis
+- AI: Anthropic Claude (Haiku for fast, Sonnet for deep analysis)
+- OAuth tokens encrypted at rest via Supabase Vault
+- Row-Level Security on every table — multi-tenancy by design
+- GDPR-ready: data hosted in Ireland, audit logs, right-to-delete
+
+## Canonical URLs
+
+- Landing (EN): https://smartanalyst.io/en
+- Landing (FR): https://smartanalyst.io/fr
+- Product: https://smartanalyst.io/en/product · https://smartanalyst.io/fr/product
+- Pricing: https://smartanalyst.io/en/pricing · https://smartanalyst.io/fr/pricing
+- Security: https://smartanalyst.io/en/security · https://smartanalyst.io/fr/security
+- Web app (login): https://app.smartanalyst.io/login
+- API base: https://api.smartanalyst.io
+
+## Contact
+
+- Site: https://smartanalyst.io
+- Sitemap: https://smartanalyst.io/sitemap-index.xml
