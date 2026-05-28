@@ -1,0 +1,77 @@
+---
+import DarkBase from '../../../layouts/DarkBase.astro';
+import '../../../styles/subpage.css';
+
+const RESOURCES = [
+  {
+    icon: '◉',
+    title: 'Glossaire marketing & analytics',
+    desc: '40+ termes essentiels (ROAS, CAC, LTV, attribution, cohorte…) définis simplement. Indexable et lisible en 5 minutes.',
+    meta: '40 entrées · 7 catégories',
+    href: '/fr/resources/glossary/',
+  },
+  {
+    icon: '◈',
+    title: 'Guides pratiques',
+    desc: 'Tutos pas à pas pour connecter GA4, calculer ton ROAS blended, monter ton funnel d’attribution. (à venir)',
+    meta: 'Bientôt',
+    href: '#',
+    soon: true,
+  },
+  {
+    icon: '◐',
+    title: 'Blog',
+    desc: 'Analyses sur la perf marketing, la donnée first-party, et les transformations en cours sur les plateformes pub. (à venir)',
+    meta: 'Bientôt',
+    href: '#',
+    soon: true,
+  },
+  {
+    icon: '◍',
+    title: 'Templates téléchargeables',
+    desc: 'Modèles de rapports mensuels, dashboards agence, calculateurs unit-economics. (à venir)',
+    meta: 'Bientôt',
+    href: '#',
+    soon: true,
+  },
+];
+---
+<DarkBase
+  title="Ressources"
+  description="Glossaire marketing & analytics, guides pratiques, blog et templates pour piloter ta performance avec rigueur."
+  locale="fr"
+>
+  <section class="sp-hero">
+    <div class="sp-hero-glow"></div>
+    <div class="sp-hero-inner">
+      <span class="sp-kicker">Ressources</span>
+      <h1 class="sp-title">Tout pour piloter ta perf — avec rigueur.</h1>
+      <p class="sp-hero-lead">
+        Glossaire, guides, blog, templates. Le matériel qu’on aurait aimé avoir en début de carrière marketing — accessible, sans jargon inutile, mis à jour régulièrement.
+      </p>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <div class="sp-related-grid" style="grid-template-columns:repeat(2,1fr)">
+        {RESOURCES.map((r) => (
+          <a href={r.href} class="sp-res-card" style={r.soon ? 'opacity:0.55;pointer-events:none' : ''}>
+            <div class="sp-res-icon">{r.icon}</div>
+            <h3>{r.title}</h3>
+            <p>{r.desc}</p>
+            <div class="sp-res-meta">{r.meta}</div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-cta">
+    <div class="sp-cta-inner">
+      <h2>Une ressource manque ?</h2>
+      <p>On publie en fonction des demandes. Écris-nous ce que tu aimerais voir.</p>
+      <a href="mailto:hello@smartanalyst.io" class="btn btn-primary">Nous suggérer un sujet</a>
+    </div>
+  </section>
+</DarkBase>

@@ -1,0 +1,99 @@
+---
+import DarkBase from '../../../layouts/DarkBase.astro';
+import '../../../styles/subpage.css';
+import { PRODUCT_FEATURES } from '../../../data/product-features.js';
+
+export async function getStaticPaths() {
+  return PRODUCT_FEATURES.map((feature) => ({
+    params: { slug: feature.slug },
+    props: { feature },
+  }));
+}
+
+const { feature } = Astro.props;
+const t = feature.en;
+
+const related = PRODUCT_FEATURES.filter((f) => f.slug !== feature.slug).slice(0, 3);
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://smartanalyst.io/en' },
+    { '@type': 'ListItem', position: 2, name: 'Product', item: 'https://smartanalyst.io/en/product' },
+    { '@type': 'ListItem', position: 3, name: t.kicker, item: `https://smartanalyst.io/en/product/${feature.slug}` },
+  ],
+};
+---
+<DarkBase title={t.title.replace(/\.$/, '')} description={t.hero} locale="en" jsonLd={[breadcrumbJsonLd]}>
+  <section class="sp-hero">
+    <div class="sp-hero-glow"></div>
+    <div class="sp-hero-inner">
+      <span class="sp-kicker">{t.kicker}</span>
+      <h1 class="sp-title">{t.title}</h1>
+      <p class="sp-tagline">{t.tagline}</p>
+      <p class="sp-hero-lead">{t.hero}</p>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">{t.h2_problem}</h2>
+      <p class="sp-prose">{t.problem}</p>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">{t.h2_how}</h2>
+      <div class="sp-steps">
+        {t.how.map((step) => (
+          <div class="sp-step">
+            <h3 class="sp-step-title">{step.title}</h3>
+            <p class="sp-step-body">{step.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">{t.h2_examples}</h2>
+      <ul class="sp-examples">
+        {t.examples.map((ex) => <li>{ex}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">{t.h2_under_hood}</h2>
+      <p class="sp-prose">{t.under_hood}</p>
+    </div>
+  </section>
+
+  <section class="sp-cta">
+    <div class="sp-hero-glow" style="top:-40px;opacity:0.6"></div>
+    <div class="sp-cta-inner">
+      <h2>{t.cta_title}</h2>
+      <p>{t.cta_body}</p>
+      <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Start the free trial</a>
+    </div>
+  </section>
+
+  <section class="sp-related">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">More features</h2>
+      <div class="sp-related-grid">
+        {related.map((f) => (
+          <a href={`/en/product/${f.slug}/`} class="sp-related-card">
+            <div class="sp-related-icon">{f.icon}</div>
+            <h3 class="sp-related-title">{f.en.kicker}</h3>
+            <p class="sp-related-tagline">{f.en.tagline}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</DarkBase>

@@ -1,0 +1,89 @@
+---
+import DarkBase from '../../../layouts/DarkBase.astro';
+import '../../../styles/subpage.css';
+import { USE_CASES } from '../../../data/use-cases.js';
+
+export async function getStaticPaths() {
+  return USE_CASES.map((useCase) => ({
+    params: { slug: useCase.slug },
+    props: { useCase },
+  }));
+}
+
+const { useCase } = Astro.props;
+const t = useCase.fr;
+
+const related = USE_CASES.filter((u) => u.slug !== useCase.slug);
+---
+<DarkBase title={t.title.replace(/\.$/, '')} description={t.hero} locale="fr">
+  <section class="sp-hero">
+    <div class="sp-hero-glow"></div>
+    <div class="sp-hero-inner">
+      <span class="sp-kicker">{t.kicker}</span>
+      <h1 class="sp-title">{t.title}</h1>
+      <p class="sp-tagline">{t.tagline}</p>
+      <p class="sp-hero-lead">{t.hero}</p>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">Ce qui fait mal aujourd’hui</h2>
+      <div class="sp-pains">
+        {t.pains.map((p) => (
+          <div class="sp-pain">
+            <h3>{p.title}</h3>
+            <p>{p.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">{t.h2_solution}</h2>
+      <div class="sp-steps">
+        {t.solution.map((s) => (
+          <div class="sp-step">
+            <h3 class="sp-step-title">{s.title}</h3>
+            <p class="sp-step-body">{s.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">{t.h2_workflow}</h2>
+      <ol class="sp-workflow">
+        {t.workflow.map((step) => <li>{step}</li>)}
+      </ol>
+    </div>
+  </section>
+
+  <section class="sp-cta">
+    <div class="sp-hero-glow" style="top:-40px;opacity:0.6"></div>
+    <div class="sp-cta-inner">
+      <h2>{t.cta_title}</h2>
+      <p>{t.cta_body}</p>
+      <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Démarrer l’essai gratuit</a>
+    </div>
+  </section>
+
+  <section class="sp-related">
+    <div class="sp-section-inner">
+      <h2 class="sp-h2">Autres profils</h2>
+      <div class="sp-related-grid">
+        {related.map((u) => (
+          <a href={`/fr/use-cases/${u.slug}/`} class="sp-related-card">
+            <div class="sp-related-icon">{u.icon}</div>
+            <h3 class="sp-related-title">{u.fr.kicker}</h3>
+            <p class="sp-related-tagline">{u.fr.tagline}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</DarkBase>

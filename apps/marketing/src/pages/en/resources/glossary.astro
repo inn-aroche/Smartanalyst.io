@@ -1,0 +1,66 @@
+---
+import DarkBase from '../../../layouts/DarkBase.astro';
+import '../../../styles/subpage.css';
+import { GLOSSARY_BY_CATEGORY, GLOSSARY } from '../../../data/glossary.js';
+
+const glossaryJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'DefinedTermSet',
+  name: 'Marketing & analytics glossary — SmartAnalyst',
+  url: 'https://smartanalyst.io/en/resources/glossary/',
+  hasDefinedTerm: GLOSSARY.map((e) => ({
+    '@type': 'DefinedTerm',
+    name: e.en.term,
+    alternateName: e.en.long,
+    description: e.en.def,
+    url: `https://smartanalyst.io/en/resources/glossary/#${e.slug}`,
+  })),
+};
+---
+<DarkBase
+  title="Marketing & analytics glossary"
+  description="40+ essential marketing and analytics terms defined simply: ROAS, CAC, LTV, attribution, cohort, MRR, NRR, and more."
+  locale="en"
+  jsonLd={[glossaryJsonLd]}
+>
+  <section class="sp-hero">
+    <div class="sp-hero-glow"></div>
+    <div class="sp-hero-inner">
+      <span class="sp-kicker">Resources · Glossary</span>
+      <h1 class="sp-title">Marketing & analytics glossary.</h1>
+      <p class="sp-hero-lead">
+        40+ essential terms defined simply, grouped by topic. Every entry has a stable anchor you can share: <code>#roas</code>, <code>#cac</code>, <code>#ltv</code>…
+      </p>
+      <div class="sp-glossary-toc">
+        {GLOSSARY_BY_CATEGORY.map((cat) => (
+          <a href={`#cat-${cat.id}`}>{cat.en} ({cat.entries.length})</a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sp-section">
+    <div class="sp-section-inner">
+      {GLOSSARY_BY_CATEGORY.map((cat) => (
+        <div class="sp-glossary-cat" id={`cat-${cat.id}`}>
+          <h3>{cat.en}</h3>
+          {cat.entries.map((entry) => (
+            <div class="sp-glossary-entry" id={entry.slug}>
+              <h4>{entry.en.term}</h4>
+              <p class="sp-glossary-long">{entry.en.long}</p>
+              <p>{entry.en.def}</p>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="sp-cta">
+    <div class="sp-cta-inner">
+      <h2>Missing a term?</h2>
+      <p>We’ll add it. Tell us what’s blocking you.</p>
+      <a href="mailto:hello@smartanalyst.io" class="btn btn-primary">Suggest a term</a>
+    </div>
+  </section>
+</DarkBase>
