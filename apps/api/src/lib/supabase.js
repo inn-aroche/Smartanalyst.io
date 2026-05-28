@@ -4,6 +4,12 @@
 // Source: docs/03_ARCHITECTURE_GLOBALE.md §3.2, docs/06_SUPABASE_BONNES_PRATIQUES.md
 
 const { createClient } = require('@supabase/supabase-js')
+// Supabase v2 ships Realtime, which needs a WebSocket impl. Node 20 has no
+// native WebSocket — without an explicit transport the client throws at
+// construction. Safe to drop once we bump the VPS runtime to Node 22+.
+const ws = require('ws')
+
+const REALTIME_OPTIONS = { transport: ws }
 
 let serviceRoleClient = null
 let anonClient = null
@@ -18,6 +24,7 @@ function getServiceRoleClient() {
           autoRefreshToken: false,
           persistSession: false,
         },
+        realtime: REALTIME_OPTIONS,
       },
     )
   }
@@ -31,6 +38,7 @@ function getAnonClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
+      realtime: REALTIME_OPTIONS,
     })
   }
   return anonClient
@@ -49,6 +57,7 @@ function getUserScopedClient(jwt) {
       autoRefreshToken: false,
       persistSession: false,
     },
+    realtime: REALTIME_OPTIONS,
   })
 }
 
