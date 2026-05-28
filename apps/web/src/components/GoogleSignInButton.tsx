@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { apiFetch } from '@/lib/api'
+import { useT } from '@/lib/i18n'
 
 type Props = {
   /** Where to send the user after a successful sign-in. Default: '/' */
@@ -8,10 +9,8 @@ type Props = {
   label?: string
 }
 
-export default function GoogleSignInButton({
-  returnTo = '/',
-  label = 'Continue with Google',
-}: Props) {
+export default function GoogleSignInButton({ returnTo = '/', label }: Props) {
+  const t = useT()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +26,7 @@ export default function GoogleSignInButton({
       window.location.href = res.authorize_url
     } catch (err) {
       setLoading(false)
-      setError(err instanceof Error ? err.message : 'Could not start Google sign-in')
+      setError(err instanceof Error ? err.message : t('login.googleStartError'))
     }
   }
 
@@ -40,7 +39,7 @@ export default function GoogleSignInButton({
         className="inline-flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-bg-2 px-4 py-2.5 text-sm font-medium text-text-1 transition hover:border-border-bright hover:bg-card disabled:cursor-not-allowed disabled:opacity-60"
       >
         <GoogleIcon />
-        {loading ? 'Redirecting…' : label}
+        {loading ? t('login.googleRedirecting') : (label ?? t('login.googleButton'))}
       </button>
       {error && (
         <div className="rounded-lg border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-xs text-brand-red">
@@ -81,10 +80,11 @@ function GoogleIcon() {
 }
 
 function OrSeparator() {
+  const t = useT()
   return (
     <div className="my-5 flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-text-3">
       <div className="h-px flex-1 bg-border" />
-      <span>or</span>
+      <span>{t('common.or')}</span>
       <div className="h-px flex-1 bg-border" />
     </div>
   )

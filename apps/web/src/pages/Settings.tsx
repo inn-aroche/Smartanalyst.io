@@ -1,8 +1,11 @@
 import AppLayout from '@/components/AppLayout'
+import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
+import { useT } from '@/lib/i18n'
 
 export default function SettingsPage() {
   const { state, logout } = useAuth()
+  const t = useT()
   const user = state.user
   const workspace = state.workspaces[0]
 
@@ -11,50 +14,68 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-3xl px-6 py-10">
         <div className="mb-8">
           <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
-            Settings
+            {t('settings.kicker')}
           </span>
           <h1 className="mt-2 font-head text-3xl font-bold text-text-1">
-            Account & workspace.
+            {t('settings.title')}
           </h1>
         </div>
 
-        <Section title="Profile">
-          <Field label="Full name" value={user?.full_name ?? '—'} />
-          <Field label="Email" value={user?.email ?? '—'} />
-          <Field label="User ID" value={user?.id ?? '—'} mono />
+        <Section title={t('settings.section.profile')}>
+          <Field label={t('settings.field.fullName')} value={user?.full_name ?? '—'} />
+          <Field label={t('common.email')} value={user?.email ?? '—'} />
+          <Field label={t('settings.field.userId')} value={user?.id ?? '—'} mono />
         </Section>
 
-        <Section title="Workspace">
-          <Field label="Name" value={workspace?.name ?? '—'} />
-          <Field label="Workspace ID" value={workspace?.id ?? '—'} mono />
-          <Field label="Your role" value={workspace?.role ?? '—'} />
+        <Section title={t('settings.section.workspace')}>
+          <Field label={t('settings.field.workspaceName')} value={workspace?.name ?? '—'} />
+          <Field label={t('settings.field.workspaceId')} value={workspace?.id ?? '—'} mono />
+          <Field label={t('settings.field.yourRole')} value={workspace?.role ?? '—'} />
         </Section>
 
-        <Section title="Security">
+        <Section title={t('settings.section.language')}>
           <div className="sa-card flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-text-1">Password</div>
+              <div className="text-sm font-semibold text-text-1">
+                {t('locale.label')}
+              </div>
               <div className="mt-1 text-sm text-text-2">
-                Reset your password via the email flow. We'll send you a magic link.
+                {t('settings.language.body')}
+              </div>
+            </div>
+            <LocaleSwitcher variant="full" align="right" />
+          </div>
+        </Section>
+
+        <Section title={t('settings.section.security')}>
+          <div className="sa-card flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-semibold text-text-1">
+                {t('settings.password.title')}
+              </div>
+              <div className="mt-1 text-sm text-text-2">
+                {t('settings.password.body')}
               </div>
             </div>
             <button
               type="button"
               className="sa-btn shrink-0 !text-xs"
               disabled
-              title="Coming soon — email-based password reset"
+              title={t('nav.soon')}
             >
-              Reset password
+              {t('settings.password.button')}
             </button>
           </div>
         </Section>
 
-        <Section title="Session">
+        <Section title={t('settings.section.session')}>
           <div className="sa-card flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-text-1">Sign out everywhere</div>
+              <div className="text-sm font-semibold text-text-1">
+                {t('settings.signOut.title')}
+              </div>
               <div className="mt-1 text-sm text-text-2">
-                End this session and invalidate the refresh token.
+                {t('settings.signOut.body')}
               </div>
             </div>
             <button
@@ -62,26 +83,28 @@ export default function SettingsPage() {
               onClick={() => void logout()}
               className="sa-btn shrink-0 !text-xs"
             >
-              Sign out
+              {t('common.signOut')}
             </button>
           </div>
         </Section>
 
-        <Section title="Danger zone">
+        <Section title={t('settings.section.dangerZone')}>
           <div className="sa-card flex items-center justify-between gap-4 border-brand-red/20">
             <div>
-              <div className="text-sm font-semibold text-text-1">Delete workspace</div>
+              <div className="text-sm font-semibold text-text-1">
+                {t('settings.delete.title')}
+              </div>
               <div className="mt-1 text-sm text-text-2">
-                Permanently remove this workspace and all its data. This can't be undone.
+                {t('settings.delete.body')}
               </div>
             </div>
             <button
               type="button"
               className="sa-btn shrink-0 border-brand-red/40 !text-xs text-brand-red"
               disabled
-              title="Coming soon"
+              title={t('nav.soon')}
             >
-              Delete
+              {t('settings.delete.button')}
             </button>
           </div>
         </Section>

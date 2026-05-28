@@ -9,6 +9,7 @@ import {
   type ConnectorDef,
 } from '@/lib/connectors'
 import { apiFetch, ApiError } from '@/lib/api'
+import { type StringKey, useT } from '@/lib/i18n'
 
 type WorkspaceConnector = {
   id: string
@@ -34,7 +35,12 @@ const CATEGORIES: ConnectorCategory[] = [
   'Spreadsheet & Files',
 ]
 
+function categoryKey(cat: ConnectorCategory): StringKey {
+  return `connectors.category.${cat}` as StringKey
+}
+
 export default function ConnectorsPage() {
+  const t = useT()
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<ConnectorCategory | 'All'>('All')
 
@@ -74,15 +80,18 @@ export default function ConnectorsPage() {
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8">
           <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
-            Integrations
+            {t('connectors.kicker')}
           </span>
           <h1 className="mt-2 font-head text-3xl font-bold text-text-1">
-            Connect your data sources.
+            {t('connectors.title')}
           </h1>
           <p className="mt-2 text-text-2">
-            {counts.available} live · {counts.soon} on the roadmap. Don't see yours?{' '}
+            {t('connectors.subtitle', {
+              available: counts.available,
+              soon: counts.soon,
+            })}{' '}
             <a href="mailto:hello@smartanalyst.io" className="text-brand-blue hover:text-brand-cyan">
-              Tell us
+              {t('connectors.tellUs')}
             </a>
             .
           </p>
@@ -92,19 +101,19 @@ export default function ConnectorsPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search integrations…"
+            placeholder={t('connectors.searchPlaceholder')}
             className="sa-input sm:max-w-xs"
           />
           <div className="flex flex-wrap gap-1.5">
             <CategoryPill
-              label="All"
+              label={t('connectors.category.all')}
               active={activeCategory === 'All'}
               onClick={() => setActiveCategory('All')}
             />
             {CATEGORIES.map((cat) => (
               <CategoryPill
                 key={cat}
-                label={cat}
+                label={t(categoryKey(cat))}
                 active={activeCategory === cat}
                 onClick={() => setActiveCategory(cat)}
               />
@@ -113,7 +122,7 @@ export default function ConnectorsPage() {
         </div>
 
         {available.length > 0 && (
-          <Section title="Available">
+          <Section title={t('connectors.section.available')}>
             <ConnectorGrid
               items={available}
               connectedBySource={connectedBySource}
@@ -127,7 +136,7 @@ export default function ConnectorsPage() {
         )}
 
         {soon.length > 0 && (
-          <Section title="Coming soon">
+          <Section title={t('connectors.section.soon')}>
             <ConnectorGrid
               items={soon}
               connectedBySource={connectedBySource}
@@ -138,7 +147,7 @@ export default function ConnectorsPage() {
 
         {available.length === 0 && soon.length === 0 && (
           <div className="sa-card text-center text-text-2">
-            No integration matches your search.
+            {t('connectors.emptyResults')}
           </div>
         )}
       </div>
@@ -212,6 +221,7 @@ function ConnectorCard({
   connected?: WorkspaceConnector
   onListChanged: () => void
 }) {
+  const t = useT()
   const isConnected = Boolean(connected)
   const isSoon = def.status === 'soon'
   const initials = def.name.replace(/[^A-Z0-9]/gi, '').slice(0, 2).toUpperCase()
@@ -227,7 +237,7 @@ function ConnectorCard({
       window.location.href = res.authorize_url
     },
     onError: (err) =>
-      setError(err instanceof Error ? err.message : 'Could not start the OAuth flow'),
+      setError(err instanceof Error ? err.message : t('connectors.err.startOauth')),
   })
 
   const disconnectMutation = useMutation({
@@ -240,7 +250,7 @@ function ConnectorCard({
       onListChanged()
     },
     onError: (err) =>
-      setError(err instanceof Error ? err.message : 'Could not disconnect'),
+      setError(err instanceof Error ? err.message : t('connectors.err.disconnect')),
   })
 
   return (
@@ -256,17 +266,17 @@ function ConnectorCard({
             </h3>
             {isConnected && (
               <span className="rounded-full border border-brand-green/30 bg-brand-green/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-brand-green">
-                Connected
+                {t('connectors.badge.connected')}
               </span>
             )}
             {isSoon && (
               <span className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-text-3">
-                Soon
+                {t('connectors.badge.soon')}
               </span>
             )}
           </div>
           <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-text-3">
-            {def.category}
+            {t(categoryKey(def.category))}
           </div>
         </div>
       </div>
@@ -281,24 +291,26 @@ function ConnectorCard({
 
       <div className="mt-4 flex items-center justify-between">
         <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-          {def.authKind === 'oauth' ? 'OAuth' : 'API key'}
+          {def.authKind === 'oauth' ? t('connectors.auth.oauth') : t('connectors.auth.apiKey')}
         </span>
         {isSoon ? (
           <button type="button" className="sa-btn !py-1.5 !text-xs opacity-60" disabled>
-            Notify me
+            {t('connectors.action.notifyMe')}
           </button>
         ) : isConnected ? (
           <button
             type="button"
             onClick={() => {
-              if (!confirm(`Disconnect ${def.name}?`)) return
+              if (!confirm(t('connectors.confirmDisconnect', { name: def.name }))) return
               setError(null)
               disconnectMutation.mutate()
             }}
             disabled={disconnectMutation.isPending}
             className="sa-btn !py-1.5 !text-xs"
           >
-            {disconnectMutation.isPending ? 'Disconnecting…' : 'Disconnect'}
+            {disconnectMutation.isPending
+              ? t('connectors.action.disconnecting')
+              : t('connectors.action.disconnect')}
           </button>
         ) : (
           <button
@@ -310,7 +322,9 @@ function ConnectorCard({
             disabled={connectMutation.isPending}
             className="sa-btn sa-btn-primary !py-1.5 !text-xs"
           >
-            {connectMutation.isPending ? 'Opening…' : 'Connect'}
+            {connectMutation.isPending
+              ? t('connectors.action.opening')
+              : t('connectors.action.connect')}
           </button>
         )}
       </div>

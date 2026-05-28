@@ -2,21 +2,24 @@ import { type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 
 import Brand from './Brand'
+import LocaleSwitcher from './LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
+import { type StringKey, useT } from '@/lib/i18n'
 
-type NavItem = { to: string; label: string; icon: string; soon?: boolean }
+type NavItem = { to: string; labelKey: StringKey; icon: string; soon?: boolean }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: '◧' },
-  { to: '/connectors', label: 'Connectors', icon: '◴' },
-  { to: '/chat', label: 'Chat', icon: '◑', soon: true },
-  { to: '/reports', label: 'Reports', icon: '▤', soon: true },
-  { to: '/files', label: 'Files', icon: '◫', soon: true },
-  { to: '/settings', label: 'Settings', icon: '◴' },
+  { to: '/', labelKey: 'nav.dashboard', icon: '◧' },
+  { to: '/connectors', labelKey: 'nav.connectors', icon: '◴' },
+  { to: '/chat', labelKey: 'nav.chat', icon: '◑', soon: true },
+  { to: '/reports', labelKey: 'nav.reports', icon: '▤', soon: true },
+  { to: '/files', labelKey: 'nav.files', icon: '◫', soon: true },
+  { to: '/settings', labelKey: 'nav.settings', icon: '◴' },
 ]
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { state, logout } = useAuth()
+  const t = useT()
   const workspace = state.workspaces[0]
   const initials = (state.user?.full_name ?? state.user?.email ?? '?')
     .split(/\s+|@/)
@@ -35,10 +38,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="px-5 pb-3">
           <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-            Workspace
+            {t('nav.workspace')}
           </div>
           <div className="mt-1 truncate font-head text-sm font-semibold text-text-1">
-            {workspace?.name ?? 'No workspace'}
+            {workspace?.name ?? t('nav.noWorkspace')}
           </div>
         </div>
 
@@ -61,10 +64,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <span className="font-mono text-base text-text-3 group-hover:text-text-2">
                 {item.icon}
               </span>
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{t(item.labelKey)}</span>
               {item.soon && (
                 <span className="font-mono text-[9px] uppercase tracking-widest text-text-3">
-                  soon
+                  {t('nav.soon')}
                 </span>
               )}
             </NavLink>
@@ -78,33 +81,39 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm text-text-1">
-                {state.user?.full_name ?? 'You'}
+                {state.user?.full_name ?? t('common.you')}
               </div>
               <div className="truncate font-mono text-[11px] text-text-3">
                 {state.user?.email}
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="sa-btn mt-3 w-full !py-1.5 !text-xs"
-          >
-            Sign out
-          </button>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="sa-btn flex-1 !py-1.5 !text-xs"
+            >
+              {t('common.signOut')}
+            </button>
+            <LocaleSwitcher align="left" />
+          </div>
         </div>
       </aside>
 
       <main className="flex min-h-screen flex-1 flex-col">
-        <header className="flex h-14 items-center border-b border-border px-5 md:hidden">
+        <header className="flex h-14 items-center gap-3 border-b border-border px-5 md:hidden">
           <Brand />
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="sa-btn ml-auto !py-1 !text-xs"
-          >
-            Sign out
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <LocaleSwitcher />
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="sa-btn !py-1 !text-xs"
+            >
+              {t('common.signOut')}
+            </button>
+          </div>
         </header>
         <div className="flex-1">{children}</div>
       </main>

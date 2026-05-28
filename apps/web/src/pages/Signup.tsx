@@ -3,11 +3,14 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import Brand from '@/components/Brand'
 import GoogleSignInButton, { OrSeparator } from '@/components/GoogleSignInButton'
+import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
+import { useT } from '@/lib/i18n'
 
 export default function Signup() {
   const { signup, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,7 +30,7 @@ export default function Signup() {
       await signup({ email, password, organizationName })
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : t('login.somethingWentWrong'))
     } finally {
       setSubmitting(false)
     }
@@ -35,20 +38,21 @@ export default function Signup() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-6 py-12">
+      <div className="absolute right-5 top-5 z-20">
+        <LocaleSwitcher />
+      </div>
       <div className="relative z-10 w-full max-w-md">
         <div className="mb-10 flex justify-center">
           <Brand />
         </div>
         <div className="sa-card">
           <h1 className="font-head text-2xl font-bold text-text-1">
-            Create your workspace.
+            {t('signup.title')}
           </h1>
-          <p className="mt-1 text-sm text-text-2">
-            Get started in under a minute.
-          </p>
+          <p className="mt-1 text-sm text-text-2">{t('signup.subtitle')}</p>
 
           <div className="mt-7">
-            <GoogleSignInButton label="Sign up with Google" />
+            <GoogleSignInButton label={t('signup.googleButton')} />
           </div>
 
           <OrSeparator />
@@ -56,7 +60,7 @@ export default function Signup() {
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
               <label className="sa-label" htmlFor="organization">
-                Organization name
+                {t('signup.organizationName')}
               </label>
               <input
                 id="organization"
@@ -65,12 +69,12 @@ export default function Signup() {
                 required
                 value={organizationName}
                 onChange={(e) => setOrganizationName(e.target.value)}
-                placeholder="Acme Inc."
+                placeholder={t('signup.organizationPlaceholder')}
               />
             </div>
             <div>
               <label className="sa-label" htmlFor="email">
-                Work email
+                {t('signup.workEmail')}
               </label>
               <input
                 id="email"
@@ -80,12 +84,12 @@ export default function Signup() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder="toi@entreprise.com"
               />
             </div>
             <div>
               <label className="sa-label" htmlFor="password">
-                Password
+                {t('common.password')}
               </label>
               <input
                 id="password"
@@ -96,10 +100,10 @@ export default function Signup() {
                 minLength={12}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 12 characters"
+                placeholder={t('signup.passwordPlaceholder')}
               />
               <p className="mt-1.5 font-mono text-[11px] text-text-3">
-                12+ characters. Use a passphrase you'll remember.
+                {t('signup.passwordHint')}
               </p>
             </div>
 
@@ -114,14 +118,14 @@ export default function Signup() {
               disabled={submitting}
               className="sa-btn sa-btn-primary mt-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? 'Creating account…' : 'Create account'}
+              {submitting ? t('signup.submitting') : t('signup.submit')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-text-2">
-            Already have an account?{' '}
+            {t('signup.alreadyHaveAccount')}{' '}
             <Link to="/login" className="text-brand-blue hover:text-brand-cyan">
-              Sign in
+              {t('signup.signIn')}
             </Link>
           </p>
         </div>
