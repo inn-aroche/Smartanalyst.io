@@ -40,7 +40,7 @@ const faqEntries = [
   },
   {
     q: 'Is AI limited on the Discovery plan?',
-    a: 'No — conversational AI is unlimited on every plan. The Discovery limit is on auto-generated proactive insights (3/month vs 100+ on paid plans) and connectors (1 only).',
+    a: 'Yes — every plan includes a monthly AI credit allowance (messages sent to the model). Discovery is sized to evaluate the product, Starter for steady solo use, Pro and Agency for intensive multi-client work. You see your remaining balance in real time and get an 80% alert. No surprise overage charges.',
   },
   {
     q: 'Is my data safe?',
@@ -118,7 +118,7 @@ const productJsonLd = {
                 <li>{quotaEn(plan.quotas.insightsPerMonth)} insights / month</li>
                 <li>{whiteLabelEn(plan.quotas.whiteLabel)}</li>
                 <li>{plan.quotas.autoSendReports ? 'Auto-sent reports on the 1st' : 'No auto-send'}</li>
-                <li>Unlimited AI chat</li>
+                <li>Monthly AI credit allowance</li>
               </ul>
               {plan.priceEurMonth === 0 ? (
                 <a href="https://app.smartanalyst.io/signup" class="btn" style="justify-content:center">Get started</a>
@@ -204,7 +204,7 @@ const productJsonLd = {
         </div>
         <div class="sa-card">
           <h3>Is AI limited on the Discovery plan?</h3>
-          <div class="card-body">No — conversational AI is <strong>unlimited on every plan</strong>. The Discovery limit is on auto-generated proactive insights (3/month vs 100+ on paid plans) and connectors (1 only).</div>
+          <div class="card-body">Yes — every plan includes a <strong>monthly AI credit allowance</strong> (messages sent to the model). Discovery is sized to evaluate the product, Starter for steady solo use, Pro and Agency for intensive multi-client work. You see your remaining balance in real time and get an 80% alert. No surprise overage charges.</div>
         </div>
         <div class="sa-card">
           <h3>Is my data safe?</h3>

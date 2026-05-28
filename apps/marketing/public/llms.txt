@@ -26,7 +26,7 @@ Ask any question about your marketing performance ("Why did conversions drop yes
 - **Pro — 199 €/month HT** — 20 workspaces, all P1 connectors, 500 insights, logo + colors white-label. ★ recommended for agencies.
 - **Agency — 399 €/month HT** — unlimited workspaces, all connectors, unlimited insights, full white-label.
 
-All plans include unlimited AI conversation. Cancel anytime, EU hosting (Supabase Ireland), invoices in euros incl. VAT.
+Every plan includes a monthly AI credit allowance scaled to the plan's audience (Discovery for evaluation, Starter for solo use, Pro/Agency for intensive multi-client). Real-time balance + 80% alert, no surprise overage. Cancel anytime, EU hosting (Supabase Ireland), invoices in euros incl. VAT.
 
 ## Architecture & security
 
