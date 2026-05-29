@@ -2,6 +2,7 @@
 // Per-feature hero visuals. Each slug returns a self-contained SVG/HTML
 // composition that visualizes the feature. All compositions sit inside a
 // chromed window (.mk-window) so the rhythm is consistent across pages.
+import LogoIcon from './LogoIcon.astro';
 
 const { slug, locale = 'fr' } = Astro.props;
 const T = (fr, en) => (locale === 'fr' ? fr : en);
@@ -69,11 +70,11 @@ const T = (fr, en) => (locale === 'fr' ? fr : en);
             <path d="M300 180 Q300 280 300 340" />
           </g>
         </svg>
-        <div class="mk-hub-node" style="top:8%;left:8%"><span>GA4</span></div>
-        <div class="mk-hub-node" style="top:8%;right:8%"><span>Meta Ads</span></div>
-        <div class="mk-hub-node" style="top:55%;left:4%"><span>Google Ads</span></div>
-        <div class="mk-hub-node" style="top:55%;right:4%"><span>Stripe</span></div>
-        <div class="mk-hub-node mk-hub-node-bottom"><span>Search Console</span></div>
+        <div class="mk-hub-node" style="top:8%;left:8%"><LogoIcon name="ga4" size={20} /></div>
+        <div class="mk-hub-node" style="top:8%;right:8%"><LogoIcon name="meta" size={20} /></div>
+        <div class="mk-hub-node" style="top:55%;left:4%"><LogoIcon name="google_ads" size={20} /></div>
+        <div class="mk-hub-node" style="top:55%;right:4%"><LogoIcon name="stripe" size={20} /></div>
+        <div class="mk-hub-node mk-hub-node-bottom"><LogoIcon name="search_console" size={20} /></div>
       </div>
     )}
 

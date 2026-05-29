@@ -1,7 +1,17 @@
 ---
 import DarkBase from '../../layouts/DarkBase.astro';
+import LogoStrip from '../../components/LogoStrip.astro';
+import LogoIcon from '../../components/LogoIcon.astro';
 import '../../styles/landing.css';
 import { PLANS, PLAN_ORDER } from '@smartanalyst/shared/pricing';
+
+const HERO_CONNECTORS = [
+  { icon: 'ga4' },
+  { icon: 'meta' },
+  { icon: 'google_ads' },
+  { icon: 'stripe' },
+  { icon: 'search_console' },
+];
 
 const softwareApplication = {
   '@context': 'https://schema.org',
@@ -53,10 +63,7 @@ const softwareApplication = {
           <a href="#features" class="btn">Voir comment ça marche ↓</a>
         </div>
         <div class="hero-connects">
-          <span class="hero-connects-label">Se connecte à :</span>
-          {['Google Ads','Meta','GA4','Shopify','GTM','CRM','CMP','Server-side'].map((s) => (
-            <span class="conn-pill">{s}</span>
-          ))}
+          <LogoStrip label="Se connecte à :" items={HERO_CONNECTORS} size={20} />
         </div>
       </div>
       <div class="hero-chat-wrap">

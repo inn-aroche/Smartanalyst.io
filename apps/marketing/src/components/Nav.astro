@@ -52,7 +52,7 @@ const RESOURCE_LINKS = [
         <a href={lp('/product')} class="nav-item-trigger" data-menu="product">
           {t.nav.product}<span class="nav-item-caret">▾</span>
         </a>
-        <div class="nav-mega" data-menu-panel="product">
+        <div class="nav-mega" data-menu-panel="product" data-align="left">
           <div class="nav-mega-inner">
             {PRODUCT_LINKS.map((l) => (
               <a href={l.href} class="nav-mega-link">
@@ -71,7 +71,7 @@ const RESOURCE_LINKS = [
         <a href={lp('/use-cases/agency')} class="nav-item-trigger" data-menu="use-cases">
           {t.nav.useCases}<span class="nav-item-caret">▾</span>
         </a>
-        <div class="nav-mega" data-menu-panel="use-cases">
+        <div class="nav-mega" data-menu-panel="use-cases" data-align="center">
           <div class="nav-mega-inner nav-mega-narrow">
             {USE_CASE_LINKS.map((l) => (
               <a href={l.href} class="nav-mega-link">
@@ -92,7 +92,7 @@ const RESOURCE_LINKS = [
         <a href={lp('/resources')} class="nav-item-trigger" data-menu="resources">
           {t.nav.resources}<span class="nav-item-caret">▾</span>
         </a>
-        <div class="nav-mega" data-menu-panel="resources">
+        <div class="nav-mega" data-menu-panel="resources" data-align="right">
           <div class="nav-mega-inner nav-mega-narrow">
             {RESOURCE_LINKS.map((l) => (
               <a href={l.href} class="nav-mega-link">
@@ -395,8 +395,6 @@ const RESOURCE_LINKS = [
   .nav-mega {
     position: absolute;
     top: calc(100% + 14px);
-    left: 50%;
-    transform: translateX(-50%) translateY(6px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s, transform 0.15s;
@@ -405,24 +403,29 @@ const RESOURCE_LINKS = [
        when the cursor moves down to it */
     padding-top: 14px;
     margin-top: -14px;
+    transform: translateY(6px);
   }
-  .nav-item.open .nav-mega {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(-50%) translateY(0);
-  }
+  /* Anchor based on the trigger's position in the nav so the panel never
+     overflows the viewport. Product (leftmost) anchors its left edge,
+     Resources (rightmost) anchors its right edge, Use cases (middle)
+     centers. */
+  .nav-mega[data-align="left"]   { left: 0; right: auto; }
+  .nav-mega[data-align="right"]  { left: auto; right: 0; }
+  .nav-mega[data-align="center"] { left: 50%; transform: translateX(-50%) translateY(6px); }
+  .nav-item.open .nav-mega { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .nav-item.open .nav-mega[data-align="center"] { transform: translateX(-50%) translateY(0); }
   .nav-mega-inner {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 4px;
-    width: 540px;
+    width: min(480px, calc(100vw - 48px));
     background: var(--bg-1);
     border: 1px solid var(--border-br);
     border-radius: 12px;
     padding: 10px;
     box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
   }
-  .nav-mega-narrow { grid-template-columns: 1fr; width: 320px; }
+  .nav-mega-narrow { grid-template-columns: 1fr; width: min(320px, calc(100vw - 48px)); }
   .nav-mega-link {
     display: flex;
     gap: 12px;
