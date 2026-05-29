@@ -1,26 +1,87 @@
 ---
-// Row of connector / source logos. Each item is either:
-//   { icon: 'ga4' }       → renders the real brand SVG via <LogoIcon>
-//   { label, color }      → renders a colored-dot + text fallback
+// Row of connector / source logos.
 //
-// Pure HTML/CSS — no image assets.
+// Variants:
+//   default   → pill-shaped: small logo + brand name on a card row
+//   cards     → Julius-style: rounded white card, logo centered, no label
+//
+// Each item is either:
+//   { icon: 'ga4' }       → real SVG via <LogoIcon>
+//   { label, color }      → colored-dot + text fallback (default variant only)
 import LogoIcon from './LogoIcon.astro';
 import { LOGO_ICONS } from '../data/connector-logos.js';
 
-const { label, items, align = 'center', size = 22 } = Astro.props;
+const {
+  label,
+  items,
+  align = 'center',
+  size = 22,
+  variant = 'default',
+  cardSize = 64,
+  logoSize,
+} = Astro.props;
+
+const _logoSize = logoSize ?? Math.round(cardSize * 0.55);
+const wrapClass = variant === 'cards' ? 'logo-cards' : 'logo-strip';
 ---
-<div class="logo-strip" style={align === 'left' ? 'justify-content:flex-start' : ''}>
-  {label && <span class="logo-strip-label">{label}</span>}
+<div class={wrapClass} style={align === 'left' ? 'justify-content:flex-start' : ''}>
+  {label && variant !== 'cards' && <span class="logo-strip-label">{label}</span>}
   {items.map((item) => (
-    item.icon && LOGO_ICONS[item.icon] ? (
-      <span class="logo-pill logo-pill-icon">
-        <LogoIcon name={item.icon} size={size} withLabel={true} />
-      </span>
+    variant === 'cards' ? (
+      item.icon && LOGO_ICONS[item.icon] ? (
+        <span class="logo-card" style={`width:${cardSize}px;height:${cardSize}px`} aria-label={LOGO_ICONS[item.icon].label}>
+          <LogoIcon name={item.icon} size={_logoSize} withLabel={false} />
+        </span>
+      ) : (
+        <span class="logo-card" style={`width:${cardSize}px;height:${cardSize}px`}>
+          {item.color && <span class="lp-dot" style={`background:${item.color}`}></span>}
+        </span>
+      )
     ) : (
-      <span class="logo-pill">
-        {item.color && <span class="lp-dot" style={`background:${item.color}`}></span>}
-        <span>{item.label}</span>
-      </span>
+      item.icon && LOGO_ICONS[item.icon] ? (
+        <span class="logo-pill logo-pill-icon">
+          <LogoIcon name={item.icon} size={size} withLabel={true} />
+        </span>
+      ) : (
+        <span class="logo-pill">
+          {item.color && <span class="lp-dot" style={`background:${item.color}`}></span>}
+          <span>{item.label}</span>
+        </span>
+      )
     )
   ))}
 </div>
+
+<style is:global>
+  /* Card variant: floating white tiles, logo centered, no label. */
+  .logo-cards {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 8px 0;
+  }
+  .logo-card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 12px 28px rgba(0, 0, 0, 0.35),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    flex-shrink: 0;
+  }
+  .logo-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 18px 36px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 1px rgba(61, 130, 255, 0.15);
+  }
+  .logo-card .logo-icon-wrap { gap: 0; }
+  .logo-card .logo-icon-mono { border-radius: 8px; }
+</style>

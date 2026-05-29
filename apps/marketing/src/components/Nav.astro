@@ -416,16 +416,26 @@ const RESOURCE_LINKS = [
   .nav-item.open .nav-mega[data-align="center"] { transform: translateX(-50%) translateY(0); }
   .nav-mega-inner {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 4px;
-    width: min(480px, calc(100vw - 48px));
-    background: var(--bg-1);
-    border: 1px solid var(--border-br);
-    border-radius: 12px;
-    padding: 10px;
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+    width: 560px;
+    max-width: calc(100vw - 32px);
+    /* Opaque, high-contrast surface so the panel reads as a distinct
+       layer over any page content underneath (the previous var(--bg-1)
+       was only 1-2 ticks darker than the page bg, which on dark sections
+       made the right column appear to float over page content). */
+    background: #0a0a13;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.6),
+      0 22px 50px rgba(0, 0, 0, 0.72);
   }
-  .nav-mega-narrow { grid-template-columns: 1fr; width: min(320px, calc(100vw - 48px)); }
+  .nav-mega-narrow {
+    grid-template-columns: minmax(0, 1fr);
+    width: 320px;
+  }
   .nav-mega-link {
     display: flex;
     gap: 12px;
