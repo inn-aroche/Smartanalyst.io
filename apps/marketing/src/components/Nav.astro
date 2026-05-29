@@ -129,7 +129,8 @@ const RESOURCE_LINKS = [
       </ul>
     </div>
 
-    <!-- Desktop CTA -->
+    <!-- Desktop login + CTA -->
+    <a href="https://app.smartanalyst.io/login" class="nav-login">{t.nav.login}</a>
     <a href={lp('/#cta')} class="btn btn-primary btn-sm nav-cta">{t.nav.cta}</a>
 
     <!-- Mobile hamburger -->
@@ -214,6 +215,12 @@ const RESOURCE_LINKS = [
       <!-- Security (flat) -->
       <a href={lp('/security')} class="nav-mobile-flat">
         <span>{t.nav.security}</span>
+        <span class="nav-mobile-caret">→</span>
+      </a>
+
+      <!-- Login (flat) -->
+      <a href="https://app.smartanalyst.io/login" class="nav-mobile-flat">
+        <span>{t.nav.login}</span>
         <span class="nav-mobile-caret">→</span>
       </a>
 
@@ -447,6 +454,16 @@ const RESOURCE_LINKS = [
     color: var(--text-3);
     line-height: 1.4;
   }
+
+  /* ─── Login link (desktop) ─── */
+  .nav-login {
+    font-size: 14.5px;
+    color: var(--text-2);
+    margin-right: 12px;
+    transition: color 0.15s;
+    white-space: nowrap;
+  }
+  .nav-login:hover { color: var(--text-1); }
 
   /* ─── Mobile burger ─── */
   .nav-burger {

@@ -15,6 +15,7 @@ export const STRINGS = {
       pricing: 'Pricing',
       security: 'Security',
       resources: 'Resources',
+      login: 'Log in',
       cta: 'Request early access',
     },
     footer: {
@@ -48,6 +49,7 @@ export const STRINGS = {
       pricing: 'Tarifs',
       security: 'Sécurité',
       resources: 'Ressources',
+      login: 'Se connecter',
       cta: 'Demander un accès',
     },
     footer: {

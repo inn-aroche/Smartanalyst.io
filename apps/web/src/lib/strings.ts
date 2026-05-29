@@ -11,6 +11,7 @@ const en = {
   'common.or': 'or',
   'common.loading': 'Loading…',
   'common.back': 'Back',
+  'common.backToSite': 'Back to smartanalyst.io',
 
   // ━━━ Nav / layout ━━━
   'nav.workspace': 'Workspace',
@@ -182,6 +183,7 @@ const fr: Record<keyof typeof en, string> = {
   'common.or': 'ou',
   'common.loading': 'Chargement…',
   'common.back': 'Retour',
+  'common.backToSite': 'Retour sur smartanalyst.io',
 
   // ━━━ Nav / layout ━━━
   'nav.workspace': 'Espace',

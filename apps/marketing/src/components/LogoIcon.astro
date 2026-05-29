@@ -1,0 +1,43 @@
+---
+import { LOGO_ICONS } from '../data/connector-logos.js';
+
+const { name, size = 32, withLabel = true } = Astro.props;
+const icon = LOGO_ICONS[name];
+if (!icon) throw new Error(`LogoIcon: unknown name "${name}"`);
+const fontSize = icon.mono.length === 1 ? Math.round(size * 0.5) : Math.round(size * 0.38);
+---
+<span class="logo-icon-wrap">
+  <span
+    class="logo-icon-mono"
+    style={`background:${icon.bg};color:${icon.fg};width:${size}px;height:${size}px;font-size:${fontSize}px;${icon.border ? `box-shadow:inset 0 0 0 1px ${icon.border};` : ''}`}
+  >
+    {icon.mono}
+  </span>
+  {withLabel && <span class="logo-icon-label">{icon.label}</span>}
+</span>
+
+<style is:global>
+  .logo-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon-mono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    font-family: var(--ff-h);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .logo-icon-label {
+    font-family: var(--ff-h);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+</style>
