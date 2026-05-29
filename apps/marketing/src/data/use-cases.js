@@ -4,6 +4,25 @@ export const USE_CASES = [
   {
     slug: 'agency',
     icon: '◧',
+    mockup: 'multi-workspace',
+    stats: {
+      en: [
+        { num: '20+', label: 'Workspaces / account', detail: 'One login, every client portfolio.' },
+        { num: '5 days', label: 'Saved / month', detail: 'Vs assembling reports by hand.' },
+        { num: '< 60s', label: 'Per client question', detail: 'Across all 5 connected sources.' },
+        { num: '1st of', label: 'Every month', detail: 'Auto-sent branded PDFs.' },
+      ],
+      fr: [
+        { num: '20+', label: 'Workspaces / compte', detail: 'Un login, tous tes clients.' },
+        { num: '5 jours', label: 'Gagnés / mois', detail: 'Vs assembler les rapports à la main.' },
+        { num: '< 60s', label: 'Par question client', detail: 'Sur les 5 sources connectées.' },
+        { num: '1ᵉʳ du', label: 'Chaque mois', detail: 'PDFs brandés envoyés automatiquement.' },
+      ],
+    },
+    quote: {
+      en: { text: "We replaced two analyst hires with SmartAnalyst and ship a sharper deliverable than we did before.", who: 'Head of strategy', where: 'B2B SaaS agency, Paris' },
+      fr: { text: "On a remplacé deux embauches d'analyste par SmartAnalyst, et nos livrables sont meilleurs qu'avant.", who: 'Head of strategy', where: 'Agence SaaS B2B, Paris' },
+    },
     en: {
       kicker: 'For agencies',
       title: 'Manage 20 clients without 20 dashboards.',
@@ -68,6 +87,25 @@ export const USE_CASES = [
   {
     slug: 'freelance',
     icon: '◐',
+    mockup: 'reports',
+    stats: {
+      en: [
+        { num: '15 min', label: 'Reports / month', detail: 'Vs 1 day per client before.' },
+        { num: '3-5', label: 'Clients in Starter', detail: 'Each their own workspace.' },
+        { num: 'AI', label: 'Senior on tap', detail: 'No more guessing or going dark.' },
+        { num: 'Weekly', label: 'Heads-up email', detail: 'You know what to look at on Monday.' },
+      ],
+      fr: [
+        { num: '15 min', label: 'Rapports / mois', detail: 'Vs 1 jour par client avant.' },
+        { num: '3-5', label: 'Clients dans Starter', detail: 'Chacun son workspace.' },
+        { num: 'IA', label: 'Senior à la demande', detail: 'Fini de deviner ou de rester bloqué.' },
+        { num: 'Hebdo', label: 'Email lundi matin', detail: 'Tu sais quoi regarder.' },
+      ],
+    },
+    quote: {
+      en: { text: "I bill the same and work two days less per month. The reports look like an agency built them.", who: 'Marketing freelance', where: 'Lyon' },
+      fr: { text: "Je facture la même chose et je bosse deux jours de moins par mois. Mes rapports ressemblent à ceux d'une agence.", who: 'Freelance marketing', where: 'Lyon' },
+    },
     en: {
       kicker: 'For freelancers',
       title: 'Be your own analytics department.',
@@ -126,6 +164,25 @@ export const USE_CASES = [
   {
     slug: 'founder',
     icon: '◯',
+    mockup: 'conversational-ai',
+    stats: {
+      en: [
+        { num: '10 min', label: 'Investor updates', detail: 'Auto exec summary, you paste in.' },
+        { num: '0', label: 'Data hires needed', detail: 'You ARE the analytics team.' },
+        { num: 'Plain', label: 'Language input', detail: 'No SQL, no metric picker.' },
+        { num: 'Daily', label: 'Decisions, faster', detail: 'Answers in seconds, not days.' },
+      ],
+      fr: [
+        { num: '10 min', label: 'Updates investisseurs', detail: 'Résumé exécutif auto, tu colles.' },
+        { num: '0', label: 'Embauche data nécessaire', detail: "Tu ES l'équipe analytics." },
+        { num: 'Langage', label: 'Naturel', detail: 'Pas de SQL, pas de sélecteur.' },
+        { num: 'Quotidien', label: 'Décisions, plus vite', detail: 'Réponses en secondes, pas en jours.' },
+      ],
+    },
+    quote: {
+      en: { text: "Our weekly growth call now starts with the SmartAnalyst summary. Nobody disputes the numbers anymore.", who: 'Co-founder & CEO', where: 'B2C marketplace, Bordeaux' },
+      fr: { text: "Notre call growth hebdo démarre maintenant sur le résumé SmartAnalyst. Plus personne ne conteste les chiffres.", who: 'Co-fondateur & CEO', where: 'Marketplace B2C, Bordeaux' },
+    },
     en: {
       kicker: 'For founders',
       title: 'Marketing data, without a data team.',

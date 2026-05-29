@@ -1,0 +1,16 @@
+---
+// Visual: a row of "logo-pills" representing connected source / tooling.
+// Pure CSS — no image assets. Each pill is a dot + name in our brand
+// colors, matching the dark visual system.
+
+const { label, items, align = 'center' } = Astro.props;
+---
+<div class="logo-strip" style={align === 'left' ? 'justify-content:flex-start' : ''}>
+  {label && <span class="logo-strip-label">{label}</span>}
+  {items.map((item) => (
+    <span class="logo-pill">
+      {item.color && <span class="lp-dot" style={`background:${item.color}`}></span>}
+      <span>{item.label}</span>
+    </span>
+  ))}
+</div>

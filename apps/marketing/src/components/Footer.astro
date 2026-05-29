@@ -1,22 +1,217 @@
 ---
 import { STRINGS, localizedPath } from '../i18n/strings.js';
+import { PRODUCT_FEATURES } from '../data/product-features.js';
+import { USE_CASES } from '../data/use-cases.js';
 
 const { locale = 'en' } = Astro.props;
 const t = STRINGS[locale];
+const f = t.footer;
 const lp = (p) => localizedPath(p, locale);
 const year = new Date().getFullYear();
 ---
 <footer class="footer">
   <div class="footer-inner">
-    <a href={lp('/')} class="brand">
-      <span class="brand-mark" style="width:22px;height:22px;border-radius:5px"></span>
-      <span class="brand-name" style="font-size:14px">SmartAnalyst</span>
-    </a>
-    <div class="footer-copy">{t.footer.copyright(year)}</div>
-    <div class="footer-links">
-      <a href={lp('/security')}>{t.footer.privacy}</a>
-      <a href={lp('/security')}>{t.footer.terms}</a>
-      <a href="mailto:contact@smartanalyst.io">{t.footer.contact}</a>
+    <div class="footer-grid">
+      <!-- Brand block -->
+      <div class="footer-brand">
+        <a href={lp('/')} class="brand">
+          <span class="brand-mark"></span>
+          <span class="brand-name">SmartAnalyst</span>
+        </a>
+        <p class="footer-tagline">{f.tagline}</p>
+        <p class="footer-locale">{f.builtWith}</p>
+      </div>
+
+      <!-- Product column -->
+      <div class="footer-col">
+        <h4>{f.colProduct}</h4>
+        <ul>
+          <li><a href={lp('/product')}>{f.product}</a></li>
+          {PRODUCT_FEATURES.map((feat) => (
+            <li>
+              <a href={lp(`/product/${feat.slug}`)}>
+                {locale === 'fr' ? feat.fr.kicker : feat.en.kicker}
+              </a>
+            </li>
+          ))}
+          <li><a href={lp('/pricing')}>{f.pricing}</a></li>
+        </ul>
+      </div>
+
+      <!-- Use cases column -->
+      <div class="footer-col">
+        <h4>{f.colUseCases}</h4>
+        <ul>
+          {USE_CASES.map((u) => (
+            <li>
+              <a href={lp(`/use-cases/${u.slug}`)}>
+                {locale === 'fr' ? u.fr.kicker : u.en.kicker}
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        <h4 style="margin-top:28px">{f.colResources}</h4>
+        <ul>
+          <li><a href={lp('/resources')}>{f.resources}</a></li>
+          <li><a href={lp('/resources/glossary')}>{f.glossary}</a></li>
+          <li><a href="#" class="footer-soon">{f.guides}</a></li>
+          <li><a href="#" class="footer-soon">{f.blog}</a></li>
+        </ul>
+      </div>
+
+      <!-- Company / Legal column -->
+      <div class="footer-col">
+        <h4>{f.colCompany}</h4>
+        <ul>
+          <li><a href={lp('/security')}>{f.security}</a></li>
+          <li><a href="mailto:contact@smartanalyst.io">{f.contact}</a></li>
+        </ul>
+
+        <h4 style="margin-top:28px">{f.colLegal}</h4>
+        <ul>
+          <li><a href={lp('/security')}>{f.privacy}</a></li>
+          <li><a href={lp('/security')}>{f.terms}</a></li>
+          <li><a href={lp('/security')}>{f.gdpr}</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="footer-copy">{f.copyright(year)}</div>
+      <div class="footer-social">
+        <a href="https://www.linkedin.com/company/smartanalyst-io" aria-label="LinkedIn" class="footer-social-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14M8.34 18v-8.59H5.67V18h2.67M7 8.31a1.54 1.54 0 1 0 0-3.09a1.54 1.54 0 0 0 0 3.09M18.34 18v-4.7c0-2.46-1.36-3.6-3.18-3.6c-1.47 0-2.13.81-2.5 1.38v-1.18h-2.77c.04.79 0 8.41 0 8.41h2.77v-4.69c0-.25.02-.5.09-.68c.2-.5.66-1.01 1.42-1.01c1 0 1.41.77 1.41 1.89V18h2.78z"/></svg>
+        </a>
+        <a href="https://x.com/smartanalyst_io" aria-label="X (Twitter)" class="footer-social-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+      </div>
     </div>
   </div>
 </footer>
+
+<style is:global>
+  .footer {
+    background: var(--bg-0);
+    border-top: 1px solid var(--border);
+    margin-top: 80px;
+  }
+  .footer-inner {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 64px 48px 40px;
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 48px;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+  }
+  .footer-brand .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .footer-brand .brand-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #3d82ff 0%, #22d3ee 100%);
+  }
+  .footer-brand .brand-name {
+    font-family: var(--ff-h);
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--text-1);
+  }
+  .footer-tagline {
+    font-family: var(--ff-b);
+    font-size: 15px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin: 0 0 24px;
+    max-width: 320px;
+  }
+  .footer-locale {
+    font-family: var(--ff-m);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    margin: 0;
+  }
+  .footer-col h4 {
+    font-family: var(--ff-m);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin: 0 0 16px;
+  }
+  .footer-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .footer-col a {
+    font-family: var(--ff-b);
+    font-size: 14px;
+    color: var(--text-2);
+    transition: color 0.12s;
+  }
+  .footer-col a:hover { color: var(--text-1); }
+  .footer-col a.footer-soon { opacity: 0.55; pointer-events: none; }
+
+  .footer-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 24px;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .footer-copy {
+    font-family: var(--ff-m);
+    font-size: 12px;
+    color: var(--text-3);
+    letter-spacing: 0.02em;
+  }
+  .footer-social {
+    display: flex;
+    gap: 10px;
+  }
+  .footer-social-link {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-2);
+    transition: all 0.12s;
+  }
+  .footer-social-link:hover {
+    border-color: var(--border-br);
+    color: var(--text-1);
+    background: var(--card-h);
+  }
+
+  @media (max-width: 900px) {
+    .footer-inner { padding: 48px 24px 32px; }
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    .footer-brand { grid-column: span 2; }
+  }
+  @media (max-width: 600px) {
+    .footer-grid { grid-template-columns: 1fr; }
+    .footer-brand { grid-column: span 1; }
+    .footer-bottom { flex-direction: column; align-items: flex-start; }
+  }
+</style>
