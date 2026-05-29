@@ -4,36 +4,37 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Surface scale — dark theme (Phase A: tokens refresh, the app
-        // will move to a light theme in Phase B). Source: brand handoff.
+        // SaaS app — light theme. Source: SmartAnalyst Brand Guidelines,
+        // theming section ("the app may ship light"). Semantic tokens only;
+        // brand blue stays constant across themes.
         bg: {
-          0: '#07070f',
-          1: '#0d0c1b',
-          2: '#121228',
-          3: '#1a1a30',
+          0: '#f2f2f7', // page
+          1: '#ffffff', // card / panel
+          2: '#f7f7fb', // raised surface (topbar, inputs)
+          3: '#eeeef4', // highest surface
         },
         card: {
-          DEFAULT: 'rgba(255, 255, 255, 0.04)',
-          hover: 'rgba(255, 255, 255, 0.07)',
+          DEFAULT: '#ffffff',
+          hover: '#fbfbfd',
         },
         border: {
-          DEFAULT: 'rgba(255, 255, 255, 0.08)',
-          bright: 'rgba(255, 255, 255, 0.13)',
+          DEFAULT: 'rgba(12, 12, 27, 0.09)',
+          bright: 'rgba(12, 12, 27, 0.16)',
         },
         text: {
-          1: '#eeedf2',
-          2: '#8a8aae',
-          3: '#46465e',
+          1: '#14142a',
+          2: '#5c5c78',
+          3: '#9c9cb4',
         },
         brand: {
           blue: '#5c8fff',
-          'blue-deep': '#3d6be0',
-          'blue-dim': 'rgba(92, 143, 255, 0.10)',
+          'blue-deep': '#3d6be0', // primary actions on light
+          'blue-dim': 'rgba(61, 107, 224, 0.10)',
           cyan: '#2dd9ee',
-          // Semantic — data states only.
-          green: '#34d999',
-          red: '#ff7272',
-          orange: '#ffba4a',
+          // Semantic on light — darkened for AA contrast.
+          green: '#1fa873',
+          red: '#e0495c',
+          orange: '#cf7d12',
         },
       },
       fontFamily: {
@@ -45,9 +46,9 @@ export default {
         site: '1120px',
       },
       boxShadow: {
-        card: '0 2px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)',
-        float: '0 8px 40px rgba(0, 0, 0, 0.45)',
-        'brand-glow': '0 0 24px rgba(92, 143, 255, 0.32)',
+        card: '0 1px 2px rgba(12, 12, 27, 0.06), 0 4px 16px rgba(12, 12, 27, 0.07)',
+        float: '0 12px 40px rgba(12, 12, 27, 0.12)',
+        'brand-glow': '0 0 24px rgba(61, 107, 224, 0.18)',
       },
     },
   },

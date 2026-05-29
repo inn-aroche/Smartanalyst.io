@@ -445,6 +445,10 @@ const RESOURCE_LINKS = [
     color: var(--text-2);
     align-items: flex-start;
     transition: background 0.12s, color 0.12s;
+    /* min-width on the grid item itself lets the inner flex layout
+       shrink correctly — without it the link refuses to be narrower
+       than its content's max-content. */
+    min-width: 0;
   }
   .nav-mega-link:hover { background: var(--card-h); color: var(--text-1); }
   .nav-mega-icon {
@@ -454,19 +458,29 @@ const RESOURCE_LINKS = [
     margin-top: 1px;
     min-width: 18px;
   }
-  .nav-mega-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .nav-mega-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 0;
+  }
   .nav-mega-title {
     font-family: var(--ff-h);
     font-size: 14px;
     font-weight: 600;
     color: var(--text-1);
     letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+    word-break: normal;
   }
   .nav-mega-tagline {
     font-family: var(--ff-b);
     font-size: 12px;
     color: var(--text-3);
     line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-break: normal;
   }
 
   /* ─── Login link (desktop) ─── */

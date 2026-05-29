@@ -134,17 +134,17 @@ function BackgroundGlow() {
   return (
     <>
       <div
-        className="pointer-events-none absolute -top-32 left-1/2 -z-10 h-[520px] w-[520px] -translate-x-1/2 rounded-full"
+        className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full"
         style={{
           background:
-            'radial-gradient(circle, rgba(61,130,255,0.18) 0%, transparent 70%)',
+            'radial-gradient(circle, rgba(92,143,255,0.12) 0%, transparent 70%)',
         }}
       />
       <div
-        className="pointer-events-none absolute bottom-0 right-0 -z-10 h-[420px] w-[420px] rounded-full"
+        className="pointer-events-none absolute bottom-0 right-0 -z-10 h-[440px] w-[440px] rounded-full"
         style={{
           background:
-            'radial-gradient(circle, rgba(34,211,238,0.10) 0%, transparent 70%)',
+            'radial-gradient(circle, rgba(45,217,238,0.08) 0%, transparent 70%)',
         }}
       />
     </>

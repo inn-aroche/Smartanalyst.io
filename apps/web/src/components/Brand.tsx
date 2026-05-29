@@ -65,10 +65,16 @@ function BrandMark({ size = 28, variant = 'gradient' }: Props) {
   )
 }
 
-export default function Brand({ size = 28 }: { size?: number }) {
+export default function Brand({
+  size = 28,
+  variant = 'onLight',
+}: {
+  size?: number
+  variant?: 'gradient' | 'solid' | 'onLight'
+}) {
   return (
     <div className="inline-flex items-center gap-2.5">
-      <BrandMark size={size} />
+      <BrandMark size={size} variant={variant} />
       <span className="font-head text-base font-bold tracking-tight text-text-1">
         SmartAnalyst
       </span>
