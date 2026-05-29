@@ -9,6 +9,7 @@ import {
   type ConnectorDef,
 } from '@/lib/connectors'
 import { apiFetch, ApiError } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { type StringKey, useT } from '@/lib/i18n'
 
 type WorkspaceConnector = {
@@ -41,14 +42,20 @@ function categoryKey(cat: ConnectorCategory): StringKey {
 
 export default function ConnectorsPage() {
   const t = useT()
+  const { state } = useAuth()
+  const workspaceId = state.workspaces[0]?.id ?? ''
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<ConnectorCategory | 'All'>('All')
 
   const counts = useMemo(() => countByStatus(), [])
 
   const connectedQuery = useQuery({
-    queryKey: ['connectors', 'list'],
-    queryFn: () => apiFetch<{ connectors: WorkspaceConnector[] }>('/api/v1/connectors'),
+    queryKey: ['connectors', 'list', workspaceId],
+    enabled: Boolean(workspaceId),
+    queryFn: () =>
+      apiFetch<{ connectors: WorkspaceConnector[] }>(
+        `/api/v1/connectors?workspaceId=${workspaceId}`,
+      ),
   })
 
   const connectedBySource = useMemo(() => {
@@ -126,6 +133,7 @@ export default function ConnectorsPage() {
             <ConnectorGrid
               items={available}
               connectedBySource={connectedBySource}
+              workspaceId={workspaceId}
               onListChanged={() =>
                 connectedQuery.refetch().catch(() => {
                   /* surfaced inline */
@@ -140,6 +148,7 @@ export default function ConnectorsPage() {
             <ConnectorGrid
               items={soon}
               connectedBySource={connectedBySource}
+              workspaceId={workspaceId}
               onListChanged={() => {}}
             />
           </Section>
@@ -192,10 +201,12 @@ function CategoryPill({
 function ConnectorGrid({
   items,
   connectedBySource,
+  workspaceId,
   onListChanged,
 }: {
   items: ConnectorDef[]
   connectedBySource: Map<string, WorkspaceConnector>
+  workspaceId: string
   onListChanged: () => void
 }) {
   return (
@@ -205,6 +216,7 @@ function ConnectorGrid({
           key={c.source}
           def={c}
           connected={connectedBySource.get(c.source)}
+          workspaceId={workspaceId}
           onListChanged={onListChanged}
         />
       ))}
@@ -215,10 +227,12 @@ function ConnectorGrid({
 function ConnectorCard({
   def,
   connected,
+  workspaceId,
   onListChanged,
 }: {
   def: ConnectorDef
   connected?: WorkspaceConnector
+  workspaceId: string
   onListChanged: () => void
 }) {
   const t = useT()
@@ -228,13 +242,54 @@ function ConnectorCard({
 
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const [apiKeyOpen, setApiKeyOpen] = useState(false)
+  const [apiKeyValue, setApiKeyValue] = useState('')
 
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiFetch<{ authorize_url: string }>(
-        `/api/v1/connectors/oauth/authorize?source=${def.source}`,
+        `/api/v1/connectors/oauth/authorize?source=${def.source}&workspaceId=${workspaceId}`,
       )
       window.location.href = res.authorize_url
+    },
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : t('connectors.err.startOauth')),
+  })
+
+  const apiKeyMutation = useMutation({
+    mutationFn: async (apiKey: string) => {
+      const { connector } = await apiFetch<{ connector: { id: string } }>(
+        '/api/v1/connectors',
+        {
+          method: 'POST',
+          body: {
+            workspaceId,
+            source: def.source,
+            accountId: 'primary',
+            accountName: def.name,
+            apiKey: apiKey.trim(),
+          },
+        },
+      )
+      const today = new Date()
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const fmt = (d: Date) => d.toISOString().slice(0, 10)
+      await apiFetch(`/api/v1/connectors/${connector.id}/sync`, {
+        method: 'POST',
+        body: {
+          workspaceId,
+          startDate: fmt(monthAgo),
+          endDate: fmt(today),
+        },
+      }).catch(() => {
+        // a failed first sync doesn't undo the connection
+      })
+    },
+    onSuccess: () => {
+      setApiKeyOpen(false)
+      setApiKeyValue('')
+      void queryClient.invalidateQueries({ queryKey: ['connectors'] })
+      onListChanged()
     },
     onError: (err) =>
       setError(err instanceof Error ? err.message : t('connectors.err.startOauth')),
@@ -243,7 +298,10 @@ function ConnectorCard({
   const disconnectMutation = useMutation({
     mutationFn: async () => {
       if (!connected) return
-      await apiFetch(`/api/v1/connectors/${connected.id}`, { method: 'DELETE' })
+      await apiFetch(
+        `/api/v1/connectors/${connected.id}?workspaceId=${workspaceId}`,
+        { method: 'DELETE' },
+      )
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['connectors'] })
@@ -312,6 +370,17 @@ function ConnectorCard({
               ? t('connectors.action.disconnecting')
               : t('connectors.action.disconnect')}
           </button>
+        ) : def.authKind === 'apikey' ? (
+          <button
+            type="button"
+            onClick={() => {
+              setError(null)
+              setApiKeyOpen((v) => !v)
+            }}
+            className="sa-btn sa-btn-primary !py-1.5 !text-xs"
+          >
+            {apiKeyOpen ? t('connectors.action.cancel') : t('connectors.action.connect')}
+          </button>
         ) : (
           <button
             type="button"
@@ -328,6 +397,41 @@ function ConnectorCard({
           </button>
         )}
       </div>
+
+      {apiKeyOpen && !isConnected && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!apiKeyValue.trim()) return
+            setError(null)
+            apiKeyMutation.mutate(apiKeyValue)
+          }}
+          className="mt-3 flex flex-col gap-2 border-t border-border pt-3"
+        >
+          <label className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+            {t('connectors.apikey.label', { name: def.name })}
+          </label>
+          <input
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={apiKeyValue}
+            onChange={(e) => setApiKeyValue(e.target.value)}
+            placeholder={def.source === 'stripe' ? 'sk_test_… / rk_test_…' : ''}
+            className="sa-input !py-2 !text-xs"
+            disabled={apiKeyMutation.isPending}
+          />
+          <button
+            type="submit"
+            disabled={apiKeyMutation.isPending || !apiKeyValue.trim()}
+            className="sa-btn sa-btn-primary !py-1.5 !text-xs disabled:opacity-50"
+          >
+            {apiKeyMutation.isPending
+              ? t('connectors.apikey.saving')
+              : t('connectors.apikey.save')}
+          </button>
+        </form>
+      )}
     </div>
   )
 }

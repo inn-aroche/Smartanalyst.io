@@ -154,12 +154,16 @@ const en = {
   'connectors.auth.apiKey': 'API key',
   'connectors.action.connect': 'Connect',
   'connectors.action.opening': 'Opening…',
+  'connectors.action.cancel': 'Cancel',
   'connectors.action.disconnect': 'Disconnect',
   'connectors.action.disconnecting': 'Disconnecting…',
   'connectors.action.notifyMe': 'Notify me',
   'connectors.confirmDisconnect': 'Disconnect {{name}}?',
   'connectors.err.startOauth': 'Could not start the OAuth flow',
   'connectors.err.disconnect': 'Could not disconnect',
+  'connectors.apikey.label': 'Paste your {{name}} API key',
+  'connectors.apikey.save': 'Connect',
+  'connectors.apikey.saving': 'Connecting…',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Settings',
@@ -345,12 +349,16 @@ const fr: Record<keyof typeof en, string> = {
   'connectors.auth.apiKey': 'Clé API',
   'connectors.action.connect': 'Connecter',
   'connectors.action.opening': 'Ouverture…',
+  'connectors.action.cancel': 'Annuler',
   'connectors.action.disconnect': 'Déconnecter',
   'connectors.action.disconnecting': 'Déconnexion…',
   'connectors.action.notifyMe': 'Me prévenir',
   'connectors.confirmDisconnect': 'Déconnecter {{name}} ?',
   'connectors.err.startOauth': 'Impossible de démarrer le flow OAuth',
   'connectors.err.disconnect': 'Impossible de déconnecter',
+  'connectors.apikey.label': 'Colle ta clé API {{name}}',
+  'connectors.apikey.save': 'Connecter',
+  'connectors.apikey.saving': 'Connexion…',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Paramètres',
