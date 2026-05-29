@@ -4,40 +4,50 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Surface scale — dark theme (Phase A: tokens refresh, the app
+        // will move to a light theme in Phase B). Source: brand handoff.
         bg: {
-          0: '#06060b',
-          1: '#0c0c17',
-          2: '#111120',
+          0: '#07070f',
+          1: '#0d0c1b',
+          2: '#121228',
+          3: '#1a1a30',
         },
         card: {
-          DEFAULT: 'rgba(255, 255, 255, 0.035)',
-          hover: 'rgba(255, 255, 255, 0.06)',
+          DEFAULT: 'rgba(255, 255, 255, 0.04)',
+          hover: 'rgba(255, 255, 255, 0.07)',
         },
         border: {
-          DEFAULT: 'rgba(255, 255, 255, 0.07)',
+          DEFAULT: 'rgba(255, 255, 255, 0.08)',
           bright: 'rgba(255, 255, 255, 0.13)',
         },
         text: {
-          1: '#edecea',
-          2: '#74748c',
-          3: '#3e3e52',
+          1: '#eeedf2',
+          2: '#8a8aae',
+          3: '#46465e',
         },
         brand: {
-          blue: '#3d82ff',
-          'blue-dim': 'rgba(61, 130, 255, 0.09)',
-          cyan: '#22d3ee',
-          green: '#34d399',
-          red: '#f87171',
-          orange: '#fbbf24',
+          blue: '#5c8fff',
+          'blue-deep': '#3d6be0',
+          'blue-dim': 'rgba(92, 143, 255, 0.10)',
+          cyan: '#2dd9ee',
+          // Semantic — data states only.
+          green: '#34d999',
+          red: '#ff7272',
+          orange: '#ffba4a',
         },
       },
       fontFamily: {
-        head: ['Syne', 'sans-serif'],
+        head: ['"Plus Jakarta Sans"', 'sans-serif'],
         body: ['"DM Sans"', 'sans-serif'],
-        mono: ['"Space Mono"', 'monospace'],
+        mono: ['"DM Mono"', 'ui-monospace', 'monospace'],
       },
       maxWidth: {
         site: '1120px',
+      },
+      boxShadow: {
+        card: '0 2px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)',
+        float: '0 8px 40px rgba(0, 0, 0, 0.45)',
+        'brand-glow': '0 0 24px rgba(92, 143, 255, 0.32)',
       },
     },
   },
