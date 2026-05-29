@@ -1,5 +1,6 @@
 ---
 import DarkBase from '../../layouts/DarkBase.astro';
+import BrandMark from '../../components/BrandMark.astro';
 import LogoStrip from '../../components/LogoStrip.astro';
 import LogoIcon from '../../components/LogoIcon.astro';
 import '../../styles/landing.css';
@@ -451,7 +452,7 @@ const softwareApplication = {
         <div class="app-body">
           <aside class="app-sidebar">
             <div class="app-brand">
-              <span class="brand-mark" style="width:24px;height:24px;border-radius:6px"></span>
+              <BrandMark size={24} />
               <span class="brand-name" style="font-size:14px">SmartAnalyst</span>
             </div>
             <div class="app-nav">

@@ -2,6 +2,7 @@
 import { STRINGS, localizedPath } from '../i18n/strings.js';
 import { PRODUCT_FEATURES } from '../data/product-features.js';
 import { USE_CASES } from '../data/use-cases.js';
+import BrandMark from './BrandMark.astro';
 
 const { locale = 'en' } = Astro.props;
 const t = STRINGS[locale];
@@ -15,7 +16,7 @@ const year = new Date().getFullYear();
       <!-- Brand block -->
       <div class="footer-brand">
         <a href={lp('/')} class="brand">
-          <span class="brand-mark"></span>
+          <BrandMark size={32} />
           <span class="brand-name">SmartAnalyst</span>
         </a>
         <p class="footer-tagline">{f.tagline}</p>
@@ -115,17 +116,12 @@ const year = new Date().getFullYear();
     gap: 10px;
     margin-bottom: 18px;
   }
-  .footer-brand .brand-mark {
-    width: 28px;
-    height: 28px;
-    border-radius: 7px;
-    background: linear-gradient(135deg, #3d82ff 0%, #22d3ee 100%);
-  }
   .footer-brand .brand-name {
     font-family: var(--ff-h);
     font-weight: 700;
     font-size: 17px;
     color: var(--text-1);
+    letter-spacing: -0.02em;
   }
   .footer-tagline {
     font-family: var(--ff-b);

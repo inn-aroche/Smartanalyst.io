@@ -2,6 +2,7 @@
 import { STRINGS, LOCALES, localizedPath, switchLocalePath } from '../i18n/strings.js';
 import { PRODUCT_FEATURES } from '../data/product-features.js';
 import { USE_CASES } from '../data/use-cases.js';
+import BrandMark from './BrandMark.astro';
 
 const { locale = 'en' } = Astro.props;
 const t = STRINGS[locale];
@@ -42,7 +43,7 @@ const RESOURCE_LINKS = [
 <nav class="nav" id="nav">
   <div class="nav-inner">
     <a href={lp('/')} class="brand">
-      <span class="brand-mark"></span>
+      <BrandMark size={28} />
       <span class="brand-name">SmartAnalyst</span>
     </a>
 

@@ -2,26 +2,42 @@
    Used site-wide via DarkBase.astro. */
 
 :root {
-  --bg-0: #06060b;
-  --bg-1: #0c0c17;
-  --bg-2: #111120;
-  --card: rgba(255, 255, 255, 0.035);
-  --card-h: rgba(255, 255, 255, 0.06);
-  --border: rgba(255, 255, 255, 0.07);
+  /* Surface scale — dark "signature" theme. Source: brand handoff. */
+  --bg-0: #07070f;
+  --bg-1: #0d0c1b;
+  --bg-2: #121228;
+  --bg-3: #1a1a30;
+  --card: rgba(255, 255, 255, 0.04);
+  --card-h: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
   --border-br: rgba(255, 255, 255, 0.13);
-  --text-1: #edecea;
-  --text-2: #74748c;
-  --text-3: #3e3e52;
-  --blue: #3d82ff;
-  --blue-dim: rgba(61, 130, 255, 0.09);
-  --blue-glow: rgba(61, 130, 255, 0.16);
-  --cyan: #22d3ee;
-  --green: #34d399;
-  --red: #f87171;
-  --orange: #fbbf24;
-  --ff-h: 'Syne', sans-serif;
+  /* Ink */
+  --text-1: #eeedf2;
+  --text-2: #8a8aae;
+  --text-3: #46465e;
+  /* Brand accents */
+  --blue: #5c8fff;
+  --blue-deep: #3d6be0;
+  --blue-dim: rgba(92, 143, 255, 0.10);
+  --blue-glow: rgba(92, 143, 255, 0.22);
+  --cyan: #2dd9ee;
+  /* Semantic — data states only */
+  --positive: #34d999;
+  --warning: #ffba4a;
+  --critical: #ff7272;
+  /* Backwards-compat aliases kept so legacy class names keep working. */
+  --green: var(--positive);
+  --orange: var(--warning);
+  --red: var(--critical);
+  /* Brand gradient (135°, blue → cyan) */
+  --grad: linear-gradient(135deg, #5c8fff 0%, #2dd9ee 100%);
+  /* Type */
+  --ff-h: 'Plus Jakarta Sans', sans-serif;
   --ff-b: 'DM Sans', sans-serif;
-  --ff-m: 'Space Mono', monospace;
+  --ff-m: 'DM Mono', ui-monospace, monospace;
+  /* Shadows */
+  --shadow: 0 2px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 40px rgba(0, 0, 0, 0.45);
   --maxw: 1120px;
 }
 
@@ -182,34 +198,28 @@ a {
   );
 }
 
-/* ─── Logo mark (gradient square) ─── */
+/* ─── Logo lockup ─── */
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  text-decoration: none;
 }
+/* .brand-mark is rendered by the <BrandMark> component (inline SVG).
+   We only keep a size hint here so legacy spots that still use a bare
+   <span class="brand-mark"> render at the right footprint. */
 .brand-mark {
+  display: inline-flex;
   width: 28px;
   height: 28px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--blue) 0%, var(--cyan) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.brand-mark::after {
-  content: '';
-  width: 9px;
-  height: 9px;
-  border-radius: 2.5px;
-  background: #fff;
-  opacity: 0.9;
+  flex-shrink: 0;
 }
 .brand-name {
   font-size: 16px;
   font-weight: 700;
   color: var(--text-1);
   font-family: var(--ff-h);
+  letter-spacing: -0.02em;
   letter-spacing: -0.01em;
 }
 
