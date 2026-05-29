@@ -1,12 +1,11 @@
-// Chat business logic. Takes a user message, asks Gemini for an answer,
-// records an audit log (best-effort), returns the text.
-//
-// Next iteration will pull canonical_metrics for the caller's workspace and
-// inject them as context — for now the model only has the system prompt.
+// Chat business logic. Takes a user message, pulls the workspace's latest
+// canonical metrics, injects them as context, asks Gemini, records an
+// audit log (best-effort), returns the text.
 
 const { generateOnce } = require('./gemini.service')
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
+const canonicalMetrics = require('../metrics/canonical-metrics.service')
 
 const SYSTEM_PROMPT_FR = `Tu es SmartAnalyst, un analyste marketing IA pour PME et agences.
 Tu réponds en français, de manière structurée et concise.
@@ -34,6 +33,137 @@ function pickSystemPrompt(locale) {
   return locale === 'en' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_FR
 }
 
+// Map of canonical metric_key → { fr, en, unit }. Unknown keys fall back to
+// the raw key with no unit so the model still sees the value.
+const METRIC_LABELS = {
+  revenue_recurring_monthly: { fr: 'MRR', en: 'MRR', unit: 'eur' },
+  revenue_annual_recurring: { fr: 'ARR', en: 'ARR', unit: 'eur' },
+  customers_active: { fr: 'Clients actifs', en: 'Active customers', unit: 'count' },
+  customers_new: { fr: 'Nouveaux clients', en: 'New customers', unit: 'count' },
+  failed_payments_month: { fr: 'Paiements échoués', en: 'Failed payments', unit: 'count' },
+  churn_rate_subscription: { fr: 'Taux de churn', en: 'Churn rate', unit: 'ratio' },
+  lifetime_value_customer: { fr: 'LTV moyenne', en: 'Average LTV', unit: 'eur' },
+  sessions_all: { fr: 'Sessions', en: 'Sessions', unit: 'count' },
+  users_active: { fr: 'Utilisateurs actifs', en: 'Active users', unit: 'count' },
+  users_new: { fr: 'Nouveaux utilisateurs', en: 'New users', unit: 'count' },
+  conversions_total: { fr: 'Conversions', en: 'Conversions', unit: 'count' },
+  bounce_rate_all: { fr: 'Taux de rebond', en: 'Bounce rate', unit: 'ratio' },
+  spend_paid_social: { fr: 'Dépense paid social', en: 'Paid social spend', unit: 'eur' },
+  spend_paid_search: { fr: 'Dépense paid search', en: 'Paid search spend', unit: 'eur' },
+  clicks_paid_social: { fr: 'Clics paid social', en: 'Paid social clicks', unit: 'count' },
+  clicks_paid_search: { fr: 'Clics paid search', en: 'Paid search clicks', unit: 'count' },
+  return_on_investment_paid: { fr: 'ROAS paid social', en: 'Paid social ROAS', unit: 'ratio' },
+  click_through_rate_paid: { fr: 'CTR paid search', en: 'Paid search CTR', unit: 'ratio' },
+}
+
+const SNAPSHOT_METRICS = new Set([
+  'revenue_recurring_monthly',
+  'revenue_annual_recurring',
+  'customers_active',
+  'lifetime_value_customer',
+  'churn_rate_subscription',
+  'bounce_rate_all',
+  'click_through_rate_paid',
+  'return_on_investment_paid',
+])
+
+function formatValue(value, unit, locale) {
+  if (!Number.isFinite(value)) return String(value)
+  if (unit === 'eur') {
+    return new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+  if (unit === 'ratio') {
+    const pct = value <= 1 ? value * 100 : value
+    return `${pct.toFixed(1)}%`
+  }
+  return new Intl.NumberFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+/**
+ * Reduce per-day rows to one line per metric: snapshot metrics use the most
+ * recent value, flow metrics (sessions, spend…) get summed over the window.
+ */
+function summarize(rows, locale) {
+  const byKey = new Map()
+  for (const r of rows) {
+    if (!byKey.has(r.metric_key)) byKey.set(r.metric_key, [])
+    byKey.get(r.metric_key).push(r)
+  }
+
+  const lines = []
+  for (const [key, entries] of byKey) {
+    entries.sort((a, b) => (a.date < b.date ? 1 : -1)) // desc
+    const label = METRIC_LABELS[key] ?? { fr: key, en: key, unit: 'count' }
+    const localized = locale === 'en' ? label.en : label.fr
+    const sources = Array.from(new Set(entries.map((e) => e.source))).join(', ')
+
+    let value, suffix
+    if (SNAPSHOT_METRICS.has(key)) {
+      value = Number(entries[0].metric_value)
+      suffix = locale === 'en'
+        ? `(snapshot ${entries[0].date}, ${sources})`
+        : `(snapshot ${entries[0].date}, ${sources})`
+    } else {
+      value = entries.reduce((s, e) => s + Number(e.metric_value), 0)
+      const span = entries.length === 1 ? '1d' : `${entries.length}d`
+      suffix = locale === 'en'
+        ? `(sum last ${span}, ${sources})`
+        : `(somme ${span} glissants, ${sources})`
+    }
+
+    lines.push(`- ${localized}: ${formatValue(value, label.unit, locale)} ${suffix}`)
+  }
+  return lines
+}
+
+/**
+ * Build a "here is the user's data" block for the prompt. Returns null when
+ * the workspace has no metrics yet — the caller then leaves the prompt clean
+ * and the model defers to its existing "connect a source" guidance.
+ */
+async function buildMetricsContext(workspaceId, locale) {
+  if (!workspaceId) return null
+  const today = new Date()
+  const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const fmt = (d) => d.toISOString().slice(0, 10)
+
+  let rows = []
+  try {
+    rows = await canonicalMetrics.query({
+      workspaceId,
+      startDate: fmt(monthAgo),
+      endDate: fmt(today),
+      limit: 500,
+    })
+  } catch (err) {
+    logger.warn(
+      { event: 'chat_metrics_context_failed', workspaceId, error: err.message },
+      'Could not load metrics context for chat',
+    )
+    return null
+  }
+
+  if (rows.length === 0) return null
+
+  const lines = summarize(rows, locale)
+  const header =
+    locale === 'en'
+      ? `User's workspace metrics (last 30 days). Base your answer on these numbers when relevant.`
+      : `Métriques du workspace de l'utilisateur (30 derniers jours). Quand pertinent, base ta réponse sur ces chiffres.`
+  const footer =
+    locale === 'en'
+      ? `If the question mentions a metric not listed above, say it isn't connected yet and suggest which source to connect.`
+      : `Si la question porte sur une métrique non listée ci-dessus, dis qu'elle n'est pas encore connectée et suggère la source à brancher.`
+
+  return `${header}\n${lines.join('\n')}\n${footer}`
+}
+
 /**
  * Ask SmartAnalyst a question.
  *
@@ -45,7 +175,12 @@ function pickSystemPrompt(locale) {
  * @returns {Promise<{ answer: string, model: string }>}
  */
 async function ask({ userId, workspaceId, message, locale = 'fr' }) {
-  const systemPrompt = pickSystemPrompt(locale)
+  const basePrompt = pickSystemPrompt(locale)
+  const metricsContext = await buildMetricsContext(workspaceId, locale)
+  const systemPrompt = metricsContext
+    ? `${basePrompt}\n\n${metricsContext}`
+    : basePrompt
+
   const t0 = Date.now()
   const { text, modelName } = await generateOnce({
     systemPrompt,
@@ -55,7 +190,15 @@ async function ask({ userId, workspaceId, message, locale = 'fr' }) {
   const durationMs = Date.now() - t0
 
   logger.info(
-    { event: 'chat_answered', userId, workspaceId, model: modelName, durationMs, msgLen: message.length },
+    {
+      event: 'chat_answered',
+      userId,
+      workspaceId,
+      model: modelName,
+      durationMs,
+      msgLen: message.length,
+      hasMetricsContext: Boolean(metricsContext),
+    },
     'Chat answered',
   )
 
