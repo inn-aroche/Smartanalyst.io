@@ -1,20 +1,34 @@
 ---
 import { LOGO_ICONS } from '../data/connector-logos.js';
 
-const { name, size = 32, withLabel = true } = Astro.props;
+const { name, size = 22, withLabel = true } = Astro.props;
 const icon = LOGO_ICONS[name];
 if (!icon) throw new Error(`LogoIcon: unknown name "${name}"`);
-const fontSize = icon.mono.length === 1 ? Math.round(size * 0.5) : Math.round(size * 0.38);
+
+const monoFontSize = icon.kind === 'mono' && icon.mono.length === 1
+  ? Math.round(size * 0.5)
+  : Math.round(size * 0.38);
 ---
-<span class="logo-icon-wrap">
-  <span
-    class="logo-icon-mono"
-    style={`background:${icon.bg};color:${icon.fg};width:${size}px;height:${size}px;font-size:${fontSize}px;${icon.border ? `box-shadow:inset 0 0 0 1px ${icon.border};` : ''}`}
-  >
-    {icon.mono}
+{icon.kind === 'svg' ? (
+  <span class="logo-icon-wrap">
+    <span class="logo-icon-tile" style={`width:${size}px;height:${size}px;color:${icon.hex}`}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" width={size} height={size} fill="currentColor">
+        <path d={icon.path} />
+      </svg>
+    </span>
+    {withLabel && <span class="logo-icon-label">{icon.label}</span>}
   </span>
-  {withLabel && <span class="logo-icon-label">{icon.label}</span>}
-</span>
+) : (
+  <span class="logo-icon-wrap">
+    <span
+      class="logo-icon-mono"
+      style={`background:${icon.bg};color:${icon.fg};width:${size}px;height:${size}px;font-size:${monoFontSize}px;${icon.border ? `box-shadow:inset 0 0 0 1px ${icon.border};` : ''}`}
+    >
+      {icon.mono}
+    </span>
+    {withLabel && <span class="logo-icon-label">{icon.label}</span>}
+  </span>
+)}
 
 <style is:global>
   .logo-icon-wrap {
@@ -22,6 +36,13 @@ const fontSize = icon.mono.length === 1 ? Math.round(size * 0.5) : Math.round(si
     align-items: center;
     gap: 10px;
   }
+  .logo-icon-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-icon-tile svg { width: 100%; height: 100%; }
   .logo-icon-mono {
     display: inline-flex;
     align-items: center;
