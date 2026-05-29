@@ -11,7 +11,7 @@ type NavItem = { to: string; labelKey: StringKey; icon: string; soon?: boolean }
 const NAV_ITEMS: NavItem[] = [
   { to: '/', labelKey: 'nav.dashboard', icon: '◧' },
   { to: '/connectors', labelKey: 'nav.connectors', icon: '◴' },
-  { to: '/chat', labelKey: 'nav.chat', icon: '◑', soon: true },
+  { to: '/chat', labelKey: 'nav.chat', icon: '◑' },
   { to: '/reports', labelKey: 'nav.reports', icon: '▤', soon: true },
   { to: '/files', labelKey: 'nav.files', icon: '◫', soon: true },
   { to: '/settings', labelKey: 'nav.settings', icon: '◴' },

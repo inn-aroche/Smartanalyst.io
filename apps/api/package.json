@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
+    "@google/generative-ai": "^0.24.1",
     "@smartanalyst/shared": "*",
     "@supabase/supabase-js": "^2.45.0",
     "bullmq": "^5.20.0",

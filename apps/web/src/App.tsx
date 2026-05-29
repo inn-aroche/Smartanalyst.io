@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import { usePageViewTracker } from './lib/gtm'
 import AuthCallback from './pages/AuthCallback'
+import Chat from './pages/Chat'
 import Connectors from './pages/Connectors'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
@@ -29,6 +30,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Connectors />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <Chat />
           </ProtectedRoute>
         }
       />
