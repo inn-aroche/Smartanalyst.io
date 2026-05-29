@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-bg-1/60 md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
         <div className="flex h-16 items-center px-5">
           <Brand />
         </div>
