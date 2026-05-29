@@ -1,5 +1,7 @@
 ---
 import DarkBase from '../../../layouts/DarkBase.astro';
+import Mockup from '../../../components/Mockup.astro';
+import StatGrid from '../../../components/StatGrid.astro';
 import '../../../styles/subpage.css';
 import { USE_CASES } from '../../../data/use-cases.js';
 
@@ -12,6 +14,8 @@ export async function getStaticPaths() {
 
 const { useCase } = Astro.props;
 const t = useCase.fr;
+const stats = useCase.stats?.fr ?? [];
+const quote = useCase.quote?.fr;
 
 const related = USE_CASES.filter((u) => u.slug !== useCase.slug);
 ---
@@ -23,8 +27,11 @@ const related = USE_CASES.filter((u) => u.slug !== useCase.slug);
       <h1 class="sp-title">{t.title}</h1>
       <p class="sp-tagline">{t.tagline}</p>
       <p class="sp-hero-lead">{t.hero}</p>
+      {useCase.mockup && <Mockup slug={useCase.mockup} locale="fr" />}
     </div>
   </section>
+
+  {stats.length > 0 && <StatGrid stats={stats} />}
 
   <section class="sp-section">
     <div class="sp-section-inner">
@@ -62,6 +69,19 @@ const related = USE_CASES.filter((u) => u.slug !== useCase.slug);
       </ol>
     </div>
   </section>
+
+  {quote && (
+    <section class="sp-section">
+      <div class="sp-section-inner">
+        <div class="pull-quote">
+          <p>{quote.text}</p>
+          <div class="pull-quote-author">
+            <strong>{quote.who}</strong> · {quote.where}
+          </div>
+        </div>
+      </div>
+    </section>
+  )}
 
   <section class="sp-cta">
     <div class="sp-hero-glow" style="top:-40px;opacity:0.6"></div>

@@ -1,7 +1,25 @@
 ---
 import DarkBase from '../../../layouts/DarkBase.astro';
+import Mockup from '../../../components/Mockup.astro';
+import LogoStrip from '../../../components/LogoStrip.astro';
 import '../../../styles/subpage.css';
 import { PRODUCT_FEATURES } from '../../../data/product-features.js';
+
+const CONNECTOR_LIVE = [
+  { icon: 'ga4' },
+  { icon: 'meta' },
+  { icon: 'google_ads' },
+  { icon: 'stripe' },
+  { icon: 'search_console' },
+];
+const CONNECTOR_ROADMAP = [
+  { icon: 'shopify' },
+  { icon: 'hubspot' },
+  { icon: 'mailchimp' },
+  { icon: 'linkedin' },
+  { icon: 'klaviyo' },
+  { icon: 'notion' },
+];
 
 export async function getStaticPaths() {
   return PRODUCT_FEATURES.map((feature) => ({
@@ -33,8 +51,20 @@ const breadcrumbJsonLd = {
       <h1 class="sp-title">{t.title}</h1>
       <p class="sp-tagline">{t.tagline}</p>
       <p class="sp-hero-lead">{t.hero}</p>
+      <Mockup slug={feature.slug} locale="en" />
     </div>
   </section>
+
+  {feature.slug === 'connectors' && (
+    <section class="sp-section">
+      <div class="sp-section-inner">
+        <h2 class="sp-h2">5 sources connected in one click each</h2>
+        <LogoStrip label="Live" items={CONNECTOR_LIVE} align="left" />
+        <div style="height:24px"></div>
+        <LogoStrip label="Roadmap" items={CONNECTOR_ROADMAP} align="left" />
+      </div>
+    </section>
+  )}
 
   <section class="sp-section">
     <div class="sp-section-inner">

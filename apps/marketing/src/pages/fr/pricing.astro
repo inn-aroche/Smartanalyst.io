@@ -176,33 +176,19 @@ const productJsonLd = {
   </section>
 
   <section class="page-section sa-fade">
-    <div class="container">
+    <div class="container faq-container">
       <h2>Questions fréquentes</h2>
-      <div class="grid cols-2">
-        <div class="sa-card">
-          <h3>Est-ce que je peux annuler à tout moment ?</h3>
-          <div class="card-body">Oui. Pas d’engagement, pas de pénalité. Tu gardes l’accès jusqu’à la fin de la période payée. Après expiration, tu as 7 jours en lecture seule pour exporter tes données — rien n’est supprimé brutalement.</div>
-        </div>
-        <div class="sa-card">
-          <h3>L’essai est vraiment sans carte bancaire ?</h3>
-          <div class="card-body">Vraiment. Email + mot de passe, c’est tout. {TRIAL_DAYS} jours d’accès à toutes les features. Tu paies seulement si tu décides de continuer.</div>
-        </div>
-        <div class="sa-card">
-          <h3>L’IA est-elle limitée sur le plan Découverte ?</h3>
-          <div class="card-body">Oui — chaque plan inclut un <strong>quota mensuel de crédits IA</strong> (messages au modèle). Découverte est calibré pour évaluer le produit, Starter pour un usage solo régulier, Pro et Agence pour une utilisation intensive multi-clients. Tu vois ton solde en temps réel et reçois une alerte à 80 %. Pas de surfacturation surprise.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Mes données sont-elles en sécurité ?</h3>
-          <div class="card-body">Hébergement européen (Supabase, région Irlande). Chiffrement des tokens OAuth via Supabase Vault. Row-Level Security sur toute la base. Conformité RGPD by design. <a href="/fr/security">Détails sur la page sécurité</a>.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Quels connecteurs sont disponibles aujourd’hui ?</h3>
-          <div class="card-body">GA4, Meta Ads (Facebook + Instagram), Google Ads, Stripe et Google Search Console. La roadmap inclut Shopify, HubSpot, Mailchimp et LinkedIn Ads.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Vous facturez en euros ?</h3>
-          <div class="card-body">Oui, en euros, TTC. Facturation mensuelle via Stripe. TVA française appliquée selon ton statut. Factures téléchargeables dans le back-office.</div>
-        </div>
+      <p class="lead" style="margin-bottom:36px">Tout ce qu’on nous demande systématiquement avant de signer.</p>
+      <div class="faq-list">
+        {faqEntries.map((entry, i) => (
+          <details class="faq-item" open={i === 0}>
+            <summary>
+              <span>{entry.q}</span>
+              <span class="faq-caret" aria-hidden="true">+</span>
+            </summary>
+            <div class="faq-answer" set:html={entry.a} />
+          </details>
+        ))}
       </div>
     </div>
   </section>

@@ -191,33 +191,19 @@ const productJsonLd = {
   </section>
 
   <section class="page-section sa-fade">
-    <div class="container">
+    <div class="container faq-container">
       <h2>Frequently asked questions</h2>
-      <div class="grid cols-2">
-        <div class="sa-card">
-          <h3>Can I cancel anytime?</h3>
-          <div class="card-body">Yes. No commitment, no penalty. You keep access through the end of the paid period. After expiry, you have 7 days read-only to export your data — nothing is deleted abruptly.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Is the trial really card-free?</h3>
-          <div class="card-body">Really. Email + password, that’s it. {TRIAL_DAYS} days of full access. You only pay if you decide to continue.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Is AI limited on the Discovery plan?</h3>
-          <div class="card-body">Yes — every plan includes a <strong>monthly AI credit allowance</strong> (messages sent to the model). Discovery is sized to evaluate the product, Starter for steady solo use, Pro and Agency for intensive multi-client work. You see your remaining balance in real time and get an 80% alert. No surprise overage charges.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Is my data safe?</h3>
-          <div class="card-body">EU hosting (Supabase, Ireland region). OAuth tokens encrypted with Supabase Vault. Row-Level Security across the whole database. GDPR by design. <a href="/en/security">More details on the security page</a>.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Which connectors are available today?</h3>
-          <div class="card-body">GA4, Meta Ads (Facebook + Instagram), Google Ads, Stripe and Google Search Console. Roadmap: Shopify, HubSpot, Mailchimp, LinkedIn Ads.</div>
-        </div>
-        <div class="sa-card">
-          <h3>Do you bill in euros?</h3>
-          <div class="card-body">Yes, in euros, VAT included. Monthly billing via Stripe. French VAT applied based on your status. Invoices downloadable from your dashboard.</div>
-        </div>
+      <p class="lead" style="margin-bottom:36px">Everything we’re asked before every signup.</p>
+      <div class="faq-list">
+        {faqEntries.map((entry, i) => (
+          <details class="faq-item" open={i === 0}>
+            <summary>
+              <span>{entry.q}</span>
+              <span class="faq-caret" aria-hidden="true">+</span>
+            </summary>
+            <div class="faq-answer" set:html={entry.a} />
+          </details>
+        ))}
       </div>
     </div>
   </section>

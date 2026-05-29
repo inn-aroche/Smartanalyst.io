@@ -38,13 +38,20 @@ export default function Signup() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-6 py-12">
+      <a
+        href="https://smartanalyst.io"
+        className="absolute left-5 top-5 z-20 inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg-2 px-3 py-1.5 text-xs text-text-2 transition hover:border-border-bright hover:text-text-1"
+      >
+        <span aria-hidden="true">←</span>
+        <span>{t('common.backToSite')}</span>
+      </a>
       <div className="absolute right-5 top-5 z-20">
         <LocaleSwitcher />
       </div>
       <div className="relative z-10 w-full max-w-md">
-        <div className="mb-10 flex justify-center">
+        <a href="https://smartanalyst.io" className="mb-10 flex justify-center">
           <Brand />
-        </div>
+        </a>
         <div className="sa-card">
           <h1 className="font-head text-2xl font-bold text-text-1">
             {t('signup.title')}

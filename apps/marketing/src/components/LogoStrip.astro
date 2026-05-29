@@ -1,0 +1,26 @@
+---
+// Row of connector / source logos. Each item is either:
+//   { icon: 'ga4' }       → renders the real brand SVG via <LogoIcon>
+//   { label, color }      → renders a colored-dot + text fallback
+//
+// Pure HTML/CSS — no image assets.
+import LogoIcon from './LogoIcon.astro';
+import { LOGO_ICONS } from '../data/connector-logos.js';
+
+const { label, items, align = 'center', size = 22 } = Astro.props;
+---
+<div class="logo-strip" style={align === 'left' ? 'justify-content:flex-start' : ''}>
+  {label && <span class="logo-strip-label">{label}</span>}
+  {items.map((item) => (
+    item.icon && LOGO_ICONS[item.icon] ? (
+      <span class="logo-pill logo-pill-icon">
+        <LogoIcon name={item.icon} size={size} withLabel={true} />
+      </span>
+    ) : (
+      <span class="logo-pill">
+        {item.color && <span class="lp-dot" style={`background:${item.color}`}></span>}
+        <span>{item.label}</span>
+      </span>
+    )
+  ))}
+</div>

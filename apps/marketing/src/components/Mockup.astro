@@ -1,0 +1,716 @@
+---
+// Per-feature hero visuals. Each slug returns a self-contained SVG/HTML
+// composition that visualizes the feature. All compositions sit inside a
+// chromed window (.mk-window) so the rhythm is consistent across pages.
+
+const { slug, locale = 'fr' } = Astro.props;
+const T = (fr, en) => (locale === 'fr' ? fr : en);
+---
+
+<div class="mk-window">
+  <div class="mk-chrome">
+    <div class="mk-traffic"><span></span><span></span><span></span></div>
+    <div class="mk-url">
+      {slug === 'conversational-ai' && <span>chat · {T('analyste IA', 'AI analyst')}</span>}
+      {slug === 'connectors' && <span>connectors</span>}
+      {slug === 'canonical-metrics' && <span>schema · canonical_metrics</span>}
+      {slug === 'proactive-insights' && <span>inbox · {T('insights hebdo', 'weekly insights')}</span>}
+      {slug === 'reports' && <span>reports · march.pdf</span>}
+      {slug === 'multi-workspace' && <span>workspaces</span>}
+      {slug === 'white-label' && <span>branding</span>}
+    </div>
+    <span class="mk-pill">live</span>
+  </div>
+  <div class="mk-body">
+
+    {slug === 'conversational-ai' && (
+      <div class="mk-chat">
+        <div class="mk-msg mk-msg-user">
+          <span>{T('Pourquoi le taux de conversion a baissé hier sur Meta ?', 'Why did Meta CVR drop yesterday?')}</span>
+        </div>
+        <div class="mk-msg mk-msg-ai">
+          <div class="mk-tag">{T('Analyse · 7 jours', 'Analysis · 7 days')}</div>
+          <div class="mk-summary">
+            {T(
+              'CVR Meta passée de 2,8 % à 1,9 % (-32 %). 3 facteurs contributifs identifiés.',
+              'Meta CVR dropped from 2.8% to 1.9% (-32%). 3 contributing factors identified.'
+            )}
+          </div>
+          <div class="mk-stats">
+            <div><span class="mk-k">CTR</span><span class="mk-v">-18%</span></div>
+            <div><span class="mk-k">CPM</span><span class="mk-v">+24%</span></div>
+            <div><span class="mk-k">{T('Spend', 'Spend')}</span><span class="mk-v">+12%</span></div>
+          </div>
+          <div class="mk-bullets">
+            <div>· {T('Créa #4 en fatigue (freq 4.2)', 'Creative #4 fatigued (freq 4.2)')}</div>
+            <div>· {T('Audience similaire 1% saturée', '1% lookalike saturated')}</div>
+            <div>· {T('Hausse CPC enchères concurrentes', 'Competitor bid pressure ↑')}</div>
+          </div>
+          <div class="mk-cta-row">
+            <span class="mk-mini-btn">{T('Voir détails', 'See details')}</span>
+            <span class="mk-mini-btn">{T('Comparer sur 30j', 'Compare 30d')}</span>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {slug === 'connectors' && (
+      <div class="mk-hub">
+        <div class="mk-hub-center">
+          <div class="mk-hub-logo">SA</div>
+          <div class="mk-hub-label">SmartAnalyst</div>
+        </div>
+        <svg class="mk-hub-lines" viewBox="0 0 600 360" preserveAspectRatio="none">
+          <g stroke="rgba(61,130,255,0.25)" stroke-width="1.2" fill="none">
+            <path d="M300 180 Q200 80 90 60" />
+            <path d="M300 180 Q400 80 510 60" />
+            <path d="M300 180 Q180 200 60 240" />
+            <path d="M300 180 Q420 200 540 240" />
+            <path d="M300 180 Q300 280 300 340" />
+          </g>
+        </svg>
+        <div class="mk-hub-node" style="top:8%;left:8%"><span>GA4</span></div>
+        <div class="mk-hub-node" style="top:8%;right:8%"><span>Meta Ads</span></div>
+        <div class="mk-hub-node" style="top:55%;left:4%"><span>Google Ads</span></div>
+        <div class="mk-hub-node" style="top:55%;right:4%"><span>Stripe</span></div>
+        <div class="mk-hub-node mk-hub-node-bottom"><span>Search Console</span></div>
+      </div>
+    )}
+
+    {slug === 'canonical-metrics' && (
+      <div class="mk-mapping">
+        <div class="mk-map-col">
+          <div class="mk-map-header">{T('Sources brutes', 'Raw sources')}</div>
+          <div class="mk-map-row"><span class="mk-map-src">GA4</span><span class="mk-map-name">sessions</span></div>
+          <div class="mk-map-row"><span class="mk-map-src ms-meta">Meta</span><span class="mk-map-name">reach</span></div>
+          <div class="mk-map-row"><span class="mk-map-src ms-ga">Google Ads</span><span class="mk-map-name">impressions</span></div>
+        </div>
+        <svg class="mk-map-arrows" viewBox="0 0 120 220" preserveAspectRatio="none">
+          <defs>
+            <marker id="arrowend" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0 0 L6 3 L0 6 z" fill="rgba(34,211,238,0.7)" />
+            </marker>
+          </defs>
+          <g stroke="rgba(34,211,238,0.45)" stroke-width="1.4" fill="none" marker-end="url(#arrowend)">
+            <path d="M5 35 L115 110" />
+            <path d="M5 110 L115 110" />
+            <path d="M5 185 L115 110" />
+          </g>
+        </svg>
+        <div class="mk-map-col mk-map-col-right">
+          <div class="mk-map-header">{T('Couche canonique', 'Canonical layer')}</div>
+          <div class="mk-map-canonical">
+            <div class="mk-map-canonical-key">sessions_all</div>
+            <div class="mk-map-canonical-meta">{T('confiance 96 · timezone Europe/Paris', 'confidence 96 · tz Europe/Paris')}</div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {slug === 'proactive-insights' && (
+      <div class="mk-email">
+        <div class="mk-email-head">
+          <div class="mk-email-from">
+            <span class="mk-email-avatar">SA</span>
+            <div>
+              <div class="mk-email-name">SmartAnalyst</div>
+              <div class="mk-email-meta">{T('lun. 8:02 · pour toi', 'Mon 8:02 · to you')}</div>
+            </div>
+          </div>
+          <span class="mk-pill">{T('Hebdo', 'Weekly')}</span>
+        </div>
+        <div class="mk-email-subject">{T('3 choses à voir cette semaine', '3 things to look at this week')}</div>
+        <div class="mk-insights">
+          <div class="mk-insight mk-insight-red">
+            <span class="mk-insight-tag">{T('Risque', 'Risk')}</span>
+            <strong>CTR Meta -22 %</strong>
+            <p>{T('Compte X, sur 7 jours. Rotation créa recommandée.', 'Account X, last 7 days. Creative refresh recommended.')}</p>
+          </div>
+          <div class="mk-insight mk-insight-green">
+            <span class="mk-insight-tag">{T('Opportunité', 'Opportunity')}</span>
+            <strong>MRR Stripe +8 %</strong>
+            <p>{T('Tiré par les upgrades Pro. Audience à scaler.', 'Driven by Pro upgrades. Audience to scale.')}</p>
+          </div>
+          <div class="mk-insight mk-insight-blue">
+            <span class="mk-insight-tag">{T('Anomalie', 'Anomaly')}</span>
+            <strong>Spend Google Ads +30 %</strong>
+            <p>{T('Conversions stables. À investiguer.', 'Conversions flat. Investigate.')}</p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {slug === 'reports' && (
+      <div class="mk-report">
+        <div class="mk-report-page mk-report-page-2"></div>
+        <div class="mk-report-page mk-report-page-1">
+          <div class="mk-report-brand">
+            <span class="mk-report-logo"></span>
+            <span class="mk-report-agency">{T('Ton agence', 'Your agency')}</span>
+          </div>
+          <div class="mk-report-title">{T('Rapport mensuel · Mars', 'Monthly report · March')}</div>
+          <div class="mk-report-kpis">
+            <div><div class="mk-kpi-label">MRR</div><div class="mk-kpi-val">42 K€</div><div class="mk-kpi-delta">+8.2%</div></div>
+            <div><div class="mk-kpi-label">CAC</div><div class="mk-kpi-val">128€</div><div class="mk-kpi-delta">-12%</div></div>
+            <div><div class="mk-kpi-label">ROAS</div><div class="mk-kpi-val">3.7</div><div class="mk-kpi-delta">+0.4</div></div>
+          </div>
+          <div class="mk-report-summary">
+            <div class="mk-report-bar"></div>
+            <div class="mk-report-bar mk-report-bar-short"></div>
+            <div class="mk-report-bar"></div>
+            <div class="mk-report-bar mk-report-bar-med"></div>
+          </div>
+          <svg class="mk-report-chart" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="mkrf" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(61,130,255,0.35)" />
+                <stop offset="100%" stop-color="rgba(61,130,255,0)" />
+              </linearGradient>
+            </defs>
+            <path d="M0 50 L20 45 L40 38 L60 41 L80 32 L100 28 L120 22 L140 18 L160 15 L180 11 L200 8 L200 60 L0 60 Z" fill="url(#mkrf)" />
+            <path d="M0 50 L20 45 L40 38 L60 41 L80 32 L100 28 L120 22 L140 18 L160 15 L180 11 L200 8" fill="none" stroke="#3D82FF" stroke-width="1.5" />
+          </svg>
+        </div>
+      </div>
+    )}
+
+    {slug === 'multi-workspace' && (
+      <div class="mk-ws">
+        <div class="mk-ws-switcher">
+          <div class="mk-ws-current">
+            <span class="mk-ws-mark mk-ws-mark-a">A</span>
+            <div>
+              <div class="mk-ws-name">Acme Inc.</div>
+              <div class="mk-ws-meta">{T('5 connecteurs · admin', '5 connectors · admin')}</div>
+            </div>
+            <span class="mk-ws-caret">▾</span>
+          </div>
+          <div class="mk-ws-list">
+            <div class="mk-ws-row"><span class="mk-ws-mark mk-ws-mark-b">B</span><span>BloomCo</span><span class="mk-ws-tag">{T('actif', 'active')}</span></div>
+            <div class="mk-ws-row"><span class="mk-ws-mark mk-ws-mark-c">C</span><span>Cycle Studio</span><span class="mk-ws-tag">{T('actif', 'active')}</span></div>
+            <div class="mk-ws-row"><span class="mk-ws-mark mk-ws-mark-d">D</span><span>Deep Roots</span><span class="mk-ws-tag mk-ws-tag-warn">{T('1 alerte', '1 alert')}</span></div>
+            <div class="mk-ws-row mk-ws-row-add"><span class="mk-ws-mark mk-ws-mark-add">+</span><span>{T('Ajouter un client', 'Add a client')}</span></div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {slug === 'white-label' && (
+      <div class="mk-wl">
+        <div class="mk-wl-half mk-wl-default">
+          <div class="mk-wl-tag">{T('Sans marque blanche', 'Without white-label')}</div>
+          <div class="mk-wl-doc">
+            <div class="mk-wl-doc-head">
+              <span class="mk-wl-logo mk-wl-logo-sa">SA</span>
+              <span class="mk-wl-doc-title">SmartAnalyst</span>
+            </div>
+            <div class="mk-wl-doc-bar"></div>
+            <div class="mk-wl-doc-bar mk-wl-doc-bar-s"></div>
+            <div class="mk-wl-doc-bar"></div>
+          </div>
+        </div>
+        <div class="mk-wl-divider"></div>
+        <div class="mk-wl-half mk-wl-branded">
+          <div class="mk-wl-tag mk-wl-tag-on">{T('Marque blanche activée', 'White-label on')}</div>
+          <div class="mk-wl-doc mk-wl-doc-branded">
+            <div class="mk-wl-doc-head">
+              <span class="mk-wl-logo mk-wl-logo-agency">Y</span>
+              <span class="mk-wl-doc-title">{T('Ton agence', 'Your agency')}</span>
+            </div>
+            <div class="mk-wl-doc-bar"></div>
+            <div class="mk-wl-doc-bar mk-wl-doc-bar-s"></div>
+            <div class="mk-wl-doc-bar"></div>
+          </div>
+        </div>
+      </div>
+    )}
+
+  </div>
+</div>
+
+<style is:global>
+  /* ─── Common window chrome ─── */
+  .mk-window {
+    max-width: 920px;
+    margin: 56px auto 0;
+    background: var(--bg-1);
+    border: 1px solid var(--border-br);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(61, 130, 255, 0.08), 0 44px 80px rgba(0, 0, 0, 0.7);
+  }
+  .mk-chrome {
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mk-traffic { display: flex; gap: 6px; }
+  .mk-traffic span {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+  }
+  .mk-url {
+    flex: 1;
+    text-align: center;
+    font-family: var(--ff-m);
+    font-size: 11px;
+    color: var(--text-2);
+  }
+  .mk-pill {
+    font-family: var(--ff-m);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border: 1px solid rgba(34, 211, 238, 0.25);
+    background: rgba(34, 211, 238, 0.06);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .mk-body {
+    padding: 28px;
+    min-height: 340px;
+    position: relative;
+  }
+
+  /* ─── Chat mockup (conversational-ai) ─── */
+  .mk-chat { display: flex; flex-direction: column; gap: 16px; }
+  .mk-msg-user {
+    align-self: flex-end;
+    background: var(--blue-dim);
+    border: 1px solid rgba(61, 130, 255, 0.28);
+    border-radius: 12px 12px 2px 12px;
+    padding: 10px 16px;
+    max-width: 78%;
+    font-family: var(--ff-b);
+    font-size: 14.5px;
+    color: var(--text-1);
+    line-height: 1.5;
+  }
+  .mk-msg-ai {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px 12px 12px 12px;
+    padding: 16px 18px;
+    max-width: 92%;
+  }
+  .mk-tag {
+    font-family: var(--ff-m);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 8px;
+  }
+  .mk-summary {
+    font-family: var(--ff-b);
+    font-size: 14.5px;
+    color: var(--text-1);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .mk-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .mk-stats > div {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .mk-k {
+    font-family: var(--ff-m);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .mk-v {
+    font-family: var(--ff-h);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-1);
+  }
+  .mk-bullets {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: var(--ff-b);
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .mk-cta-row { display: flex; gap: 6px; margin-top: 12px; }
+  .mk-mini-btn {
+    font-family: var(--ff-m);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--blue);
+    border: 1px solid rgba(61, 130, 255, 0.3);
+    background: rgba(61, 130, 255, 0.06);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  /* ─── Hub mockup (connectors) ─── */
+  .mk-hub { position: relative; height: 320px; }
+  .mk-hub-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mk-hub-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 2;
+  }
+  .mk-hub-logo {
+    width: 64px; height: 64px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #3d82ff 0%, #22d3ee 100%);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--ff-h); font-weight: 700; font-size: 22px;
+    margin: 0 auto 8px;
+    box-shadow: 0 8px 24px rgba(61, 130, 255, 0.35);
+  }
+  .mk-hub-label {
+    font-family: var(--ff-h);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .mk-hub-node {
+    position: absolute;
+    background: var(--card);
+    border: 1px solid var(--border-br);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: var(--ff-m);
+    font-size: 12px;
+    color: var(--text-1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+  .mk-hub-node-bottom { bottom: 4%; left: 50%; transform: translateX(-50%); }
+
+  /* ─── Mapping mockup (canonical-metrics) ─── */
+  .mk-mapping {
+    display: grid;
+    grid-template-columns: 1fr 120px 1fr;
+    align-items: center;
+    gap: 16px;
+    min-height: 280px;
+  }
+  .mk-map-col { display: flex; flex-direction: column; gap: 10px; }
+  .mk-map-col-right { align-items: center; }
+  .mk-map-header {
+    font-family: var(--ff-m);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 4px;
+  }
+  .mk-map-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .mk-map-src {
+    font-family: var(--ff-m);
+    font-size: 10px;
+    color: var(--text-3);
+    padding: 3px 8px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .ms-meta { color: #22d3ee; border-color: rgba(34, 211, 238, 0.3); }
+  .ms-ga { color: #3d82ff; border-color: rgba(61, 130, 255, 0.3); }
+  .mk-map-name {
+    font-family: var(--ff-m);
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .mk-map-arrows { width: 100%; height: 220px; }
+  .mk-map-canonical {
+    background: rgba(34, 211, 238, 0.06);
+    border: 1px solid rgba(34, 211, 238, 0.32);
+    border-radius: 10px;
+    padding: 16px 18px;
+    text-align: center;
+  }
+  .mk-map-canonical-key {
+    font-family: var(--ff-m);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cyan);
+    margin-bottom: 4px;
+  }
+  .mk-map-canonical-meta {
+    font-family: var(--ff-b);
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  /* ─── Email mockup (proactive-insights) ─── */
+  .mk-email { font-family: var(--ff-b); }
+  .mk-email-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .mk-email-from { display: flex; align-items: center; gap: 12px; }
+  .mk-email-avatar {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3d82ff 0%, #22d3ee 100%);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--ff-h); font-weight: 700; font-size: 13px;
+  }
+  .mk-email-name { font-family: var(--ff-h); font-weight: 600; font-size: 14px; color: var(--text-1); }
+  .mk-email-meta { font-size: 11px; color: var(--text-3); }
+  .mk-email-subject {
+    font-family: var(--ff-h); font-weight: 700; font-size: 18px;
+    color: var(--text-1); margin-bottom: 16px;
+  }
+  .mk-insights { display: flex; flex-direction: column; gap: 10px; }
+  .mk-insight {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .mk-insight-red { border-left-color: #ef4444; }
+  .mk-insight-green { border-left-color: #22c55e; }
+  .mk-insight-blue { border-left-color: #3d82ff; }
+  .mk-insight-tag {
+    display: inline-block;
+    font-family: var(--ff-m);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 4px;
+  }
+  .mk-insight strong {
+    display: block;
+    font-family: var(--ff-h);
+    font-size: 14px;
+    color: var(--text-1);
+    margin-bottom: 2px;
+  }
+  .mk-insight p {
+    font-size: 12.5px; color: var(--text-2); margin: 0; line-height: 1.5;
+  }
+
+  /* ─── Report mockup ─── */
+  .mk-report { position: relative; height: 320px; }
+  .mk-report-page {
+    position: absolute;
+    background: var(--bg-1);
+    border: 1px solid var(--border-br);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  }
+  .mk-report-page-2 {
+    top: 30px; left: 60px; right: 60px; bottom: 0;
+    opacity: 0.55;
+    transform: rotate(-2deg);
+  }
+  .mk-report-page-1 {
+    top: 0; left: 30px; right: 30px; bottom: 30px;
+    transform: rotate(1deg);
+  }
+  .mk-report-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .mk-report-logo {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #3d82ff 0%, #22d3ee 100%);
+  }
+  .mk-report-agency {
+    font-family: var(--ff-h);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-1);
+  }
+  .mk-report-title {
+    font-family: var(--ff-h);
+    font-size: 16px;
+    color: var(--text-1);
+    margin-bottom: 14px;
+  }
+  .mk-report-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .mk-report-kpis > div {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+  }
+  .mk-kpi-label {
+    font-family: var(--ff-m);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .mk-kpi-val {
+    font-family: var(--ff-h);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-1);
+    margin-top: 2px;
+  }
+  .mk-kpi-delta {
+    font-family: var(--ff-m);
+    font-size: 10px;
+    color: #22c55e;
+  }
+  .mk-report-summary { margin-bottom: 14px; }
+  .mk-report-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    margin-bottom: 5px;
+  }
+  .mk-report-bar-short { width: 60%; }
+  .mk-report-bar-med { width: 82%; }
+  .mk-report-chart { width: 100%; height: 60px; }
+
+  /* ─── Workspace switcher mockup ─── */
+  .mk-ws { display: flex; align-items: center; justify-content: center; padding: 12px 0; }
+  .mk-ws-switcher {
+    background: var(--bg-2);
+    border: 1px solid var(--border-br);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+  }
+  .mk-ws-current {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+  .mk-ws-mark {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--ff-h); font-weight: 700; font-size: 14px;
+    color: white;
+  }
+  .mk-ws-mark-a { background: linear-gradient(135deg, #3d82ff 0%, #22d3ee 100%); }
+  .mk-ws-mark-b { background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); }
+  .mk-ws-mark-c { background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); }
+  .mk-ws-mark-d { background: linear-gradient(135deg, #14b8a6 0%, #22c55e 100%); }
+  .mk-ws-mark-add { background: var(--bg-2); border: 1px dashed var(--border-br); color: var(--text-3); }
+  .mk-ws-name { font-family: var(--ff-h); font-weight: 600; font-size: 14px; color: var(--text-1); flex: 1; }
+  .mk-ws-meta { font-size: 11px; color: var(--text-3); }
+  .mk-ws-current > div:nth-child(2) { flex: 1; }
+  .mk-ws-caret { font-size: 12px; color: var(--text-3); }
+  .mk-ws-list { padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .mk-ws-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-family: var(--ff-b);
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .mk-ws-row > span:nth-child(2) { flex: 1; }
+  .mk-ws-tag {
+    font-family: var(--ff-m);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .mk-ws-tag-warn { color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+  .mk-ws-row-add { color: var(--text-3); }
+
+  /* ─── White label split ─── */
+  .mk-wl { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 18px; align-items: stretch; }
+  .mk-wl-half { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .mk-wl-divider { background: var(--border); }
+  .mk-wl-tag {
+    font-family: var(--ff-m);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    border: 1px solid var(--border);
+    background: var(--card);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .mk-wl-tag-on { color: var(--cyan); border-color: rgba(34, 211, 238, 0.3); background: rgba(34, 211, 238, 0.06); }
+  .mk-wl-doc {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .mk-wl-doc-branded {
+    border-color: rgba(245, 158, 11, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.18);
+  }
+  .mk-wl-doc-head { display: flex; align-items: center; gap: 8px; }
+  .mk-wl-logo {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--ff-h);
+    font-weight: 700;
+    font-size: 10px;
+    color: white;
+  }
+  .mk-wl-logo-sa { background: linear-gradient(135deg, #3d82ff 0%, #22d3ee 100%); }
+  .mk-wl-logo-agency { background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); }
+  .mk-wl-doc-title { font-family: var(--ff-h); font-weight: 700; font-size: 12px; color: var(--text-1); }
+  .mk-wl-doc-bar {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+  }
+  .mk-wl-doc-bar-s { width: 65%; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 900px) {
+    .mk-body { padding: 18px; min-height: 280px; }
+    .mk-mapping { grid-template-columns: 1fr; }
+    .mk-map-arrows { display: none; }
+    .mk-hub { height: 260px; }
+    .mk-hub-node { padding: 6px 10px; font-size: 10.5px; }
+    .mk-wl { grid-template-columns: 1fr; }
+    .mk-wl-divider { display: none; }
+  }
+</style>

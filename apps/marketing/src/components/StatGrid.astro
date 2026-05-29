@@ -1,0 +1,17 @@
+---
+// 4-up grid of "big number + caption". Used for impact stats on home,
+// product subpages, use cases. Each stat: { num, label, detail? }.
+
+const { stats } = Astro.props;
+---
+<div class="container">
+  <div class="stat-grid">
+    {stats.map((s) => (
+      <div class="stat-callout">
+        <div class="stat-num">{s.num}</div>
+        <div class="stat-label">{s.label}</div>
+        {s.detail && <div class="stat-detail">{s.detail}</div>}
+      </div>
+    ))}
+  </div>
+</div>
