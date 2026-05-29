@@ -6,7 +6,7 @@ const REQUIRED_VARS = [
   'SUPABASE_SERVICE_KEY',
   'SUPABASE_ANON_KEY',
   'JWT_SECRET',
-  'ANTHROPIC_API_KEY',
+  'GEMINI_API_KEY',
   'REDIS_URL',
 ]
 
@@ -23,8 +23,7 @@ const RECOMMENDED_VARS = [
   'META_APP_ID',
   'META_APP_SECRET',
   'EMAIL_FROM',
-  'AI_FAST_MODEL',
-  'AI_SMART_MODEL',
+  'GEMINI_MODEL',
 ]
 
 function validateEnv() {
