@@ -1,8 +1,8 @@
-/* SmartAnalyst — Dark "Immersive" design system.
+/* SmartAnalyst, Dark "Immersive" design system.
    Used site-wide via DarkBase.astro. */
 
 :root {
-  /* Surface scale — dark "signature" theme. Source: brand handoff. */
+  /* Surface scale, dark "signature" theme. Source: brand handoff. */
   --bg-0: #07070f;
   --bg-1: #0d0c1b;
   --bg-2: #121228;
@@ -21,7 +21,7 @@
   --blue-dim: rgba(92, 143, 255, 0.10);
   --blue-glow: rgba(92, 143, 255, 0.22);
   --cyan: #2dd9ee;
-  /* Semantic — data states only */
+  /* Semantic, data states only */
   --positive: #34d999;
   --warning: #ffba4a;
   --critical: #ff7272;

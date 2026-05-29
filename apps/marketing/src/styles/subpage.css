@@ -1,5 +1,5 @@
 /* ─── Layout for /product/[slug] and /use-cases/[slug] sub-pages.
- *    Built on top of dark.css primitives — adds the section rhythm,
+ *    Built on top of dark.css primitives, adds the section rhythm,
  *    mock-up containers, and the "kicker → title → tagline → hero" block.
  */
 
@@ -64,7 +64,7 @@
   margin: 0;
 }
 
-/* Visual mockup container — chrome echoes the chat-window from landing */
+/* Visual mockup container, chrome echoes the chat-window from landing */
 .sp-mockup {
   margin: 56px auto 0;
   max-width: 960px;
