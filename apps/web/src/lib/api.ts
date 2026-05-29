@@ -48,9 +48,14 @@ export async function apiFetch<T>(
   const parsed = text ? safeJson(text) : null
 
   if (!res.ok) {
+    const errorField = (parsed as { error?: unknown })?.error
     const message =
-      (parsed as { error?: string; message?: string })?.error ??
-      (parsed as { error?: string; message?: string })?.message ??
+      (typeof errorField === 'object' && errorField !== null
+        ? (errorField as { message?: string }).message
+        : typeof errorField === 'string'
+          ? errorField
+          : undefined) ??
+      (parsed as { message?: string })?.message ??
       `${res.status} ${res.statusText}`
     throw new ApiError(message, res.status, parsed)
   }
