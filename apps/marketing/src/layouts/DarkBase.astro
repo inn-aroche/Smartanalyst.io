@@ -8,9 +8,9 @@ const { title, description, locale = 'en', jsonLd = [] } = Astro.props;
 const siteName = 'SmartAnalyst';
 const fullTitle = title === 'home'
   ? (locale === 'fr'
-      ? `${siteName} — Ton analyste marketing IA`
-      : `${siteName} — Your AI Marketing Data Analyst`)
-  : `${title} — ${siteName}`;
+      ? `${siteName}, Ton analyste marketing IA`
+      : `${siteName}, Your AI Marketing Data Analyst`)
+  : `${title}, ${siteName}`;
 
 const altLocale = locale === 'en' ? 'fr' : 'en';
 const altPath = switchLocalePath(Astro.url.pathname, altLocale);

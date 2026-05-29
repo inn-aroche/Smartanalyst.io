@@ -22,7 +22,7 @@ const softwareApplication = {
   operatingSystem: 'Web',
   url: 'https://smartanalyst.io/en',
   description:
-    'Conversational AI marketing analyst. Connect GA4, Meta Ads, Google Ads, Stripe and Search Console and get structured answers about your performance — causes, evidence and recommended actions.',
+    'Conversational AI marketing analyst. Connect GA4, Meta Ads, Google Ads, Stripe and Search Console and get structured answers about your performance, causes, evidence and recommended actions.',
   offers: PLAN_ORDER.map((key) => ({
     '@type': 'Offer',
     name: PLANS[key].label,
@@ -40,7 +40,7 @@ const softwareApplication = {
 ---
 <DarkBase
   title="home"
-  description="Ask any question about your marketing performance. Get structured answers with root causes, evidence and recommended actions — instantly."
+  description="Ask any question about your marketing performance. Get structured answers with root causes, evidence and recommended actions, instantly."
   locale="en"
   jsonLd={[softwareApplication]}
 >
@@ -57,15 +57,14 @@ const softwareApplication = {
         <p class="hero-lead">
           Ask any question about your marketing performance.<br />
           Get structured answers with root causes, evidence<br />
-          and recommended actions — instantly.
+          and recommended actions, instantly.
         </p>
         <div class="hero-ctas">
           <a href="https://app.smartanalyst.io/signup" class="btn btn-primary">Request early access</a>
           <a href="#features" class="btn">See how it works ↓</a>
         </div>
         <div class="hero-connects">
-          <span class="hero-connects-label">Connects with</span>
-          <LogoStrip items={HERO_CONNECTORS} variant="cards" cardSize={60} />
+          <LogoStrip label="Connects with" items={HERO_CONNECTORS} variant="marquee" />
         </div>
       </div>
       <div class="hero-chat-wrap">
@@ -92,11 +91,11 @@ const softwareApplication = {
               <span></span><span></span><span></span>
             </div>
             <div class="chat-response" id="chat-response" hidden>
-              <div class="chat-label">Analysis — 3 causes identified</div>
+              <div class="chat-label">Analysis, 3 causes identified</div>
               <div class="chat-causes">
-                <div class="cause"><span class="cause-icon red">↓</span><div><strong>Mobile traffic −34%</strong> — iOS 18 attribution window change</div></div>
-                <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Checkout abandonment +12%</strong> — Step 2 friction since Tuesday</div></div>
-                <div class="cause"><span class="cause-icon red">⚠</span><div><strong>GTM tag missing on /checkout</strong> — Active since Nov 18</div></div>
+                <div class="cause"><span class="cause-icon red">↓</span><div><strong>Mobile traffic −34%</strong>, iOS 18 attribution window change</div></div>
+                <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Checkout abandonment +12%</strong>, Step 2 friction since Tuesday</div></div>
+                <div class="cause"><span class="cause-icon red">⚠</span><div><strong>GTM tag missing on /checkout</strong>, Active since Nov 18</div></div>
               </div>
               <div class="chat-actions">
                 <span class="chat-action">Fix GTM tag →</span>
@@ -121,7 +120,7 @@ const softwareApplication = {
       </div>
       <div class="ba">
         <div class="ba-before">
-          <div class="ba-label">Before — your current stack</div>
+          <div class="ba-label">Before, your current stack</div>
           <div class="ba-tools">
             {['GA4','Google Tag Manager','Meta Ads','Google Ads','Shopify','CRM','Looker Studio','Hotjar','CMP','Search Console','Spreadsheets','Klaviyo'].map(t => (
               <span class="tool-pill">{t}</span>
@@ -132,12 +131,12 @@ const softwareApplication = {
             <li>No unified view</li>
             <li>Manual analysis takes days</li>
             <li>Questions without answers</li>
-            <li>3,000 KPIs — 0 priorities</li>
+            <li>3,000 KPIs, 0 priorities</li>
           </ul>
         </div>
         <div class="ba-arrow"><span>→</span></div>
         <div class="ba-after">
-          <div class="ba-label ba-label-cyan">After — SmartAnalyst</div>
+          <div class="ba-label ba-label-cyan">After, SmartAnalyst</div>
           <div class="ba-quote">
             <div class="ba-quote-head"><span class="dot"></span><strong>SmartAnalyst</strong></div>
             <div class="ba-quote-q">"Why did our conversion rate drop?"</div>
@@ -172,7 +171,7 @@ const softwareApplication = {
           { i:'◎', t:'Explain variations',       d:'Why things changed, backed by cross-source evidence' },
           { i:'→', t:'Prioritize actions',       d:'Ranked recommendations, scored by expected impact' },
           { i:'◈', t:'Track impact',             d:'Before/after measurement on every change you make' },
-          { i:'◉', t:'Optimize your data stack', d:'GTM, consent mode, attribution — all continuously monitored' },
+          { i:'◉', t:'Optimize your data stack', d:'GTM, consent mode, attribution, all continuously monitored' },
         ].map((c) => (
           <div class="sa-card">
             <div class="cap-icon">{c.i}</div>
@@ -207,7 +206,7 @@ const softwareApplication = {
               <span class="out-chart-anomaly">⚠ anomaly</span>
             </div>
           </div>
-          <div class="out-caption">Trend lines, bar charts, comparisons — auto-rendered with anomaly highlights.</div>
+          <div class="out-caption">Trend lines, bar charts, comparisons, auto-rendered with anomaly highlights.</div>
         </div>
 
         <div class="out-card">
@@ -249,7 +248,7 @@ const softwareApplication = {
               <div class="pdf-l shorter"></div>
             </div>
           </div>
-          <div class="out-caption">White-label monthly reports — auto-sent on the 1st with exec summary.</div>
+          <div class="out-caption">White-label monthly reports, auto-sent on the 1st with exec summary.</div>
         </div>
 
         <div class="out-card">
@@ -262,7 +261,7 @@ const softwareApplication = {
               <div class="act-row"><span class="act-num">4</span>Enable Enhanced Conv.<span class="act-prio">Low</span></div>
             </div>
           </div>
-          <div class="out-caption">Ranked, scored, ready to execute — with expected impact per action.</div>
+          <div class="out-caption">Ranked, scored, ready to execute, with expected impact per action.</div>
         </div>
 
         <div class="out-card">
@@ -275,7 +274,7 @@ const softwareApplication = {
               <div class="out-kpi"><div class="kl">Health</div><div class="kv">87</div><div class="kd g">Good</div></div>
             </div>
           </div>
-          <div class="out-caption">Pinned KPIs and saved views — your daily routine in one place.</div>
+          <div class="out-caption">Pinned KPIs and saved views, your daily routine in one place.</div>
         </div>
       </div>
     </div>
@@ -289,7 +288,7 @@ const softwareApplication = {
         <h2 class="section-title">Everything you need.<br />Nothing you don't.</h2>
       </div>
 
-      <!-- Feature 01 — Ask -->
+      <!-- Feature 01, Ask -->
       <div class="feat-row">
         <div class="feat-ui">
           <div class="chat-window compact">
@@ -301,11 +300,11 @@ const softwareApplication = {
             <div class="chat-body">
               <div class="chat-user"><div class="chat-bubble user">"Why did our conversion rate drop this week?"</div></div>
               <div class="chat-response visible">
-                <div class="chat-label">Analysis — 3 causes identified</div>
+                <div class="chat-label">Analysis, 3 causes identified</div>
                 <div class="chat-causes">
-                  <div class="cause"><span class="cause-icon red">↓</span><div><strong>Mobile traffic −34%</strong> — iOS 18 attribution window change</div></div>
-                  <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Checkout abandonment +12%</strong> — Step 2 friction since Tuesday</div></div>
-                  <div class="cause"><span class="cause-icon red">⚠</span><div><strong>GTM tag missing on /checkout</strong> — Active since Nov 18</div></div>
+                  <div class="cause"><span class="cause-icon red">↓</span><div><strong>Mobile traffic −34%</strong>, iOS 18 attribution window change</div></div>
+                  <div class="cause"><span class="cause-icon orange">↑</span><div><strong>Checkout abandonment +12%</strong>, Step 2 friction since Tuesday</div></div>
+                  <div class="cause"><span class="cause-icon red">⚠</span><div><strong>GTM tag missing on /checkout</strong>, Active since Nov 18</div></div>
                 </div>
                 <div class="chat-actions">
                   <span class="chat-action">Fix GTM tag →</span>
@@ -317,23 +316,23 @@ const softwareApplication = {
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">01 — Ask</div>
+          <div class="feat-eyebrow">01, Ask</div>
           <h3 class="feat-title">Ask your data anything.</h3>
           <p class="feat-desc">No SQL. No analyst. No ticket queue. Just ask. SmartAnalyst understands your marketing context and returns structured, evidence-backed answers with causes, comparisons and next steps.</p>
           <ul class="feat-bullets">
-            <li>Natural language — no query syntax needed</li>
+            <li>Natural language, no query syntax needed</li>
             <li>Cross-source answers in seconds</li>
             <li>Cited sources and confidence levels</li>
           </ul>
         </div>
       </div>
 
-      <!-- Feature 02 — Detect -->
+      <!-- Feature 02, Detect -->
       <div class="feat-row reverse">
         <div class="feat-ui">
           <div class="alert-feed">
             <div class="alert-head">
-              <span>Alerts — Last 24h</span>
+              <span>Alerts, Last 24h</span>
               <span class="alert-tag-crit">3 critical</span>
             </div>
             <div class="alert-item">
@@ -354,9 +353,9 @@ const softwareApplication = {
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">02 — Detect</div>
+          <div class="feat-eyebrow">02, Detect</div>
           <h3 class="feat-title">Know before it hurts.</h3>
-          <p class="feat-desc">CPA spike, conversion drop, tracking failure — SmartAnalyst monitors your entire stack 24/7 and surfaces anomalies the moment they appear, with full context and severity ranking.</p>
+          <p class="feat-desc">CPA spike, conversion drop, tracking failure, SmartAnalyst monitors your entire stack 24/7 and surfaces anomalies the moment they appear, with full context and severity ranking.</p>
           <ul class="feat-bullets">
             <li>CPA, CVR, ROAS and volume monitoring</li>
             <li>Tracking integrity and consent alerts</li>
@@ -365,7 +364,7 @@ const softwareApplication = {
         </div>
       </div>
 
-      <!-- Feature 03 — Connect -->
+      <!-- Feature 03, Connect -->
       <div class="feat-row">
         <div class="feat-ui">
           <div class="conn-grid">
@@ -388,7 +387,7 @@ const softwareApplication = {
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">03 — Connect</div>
+          <div class="feat-eyebrow">03, Connect</div>
           <h3 class="feat-title">Your entire stack, unified.</h3>
           <p class="feat-desc">One-click integrations with everything your marketing team already uses. No engineering resources. No ETL pipelines. Go from zero to insights in minutes, not months.</p>
           <ul class="feat-bullets">
@@ -399,7 +398,7 @@ const softwareApplication = {
         </div>
       </div>
 
-      <!-- Feature 04 — Monitor -->
+      <!-- Feature 04, Monitor -->
       <div class="feat-row reverse">
         <div class="feat-ui">
           <div class="health">
@@ -421,9 +420,9 @@ const softwareApplication = {
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">04 — Monitor</div>
+          <div class="feat-eyebrow">04, Monitor</div>
           <h3 class="feat-title">Data you can actually trust.</h3>
-          <p class="feat-desc">Your analytics are only as good as your tracking. SmartAnalyst continuously monitors data quality — GTM health, consent mode compliance, event accuracy and attribution coverage.</p>
+          <p class="feat-desc">Your analytics are only as good as your tracking. SmartAnalyst continuously monitors data quality, GTM health, consent mode compliance, event accuracy and attribution coverage.</p>
           <ul class="feat-bullets">
             <li>Real-time tracking health score</li>
             <li>Event coverage and data layer audits</li>
@@ -480,7 +479,7 @@ const softwareApplication = {
                 <div class="kpi-d red">−0.3% vs prev</div>
               </div>
               <div class="kpi">
-                <div class="kpi-l">CPA — Google</div>
+                <div class="kpi-l">CPA, Google</div>
                 <div class="kpi-v">€24.50</div>
                 <div class="kpi-d red">+€3.20 vs prev</div>
               </div>
@@ -496,7 +495,7 @@ const softwareApplication = {
               </div>
             </div>
             <div class="chart">
-              <div class="chart-label">Performance — 7 days</div>
+              <div class="chart-label">Performance, 7 days</div>
               <div class="chart-bars">
                 {[40,55,45,62,56,48,70].map(h => (
                   <div class="bar-group">
@@ -509,9 +508,9 @@ const softwareApplication = {
             <div class="panels">
               <div class="panel">
                 <div class="panel-title">Latest insights</div>
-                <div class="panel-row"><span class="dot red"></span><span>CVR dropped 12% — checkout issue</span><span class="t">2h</span></div>
+                <div class="panel-row"><span class="dot red"></span><span>CVR dropped 12%, checkout issue</span><span class="t">2h</span></div>
                 <div class="panel-row"><span class="dot orange"></span><span>Meta CPA up 18% this week</span><span class="t">5h</span></div>
-                <div class="panel-row"><span class="dot gray"></span><span>iOS traffic down — review attribution</span><span class="t">1d</span></div>
+                <div class="panel-row"><span class="dot gray"></span><span>iOS traffic down, review attribution</span><span class="t">1d</span></div>
               </div>
               <div class="panel panel-blue">
                 <div class="panel-title">Recommended actions</div>
@@ -561,7 +560,7 @@ const softwareApplication = {
       <div class="section-head">
         <div class="s-badge">Early access</div>
         <h2 class="section-title" style="margin-bottom:16px">Built with the teams who needed it most.</h2>
-        <p class="section-sub">Selected feedback from our private beta — marketers tired of dashboards.</p>
+        <p class="section-sub">Selected feedback from our private beta, marketers tired of dashboards.</p>
       </div>
       <div class="test-grid">
         <div class="test-card">
@@ -585,7 +584,7 @@ const softwareApplication = {
           </div>
         </div>
         <div class="test-card">
-          <p class="test-quote">We caught a broken GTM tag costing us €3k/week. SmartAnalyst flagged it within hours — we’d been blind for a month.</p>
+          <p class="test-quote">We caught a broken GTM tag costing us €3k/week. SmartAnalyst flagged it within hours, we’d been blind for a month.</p>
           <div class="test-attrib">
             <div class="test-avatar">CM</div>
             <div>
@@ -608,10 +607,10 @@ const softwareApplication = {
       </div>
       <div class="trust-grid">
         {[
-          { i:'◎', t:'Built for marketing teams', d:'Designed around how marketers work — not data engineers.' },
+          { i:'◎', t:'Built for marketing teams', d:'Designed around how marketers work, not data engineers.' },
           { i:'◑', t:'Privacy-conscious',         d:'Consent-aware, GDPR-friendly, privacy-first by design.' },
           { i:'◈', t:'Decision-first analytics',  d:'Every output drives a clear, actionable next step.' },
-          { i:'◉', t:'Modern stack compatible',   d:'Server-side, cookieless, enhanced conversions — all supported.' },
+          { i:'◉', t:'Modern stack compatible',   d:'Server-side, cookieless, enhanced conversions, all supported.' },
           { i:'→', t:'Designed for performance',  d:'Real-time signals, fast answers, low-latency dashboards.' },
         ].map(p => (
           <div class="sa-card trust-card">
@@ -652,7 +651,7 @@ const softwareApplication = {
       setTimeout(() => { typing.hidden = true; response.hidden = false; }, 2400);
     }
 
-    // SaaS preview sidebar tabs (cosmetic — switches active state + title)
+    // SaaS preview sidebar tabs (cosmetic, switches active state + title)
     const tabs = document.querySelectorAll('.snav');
     const titleEl = document.querySelector('.app-title');
     const labels = {

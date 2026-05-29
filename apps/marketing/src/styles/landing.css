@@ -774,7 +774,7 @@
 }
 @media (max-width: 768px) {
   /* Tighten horizontal padding on the sections that still had 48px desktop
-     padding — at 48px on a 320px screen there were only ~224px left for
+     padding, at 48px on a 320px screen there were only ~224px left for
      content, which made long FR headlines overflow. */
   .hero-inner,
   .cta-inner { padding: 0 24px; }

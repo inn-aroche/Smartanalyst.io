@@ -28,11 +28,11 @@ function whiteLabelEn(level) {
 }
 
 // FAQPage JSON-LD: rich results in Google + citable answers for LLMs.
-// Keep in sync with the visible FAQ block below — these are the same Q/A.
+// Keep in sync with the visible FAQ block below, these are the same Q/A.
 const faqEntries = [
   {
     q: 'Can I cancel anytime?',
-    a: 'Yes. No commitment, no penalty. You keep access through the end of the paid period. After expiry, you have 7 days read-only to export your data — nothing is deleted abruptly.',
+    a: 'Yes. No commitment, no penalty. You keep access through the end of the paid period. After expiry, you have 7 days read-only to export your data, nothing is deleted abruptly.',
   },
   {
     q: 'Is the trial really card-free?',
@@ -40,7 +40,7 @@ const faqEntries = [
   },
   {
     q: 'Is AI limited on the Discovery plan?',
-    a: 'Yes — every plan includes a monthly AI credit allowance (messages sent to the model). Discovery is sized to evaluate the product, Starter for steady solo use, Pro and Agency for intensive multi-client work. You see your remaining balance in real time and get an 80% alert. No surprise overage charges.',
+    a: 'Yes, every plan includes a monthly AI credit allowance (messages sent to the model). Discovery is sized to evaluate the product, Starter for steady solo use, Pro and Agency for intensive multi-client work. You see your remaining balance in real time and get an 80% alert. No surprise overage charges.',
   },
   {
     q: 'Is my data safe?',
@@ -94,7 +94,7 @@ const productJsonLd = {
       <div class="eyebrow">Pricing</div>
       <h1>One price per usage,<br /><span class="gradient-text">not per feature.</span></h1>
       <p class="lead">
-        AI is included in <strong>every plan</strong> — it’s the core of the product, not a premium add-on. Pick a plan based on the number of clients you manage, not the features you unlock.
+        AI is included in <strong>every plan</strong>, it’s the core of the product, not a premium add-on. Pick a plan based on the number of clients you manage, not the features you unlock.
       </p>
       <p class="lead" style="font-size:14px;color:var(--text-3)">{TRIAL_DAYS}-day free trial · no credit card</p>
     </div>
@@ -137,7 +137,7 @@ const productJsonLd = {
   <section class="page-section alt sa-fade">
     <div class="container">
       <h2>Plan details</h2>
-      <p class="lead">Every feature, every quota — side by side.</p>
+      <p class="lead">Every feature, every quota, side by side.</p>
       <table class="compare">
         <thead>
           <tr>
@@ -172,7 +172,7 @@ const productJsonLd = {
           </tr>
           <tr>
             <td>Auto-reports on the 1st</td>
-            {PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✓' : '—'}</td>)}
+            {PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✓' : '·'}</td>)}
           </tr>
           <tr>
             <td>White-label</td>
@@ -180,7 +180,7 @@ const productJsonLd = {
           </tr>
           <tr>
             <td>Competitive benchmark</td>
-            <td>—</td>
+            <td>·</td>
             <td>✓</td>
             <td>✓</td>
             <td>✓</td>
