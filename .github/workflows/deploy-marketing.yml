@@ -94,6 +94,41 @@ jobs:
             -e "$SSH_OPTS" \
             apps/marketing/dist/ "$REMOTE"
 
+      - name: Verify deploy (health check)
+        # Hits the public URL after the upload to confirm Apache is serving the
+        # new build — catches three classes of silent failure that previously
+        # let "green deploy + dead site" slip through:
+        #   1. HOSTINGER_DEPLOY_PATH pointing somewhere other than the active
+        #      document root (rsync succeeds, but Apache never sees the files).
+        #   2. Orphan files in public_html/ (no --delete) shadowing index.html.
+        #   3. Domain detached from the hosting plan (Hostinger serves a default
+        #      403/404 instead of our pages).
+        # Status 200 alone isn't enough — a Hostinger "site parked" page also
+        # returns 200, so we also require the body to contain a build marker.
+        run: |
+          set -euo pipefail
+          # Small grace period: rsync's atomic rename can lag a few seconds
+          # behind on Hostinger's shared filesystem.
+          sleep 10
+          check() {
+            local url=$1
+            for attempt in 1 2 3; do
+              echo "▸ [$attempt/3] GET $url"
+              status=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 15 "$url" || echo "000")
+              if [ "$status" = "200" ] && grep -qi 'smartanalyst' /tmp/body; then
+                echo "  ✓ 200 OK + body marker present"
+                return 0
+              fi
+              echo "  ✗ status=$status, marker=$(grep -qi smartanalyst /tmp/body && echo found || echo missing)"
+              [ "$attempt" -lt 3 ] && sleep 10
+            done
+            echo "::error::Health check failed for $url after 3 attempts"
+            return 1
+          }
+          check "https://smartanalyst.io/"
+          check "https://smartanalyst.io/en/"
+          echo "All health checks passed."
+
       - name: Summary
         run: |
           echo "### Marketing deployed" >> $GITHUB_STEP_SUMMARY
