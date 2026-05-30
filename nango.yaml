@@ -1,0 +1,166 @@
+# Configuration Nango — déclare les syncs (extraction périodique) et actions
+# pour chacune des 8 intégrations OAuth de SmartAnalyst.
+#
+# Les "integrations" (Client ID, Client Secret, scopes OAuth) se configurent
+# dans le dashboard Nango (https://app.nango.dev). Ce fichier décrit les
+# flux de données exécutés sur chaque intégration une fois connectée.
+#
+# Architecture :
+#   - Flux A (données structurées)  : Shopify, GA4, Meta Ads, TikTok Ads,
+#                                     Google Ads, Stripe, HubSpot
+#   - Flux B (documents non-structurés / RAG) : Notion
+#
+# Voir docs/NANGO_SETUP.md pour la liste des scopes par provider et les
+# variables d'environnement requises.
+
+integrations:
+  # ── Flux A : Données structurées (transactionnel / CRM / ads) ─────────────
+
+  shopify:
+    syncs:
+      ventes-shopify:
+        description: Ventes Shopify (orders, customers, products). Read-only.
+        runs: every 6h
+        output: VenteShopify
+        endpoint: GET /shopify/ventes
+
+  google-analytics:
+    syncs:
+      metriques-ga4:
+        description: Sessions, conversions, sources de trafic, audience GA4.
+        runs: every 6h
+        output: MetriqueGA4
+        endpoint: GET /ga4/metriques
+
+  facebook-marketing:
+    syncs:
+      ads-meta:
+        description: Dépenses, ROAS, CPA campagnes Facebook & Instagram.
+        runs: every 6h
+        output: AdsMeta
+        endpoint: GET /meta/ads
+
+  tiktok:
+    syncs:
+      ads-tiktok:
+        description: Dépenses, CPM, ROAS campagnes TikTok Ads.
+        runs: every 6h
+        output: AdsTiktok
+        endpoint: GET /tiktok/ads
+
+  google-ads:
+    syncs:
+      campagnes-google-ads:
+        description: Campagnes, mots-clés, conversions, quality score Google Ads.
+        runs: every 6h
+        output: CampagneGoogleAds
+        endpoint: GET /google-ads/campagnes
+
+  stripe:
+    syncs:
+      revenu-stripe:
+        description: MRR, churn, paiements échoués, abonnements actifs Stripe.
+        runs: every 6h
+        output: RevenuStripe
+        endpoint: GET /stripe/revenu
+
+  hubspot:
+    # Deux syncs séparés (Contacts vs Deals) car ce sont des entités distinctes
+    # du CRM HubSpot. La jointure Contact↔Deal se fera côté ExtracteurMetrics
+    # au moment de produire le contexte narratif pour l'IA.
+    syncs:
+      contacts-hubspot:
+        description: Fiches Contacts du CRM HubSpot.
+        runs: every 6h
+        output: ContactHubspot
+        endpoint: GET /hubspot/contacts
+      deals-hubspot:
+        description: Fiches Deals (pipeline commercial) HubSpot.
+        runs: every 6h
+        output: DealHubspot
+        endpoint: GET /hubspot/deals
+
+  # ── Flux B : Documents non-structurés (vectorisation RAG) ─────────────────
+
+  notion:
+    syncs:
+      pages-notion:
+        description: Pages Notion en texte brut, destinées au pipeline RAG.
+        runs: every 12h
+        output: PageNotion
+        endpoint: GET /notion/pages
+
+# ── Modèles de sortie des syncs ──────────────────────────────────────────────
+# Ces modèles sont consommés par les ExtracteurMetrics / ExtracteurDocuments
+# côté apps/api/src/connectors/nango/.
+
+models:
+  VenteShopify:
+    id: string
+    date: date
+    montant: number
+    devise: string
+    statut: string
+
+  MetriqueGA4:
+    date: date
+    sessions: number
+    utilisateurs: number
+    conversions: number
+    source: string
+
+  AdsMeta:
+    date: date
+    campagne_id: string
+    campagne_nom: string
+    depense: number
+    impressions: number
+    clics: number
+    conversions: number
+
+  AdsTiktok:
+    date: date
+    campagne_id: string
+    campagne_nom: string
+    depense: number
+    impressions: number
+    clics: number
+
+  CampagneGoogleAds:
+    date: date
+    campagne_id: string
+    campagne_nom: string
+    cout: number
+    conversions: number
+    impressions: number
+
+  RevenuStripe:
+    date: date
+    mrr: number
+    nouveaux_clients: number
+    paiements_echoues: number
+
+  ContactHubspot:
+    id: string
+    email: string
+    nom: string
+    prenom: string
+    societe: string
+    date_creation: string
+
+  DealHubspot:
+    id: string
+    nom: string
+    montant: number
+    devise: string
+    etape: string
+    contact_id: string
+    date_creation: string
+    date_cloture: string
+
+  PageNotion:
+    id: string
+    titre: string
+    contenu_markdown: string
+    derniere_modification: string
+    url: string
