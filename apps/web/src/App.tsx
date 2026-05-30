@@ -6,6 +6,7 @@ import AuthCallback from './pages/AuthCallback'
 import Chat from './pages/Chat'
 import Connectors from './pages/Connectors'
 import Dashboard from './pages/Dashboard'
+import Live from './pages/Live'
 import Login from './pages/Login'
 import Settings from './pages/Settings'
 import Signup from './pages/Signup'
@@ -38,6 +39,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Chat />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/live"
+        element={
+          <ProtectedRoute>
+            <Live />
           </ProtectedRoute>
         }
       />

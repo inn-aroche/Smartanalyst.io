@@ -1,0 +1,17 @@
+{
+  "name": "@smartanalyst/tag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SmartAnalyst.io tracking script (StandardTag) — installé chez les clients, envoie des événements à l'ingestion temps-réel. Cible: <3KB gzipped.",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "size": "node esbuild.config.mjs && gzip -c dist/sa.js | wc -c | awk '{printf \"gzipped: %d bytes (%.1fKB)\\n\", $1, $1/1024}'",
+    "test": "node esbuild.config.mjs --tests && node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0"
+  }
+}

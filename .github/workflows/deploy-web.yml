@@ -55,9 +55,55 @@ jobs:
           ssh-private-key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
 
       - name: Trust Hostinger host key
+        # `set -euo pipefail` + post-check parce qu'une fois sur Hostinger
+        # ssh-keyscan a échoué silencieusement (rate-limit, DNS, etc.) et
+        # known_hosts s'est retrouvé vide → rsync ensuite a fail avec
+        # "Host key verification failed" sans qu'on sache pourquoi.
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ secrets.HOSTINGER_SSH_PORT }}" -H "${{ secrets.HOSTINGER_SSH_HOST }}" >> ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+
+          # Validate required secrets early — un secret manquant donne
+          # un message clair ici plutôt qu'un crash obscur dans rsync.
+          : "${HOSTINGER_SSH_HOST:?HOSTINGER_SSH_HOST secret is empty or unset}"
+          : "${HOSTINGER_SSH_PORT:?HOSTINGER_SSH_PORT secret is empty or unset}"
+
+          echo "▸ ssh-keyscan ${HOSTINGER_SSH_HOST}:${HOSTINGER_SSH_PORT}"
+          ssh-keyscan -p "$HOSTINGER_SSH_PORT" -H "$HOSTINGER_SSH_HOST" >> ~/.ssh/known_hosts 2> /tmp/keyscan.err || true
+          entries=$(wc -l < ~/.ssh/known_hosts)
+          if [ "$entries" -eq 0 ]; then
+            echo "::error::ssh-keyscan produced 0 entries. stderr:"
+            cat /tmp/keyscan.err
+            exit 1
+          fi
+          echo "  ✓ known_hosts populated ($entries entries)"
+        env:
+          HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          HOSTINGER_SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+
+      - name: Verify SSH connectivity + deploy path
+        # Smoke test AVANT le rsync — isole 3 catégories d'erreurs avec un
+        # message explicite, au lieu d'un échec rsync générique :
+        #   - Auth fail        → "Permission denied (publickey)"
+        #   - Path inexistant  → "No such file or directory"
+        #   - Host injoignable → "Connection refused / timed out"
+        run: |
+          set -euo pipefail
+          : "${HOSTINGER_SSH_HOST:?}"
+          : "${HOSTINGER_SSH_PORT:?}"
+          : "${HOSTINGER_SSH_USER:?HOSTINGER_SSH_USER secret is empty or unset}"
+          : "${HOSTINGER_WEB_DEPLOY_PATH:?HOSTINGER_WEB_DEPLOY_PATH secret is empty or unset}"
+
+          echo "▸ Smoke test SSH (port=$HOSTINGER_SSH_PORT, user=$HOSTINGER_SSH_USER)"
+          ssh -p "$HOSTINGER_SSH_PORT" -o ConnectTimeout=15 -o BatchMode=yes \
+            "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST" \
+            "echo connected as \$(whoami); test -d '$HOSTINGER_WEB_DEPLOY_PATH' && echo 'path OK' || { echo 'path MISSING: $HOSTINGER_WEB_DEPLOY_PATH'; exit 2; }"
+        env:
+          HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          HOSTINGER_SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+          HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+          HOSTINGER_WEB_DEPLOY_PATH: ${{ secrets.HOSTINGER_WEB_DEPLOY_PATH }}
 
       - name: Deploy via rsync (atomic, two-pass)
         # SPA deploy. Same two-pass strategy as the marketing workflow:
@@ -91,6 +137,26 @@ jobs:
             --chmod=D755,F644 \
             -e "$SSH_OPTS" \
             apps/web/dist/ "$REMOTE"
+
+      - name: Verify deploy (health check)
+        # Vérifie qu'Apache sert bien la nouvelle version. Pour une SPA
+        # Vite, index.html doit contenir <div id="root"> ET référencer un
+        # bundle hashé /assets/*.js — sinon on a rsync OK + page blanche.
+        run: |
+          set -euo pipefail
+          sleep 10
+          for attempt in 1 2 3; do
+            echo "▸ [$attempt/3] GET https://app.smartanalyst.io/"
+            status=$(curl -sS -o /tmp/web -w '%{http_code}' --max-time 15 "https://app.smartanalyst.io/" || echo "000")
+            if [ "$status" = "200" ] && grep -q 'id="root"' /tmp/web && grep -qE '/assets/.+\.js' /tmp/web; then
+              echo "  ✓ 200 OK + SPA root + bundle ref present"
+              exit 0
+            fi
+            echo "  ✗ status=$status, root=$(grep -q 'id=\"root\"' /tmp/web && echo found || echo missing), bundle=$(grep -qE '/assets/.+\.js' /tmp/web && echo found || echo missing)"
+            [ "$attempt" -lt 3 ] && sleep 10
+          done
+          echo "::error::Web app health check failed after 3 attempts"
+          exit 1
 
       - name: Summary
         run: |

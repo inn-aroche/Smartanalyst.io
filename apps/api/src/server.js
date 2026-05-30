@@ -19,6 +19,7 @@ async function main() {
 
   // Import APRES validateEnv pour s'assurer que les clients lazy-init voient les vars
   const { createApp } = require('./app')
+  const { attachWsServer } = require('./lib/ws-server')
   const app = createApp()
 
   const port = Number(process.env.PORT) || 3000
@@ -32,6 +33,10 @@ async function main() {
       `SmartAnalyst API listening on port ${port}`,
     )
   })
+
+  // WebSocket server pour le dashboard temps-réel /live (cf docs SmartTag).
+  // Réutilise le même HTTP server pour partager port + TLS termination.
+  attachWsServer(server)
 
   // Graceful shutdown
   const shutdown = async (signal) => {
