@@ -10,7 +10,7 @@ const BaseConnector = require('./base.connector')
 const { logger } = require('../lib/logger')
 const vault = require('../lib/vault')
 const { mapToCanonical } = require('./canonical-metrics-mapping')
-const { refreshAccessToken } = require('../services/auth/google-oauth.service')
+const oauthGeneric = require('../services/auth/oauth-generic.service')
 const { getServiceRoleClient } = require('../lib/supabase')
 
 const GA4_API_BASE = 'https://analyticsdata.googleapis.com/v1beta'
@@ -140,7 +140,10 @@ class GA4Connector extends BaseConnector {
       throw err
     }
 
-    const { accessToken, expiresIn } = await refreshAccessToken(refreshToken)
+    const { accessToken, expiresIn } = await oauthGeneric.refreshAccessToken({
+      source: 'ga4',
+      refreshToken,
+    })
 
     const encryptedAccess = await vault.encrypt(accessToken)
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString()

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import AppLayout from '@/components/AppLayout'
 import {
-  CONNECTORS,
+  CATEGORIES,
   countByStatus,
   type ConnectorCategory,
   type ConnectorDef,
@@ -21,21 +21,6 @@ type WorkspaceConnector = {
   status_reason?: string | null
 }
 
-const CATEGORIES: ConnectorCategory[] = [
-  'Analytics',
-  'Advertising',
-  'Payments',
-  'CRM',
-  'Email & SMS',
-  'Ecommerce',
-  'Product & Events',
-  'SEO',
-  'Social',
-  'Support',
-  'Data warehouse',
-  'Spreadsheet & Files',
-]
-
 function categoryKey(cat: ConnectorCategory): StringKey {
   return `connectors.category.${cat}` as StringKey
 }
@@ -47,7 +32,14 @@ export default function ConnectorsPage() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<ConnectorCategory | 'All'>('All')
 
-  const counts = useMemo(() => countByStatus(), [])
+  // Catalogue dynamique depuis l'API (alimenté par la table integration_providers)
+  const catalogQuery = useQuery({
+    queryKey: ['connectors', 'catalog'],
+    queryFn: () => apiFetch<{ catalog: ConnectorDef[] }>('/api/v1/connectors/catalog'),
+    staleTime: 5 * 60_000, // catalog change rarement
+  })
+  const catalog = catalogQuery.data?.catalog ?? []
+  const counts = useMemo(() => countByStatus(catalog), [catalog])
 
   const connectedQuery = useQuery({
     queryKey: ['connectors', 'list', workspaceId],
@@ -68,7 +60,8 @@ export default function ConnectorsPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return CONNECTORS.filter((c) => {
+    return catalog.filter((c) => {
+      if (c.status === 'disabled') return false
       if (activeCategory !== 'All' && c.category !== activeCategory) return false
       if (!q) return true
       return (
@@ -77,9 +70,9 @@ export default function ConnectorsPage() {
         c.description.toLowerCase().includes(q)
       )
     })
-  }, [query, activeCategory])
+  }, [catalog, query, activeCategory])
 
-  const available = filtered.filter((c) => c.status === 'available')
+  const available = filtered.filter((c) => c.status === 'available' || c.status === 'beta')
   const soon = filtered.filter((c) => c.status === 'soon')
 
   return (
@@ -94,7 +87,7 @@ export default function ConnectorsPage() {
           </h1>
           <p className="mt-2 text-text-2">
             {t('connectors.subtitle', {
-              available: counts.available,
+              available: counts.available + counts.beta,
               soon: counts.soon,
             })}{' '}
             <a href="mailto:hello@smartanalyst.io" className="text-brand-blue hover:text-brand-cyan">
@@ -128,6 +121,10 @@ export default function ConnectorsPage() {
           </div>
         </div>
 
+        {catalogQuery.isLoading && (
+          <div className="sa-card text-center text-text-2">{t('connectors.loading')}</div>
+        )}
+
         {available.length > 0 && (
           <Section title={t('connectors.section.available')}>
             <ConnectorGrid
@@ -154,7 +151,7 @@ export default function ConnectorsPage() {
           </Section>
         )}
 
-        {available.length === 0 && soon.length === 0 && (
+        {!catalogQuery.isLoading && available.length === 0 && soon.length === 0 && (
           <div className="sa-card text-center text-text-2">
             {t('connectors.emptyResults')}
           </div>
@@ -238,17 +235,27 @@ function ConnectorCard({
   const t = useT()
   const isConnected = Boolean(connected)
   const isSoon = def.status === 'soon'
+  // Un provider peut être 'available' côté status mais sans Client ID/Secret
+  // hydratés en DB (l'app OAuth pas encore créée chez le provider). On le
+  // marque comme non-connectable pour l'instant.
+  const isMisconfigured = !isSoon && !def.credentials_configured
   const initials = def.name.replace(/[^A-Z0-9]/gi, '').slice(0, 2).toUpperCase()
 
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [apiKeyOpen, setApiKeyOpen] = useState(false)
   const [apiKeyValue, setApiKeyValue] = useState('')
+  const [subdomainOpen, setSubdomainOpen] = useState(false)
+  const [subdomainValue, setSubdomainValue] = useState('')
 
   const connectMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (subst?: Record<string, string>) => {
+      const qs = new URLSearchParams({ source: def.source, workspaceId })
+      if (subst && Object.keys(subst).length > 0) {
+        qs.set('subst', JSON.stringify(subst))
+      }
       const res = await apiFetch<{ authorize_url: string }>(
-        `/api/v1/connectors/oauth/authorize?source=${def.source}&workspaceId=${workspaceId}`,
+        `/api/v1/connectors/oauth/authorize?${qs.toString()}`,
       )
       window.location.href = res.authorize_url
     },
@@ -311,6 +318,21 @@ function ConnectorCard({
       setError(err instanceof Error ? err.message : t('connectors.err.disconnect')),
   })
 
+  // Calcule l'action déclenchée par le bouton "Connect" selon le type d'auth
+  // et les pré-requis du provider (Shopify a besoin d'un shop subdomain).
+  function handleConnect() {
+    setError(null)
+    if (def.auth_kind === 'apikey') {
+      setApiKeyOpen((v) => !v)
+      return
+    }
+    if (def.requires_subdomain) {
+      setSubdomainOpen((v) => !v)
+      return
+    }
+    connectMutation.mutate(undefined)
+  }
+
   return (
     <div className="sa-card flex flex-col">
       <div className="flex items-start gap-3">
@@ -325,6 +347,11 @@ function ConnectorCard({
             {isConnected && (
               <span className="rounded-full border border-brand-green/30 bg-brand-green/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-brand-green">
                 {t('connectors.badge.connected')}
+              </span>
+            )}
+            {def.status === 'beta' && (
+              <span className="rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-brand-cyan">
+                BETA
               </span>
             )}
             {isSoon && (
@@ -347,9 +374,15 @@ function ConnectorCard({
         </div>
       )}
 
+      {isMisconfigured && !isConnected && (
+        <div className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-xs text-text-3">
+          {t('connectors.badge.notConfigured')}
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between">
         <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-          {def.authKind === 'oauth' ? t('connectors.auth.oauth') : t('connectors.auth.apiKey')}
+          {def.auth_kind === 'oauth2' ? t('connectors.auth.oauth') : t('connectors.auth.apiKey')}
         </span>
         {isSoon ? (
           <button type="button" className="sa-btn !py-1.5 !text-xs opacity-60" disabled>
@@ -370,30 +403,18 @@ function ConnectorCard({
               ? t('connectors.action.disconnecting')
               : t('connectors.action.disconnect')}
           </button>
-        ) : def.authKind === 'apikey' ? (
-          <button
-            type="button"
-            onClick={() => {
-              setError(null)
-              setApiKeyOpen((v) => !v)
-            }}
-            className="sa-btn sa-btn-primary !py-1.5 !text-xs"
-          >
-            {apiKeyOpen ? t('connectors.action.cancel') : t('connectors.action.connect')}
-          </button>
         ) : (
           <button
             type="button"
-            onClick={() => {
-              setError(null)
-              connectMutation.mutate()
-            }}
-            disabled={connectMutation.isPending}
-            className="sa-btn sa-btn-primary !py-1.5 !text-xs"
+            onClick={handleConnect}
+            disabled={isMisconfigured || connectMutation.isPending}
+            className="sa-btn sa-btn-primary !py-1.5 !text-xs disabled:opacity-50"
           >
             {connectMutation.isPending
               ? t('connectors.action.opening')
-              : t('connectors.action.connect')}
+              : apiKeyOpen || subdomainOpen
+                ? t('connectors.action.cancel')
+                : t('connectors.action.connect')}
           </button>
         )}
       </div>
@@ -429,6 +450,45 @@ function ConnectorCard({
             {apiKeyMutation.isPending
               ? t('connectors.apikey.saving')
               : t('connectors.apikey.save')}
+          </button>
+        </form>
+      )}
+
+      {subdomainOpen && !isConnected && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            const shop = subdomainValue.trim().toLowerCase().replace(/\.myshopify\.com$/, '')
+            if (!shop) return
+            setError(null)
+            connectMutation.mutate({ shop })
+          }}
+          className="mt-3 flex flex-col gap-2 border-t border-border pt-3"
+        >
+          <label className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+            {t('connectors.subdomain.label')}
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              autoComplete="off"
+              spellCheck={false}
+              value={subdomainValue}
+              onChange={(e) => setSubdomainValue(e.target.value)}
+              placeholder="maboutique"
+              className="sa-input !py-2 !text-xs flex-1"
+              disabled={connectMutation.isPending}
+            />
+            <span className="font-mono text-xs text-text-3">.myshopify.com</span>
+          </div>
+          <button
+            type="submit"
+            disabled={connectMutation.isPending || !subdomainValue.trim()}
+            className="sa-btn sa-btn-primary !py-1.5 !text-xs disabled:opacity-50"
+          >
+            {connectMutation.isPending
+              ? t('connectors.action.opening')
+              : t('connectors.action.connect')}
           </button>
         </form>
       )}

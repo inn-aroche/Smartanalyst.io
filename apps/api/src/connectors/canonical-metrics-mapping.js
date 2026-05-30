@@ -91,6 +91,15 @@ const CANONICAL_METRICS_MAPPING = {
     },
   },
 
+  // ━━━ Shopify ━━━
+  shopify: {
+    revenue: { canonicalKey: 'revenue_ecommerce', confidenceDefault: 100, unit: 'eur' },
+    orders: { canonicalKey: 'orders_count', confidenceDefault: 100, unit: 'count' },
+    aov: { canonicalKey: 'order_value_average', confidenceDefault: 100, unit: 'eur' },
+    newCustomers: { canonicalKey: 'customers_new', confidenceDefault: 100, unit: 'count' },
+    refunds: { canonicalKey: 'refunds_amount', confidenceDefault: 100, unit: 'eur' },
+  },
+
   // ━━━ Search Console ━━━
   search_console: {
     clicks: { canonicalKey: 'clicks_organic_search', confidenceDefault: 100, unit: 'count' },

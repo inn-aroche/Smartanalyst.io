@@ -14,7 +14,7 @@
 
 const { UserFacingError } = require('../lib/error-handler')
 
-const SUPPORTED_SOURCES = ['ga4', 'meta_ads', 'google_ads', 'stripe', 'search_console']
+const SUPPORTED_SOURCES = ['ga4', 'meta_ads', 'google_ads', 'stripe', 'search_console', 'shopify']
 
 /**
  * @param {string} workspaceId
@@ -38,7 +38,14 @@ function getConnector(workspaceId, connectorRecord) {
       const StripeConnector = require('./stripe.connector')
       return new StripeConnector(workspaceId, connectorRecord)
     }
-    // TODO: case 'meta_ads': return new (require('./meta-ads.connector'))(workspaceId, connectorRecord)
+    case 'meta_ads': {
+      const MetaAdsConnector = require('./meta-ads.connector')
+      return new MetaAdsConnector(workspaceId, connectorRecord)
+    }
+    case 'shopify': {
+      const ShopifyConnector = require('./shopify.connector')
+      return new ShopifyConnector(workspaceId, connectorRecord)
+    }
     // TODO: case 'google_ads': return new (require('./google-ads.connector'))(workspaceId, connectorRecord)
     // TODO: case 'search_console': return new (require('./search-console.connector'))(workspaceId, connectorRecord)
     default:
