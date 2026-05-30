@@ -40,22 +40,6 @@ export const CONNECTORS: ConnectorDef[] = [
     description: 'Sessions, conversions, traffic sources, audience.',
   },
   {
-    source: 'meta_ads',
-    name: 'Meta Ads',
-    category: 'Advertising',
-    status: 'available',
-    authKind: 'oauth',
-    description: 'Facebook & Instagram ad spend, ROAS, CPA.',
-  },
-  {
-    source: 'google_ads',
-    name: 'Google Ads',
-    category: 'Advertising',
-    status: 'available',
-    authKind: 'oauth',
-    description: 'Campaigns, keywords, conversions, quality score.',
-  },
-  {
     source: 'stripe',
     name: 'Stripe',
     category: 'Payments',
@@ -63,11 +47,29 @@ export const CONNECTORS: ConnectorDef[] = [
     authKind: 'apikey',
     description: 'Revenue, MRR, churn, refunds, subscriptions.',
   },
+
+  // ── Coming soon — Google/Meta suite (backends not wired yet) ─────────────
+  {
+    source: 'meta_ads',
+    name: 'Meta Ads',
+    category: 'Advertising',
+    status: 'soon',
+    authKind: 'oauth',
+    description: 'Facebook & Instagram ad spend, ROAS, CPA.',
+  },
+  {
+    source: 'google_ads',
+    name: 'Google Ads',
+    category: 'Advertising',
+    status: 'soon',
+    authKind: 'oauth',
+    description: 'Campaigns, keywords, conversions, quality score.',
+  },
   {
     source: 'search_console',
     name: 'Google Search Console',
     category: 'SEO',
-    status: 'available',
+    status: 'soon',
     authKind: 'oauth',
     description: 'Impressions, clicks, queries, indexation health.',
   },
