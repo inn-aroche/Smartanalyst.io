@@ -118,6 +118,8 @@ function createApp() {
   app.use('/api/v1/onboarding', require('./routes/onboarding.routes'))
   app.use('/api/v1/metrics', require('./routes/metrics.routes'))
   app.use('/api/v1/chat', require('./routes/chat.routes'))
+  // SmartTag ingestion (publique, CORS *, rate-limit dédié — cf track.routes.js)
+  app.use('/api/v1/track', require('./routes/track.routes'))
   // TODO: reports
   // app.use('/api/v1/reports', require('./routes/reports.routes'))
 
