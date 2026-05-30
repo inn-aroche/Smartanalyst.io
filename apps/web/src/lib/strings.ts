@@ -164,6 +164,9 @@ const en = {
   'connectors.apikey.label': 'Paste your {{name}} API key',
   'connectors.apikey.save': 'Connect',
   'connectors.apikey.saving': 'Connecting…',
+  'connectors.loading': 'Loading the catalog…',
+  'connectors.badge.notConfigured': 'OAuth app not configured yet on our side.',
+  'connectors.subdomain.label': 'Your Shopify store',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Settings',
@@ -359,6 +362,9 @@ const fr: Record<keyof typeof en, string> = {
   'connectors.apikey.label': 'Colle ta clé API {{name}}',
   'connectors.apikey.save': 'Connecter',
   'connectors.apikey.saving': 'Connexion…',
+  'connectors.loading': 'Chargement du catalogue…',
+  'connectors.badge.notConfigured': 'App OAuth pas encore configurée côté SmartAnalyst.',
+  'connectors.subdomain.label': 'Sous-domaine de ta boutique Shopify',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Paramètres',

@@ -73,8 +73,11 @@ test('refreshTokenIfNeeded calls _doRefresh when token expires within 7 days', a
 
 test('connector factory throws UserFacingError for unimplemented source', () => {
   const { getConnector } = require('../src/connectors')
+  // google_ads et search_console restent à implémenter (cf TODO dans
+  // connectors/index.js). On en utilise un ici comme cas de test "source
+  // déclarée supportée mais factory pas encore branchée".
   assert.throws(
-    () => getConnector('ws-id', { id: 'c-id', source: 'meta_ads' }),
+    () => getConnector('ws-id', { id: 'c-id', source: 'google_ads' }),
     /CONNECTOR_NOT_IMPLEMENTED|pas encore disponible/,
   )
 })

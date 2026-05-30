@@ -1,5 +1,10 @@
 // Connectors routes: /api/v1/connectors/*
+//
 // Source: docs/09_API_CONNECTEURS.md, docs/07 §7 (OAuth callback)
+//
+// Depuis la refonte intégration_providers (migration 011), les flows OAuth
+// utilisent oauth-generic.service qui lit la config provider depuis la DB
+// (URLs, scopes, Client ID/Secret chiffrés) au lieu de hardcoder par provider.
 
 const express = require('express')
 const { body, param, query } = require('express-validator')
@@ -9,12 +14,21 @@ const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope, requireRole } = require('../middleware/workspace-scope.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const connectorService = require('../services/connectors/connector.service')
+const providersService = require('../services/connectors/providers.service')
+const oauthGeneric = require('../services/auth/oauth-generic.service')
 const oauthState = require('../services/auth/oauth-state.service')
-const googleOAuth = require('../services/auth/google-oauth.service')
 const { logger } = require('../lib/logger')
-const { SUPPORTED_SOURCES } = require('../connectors')
 
 const router = express.Router()
+
+// Récupère la liste à jour des sources connectables (status='available'|'beta'
+// ET app OAuth configurée). Utilisé pour la validation des params.
+async function _sourcesConnectables() {
+  const catalog = await providersService.listForCatalog()
+  return catalog
+    .filter((p) => ['available', 'beta'].includes(p.status) && p.credentials_configured)
+    .map((p) => p.source)
+}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // OAuth callback (PUBLIC, pas de JWT — l'auth est dans le state JWT)
@@ -29,7 +43,7 @@ router.get('/oauth/callback', async (req, res) => {
 
   if (providerError) {
     logger.warn({ event: 'oauth_callback_provider_error', providerError })
-    return errorRedirect(providerError)
+    return errorRedirect(String(providerError))
   }
   if (!code || !state) {
     return errorRedirect('missing_code_or_state')
@@ -43,18 +57,14 @@ router.get('/oauth/callback', async (req, res) => {
     return errorRedirect('invalid_state')
   }
 
-  const { workspaceId, source, accountId, accountName } = decoded
+  const { workspaceId, source, accountId, accountName, subst } = decoded
 
   try {
-    let tokens
-    if (source === 'ga4' || source === 'search_console' || source === 'google_ads') {
-      tokens = await googleOAuth.exchangeCodeForTokens(code)
-    } else {
-      throw new UserFacingError(`OAuth pour "${source}" pas encore supporté.`, {
-        statusCode: 400,
-        code: 'OAUTH_PROVIDER_UNSUPPORTED',
-      })
-    }
+    const tokens = await oauthGeneric.exchangeCodeForTokens({
+      source,
+      code,
+      subst: subst || {},
+    })
 
     await connectorService.finalizeOAuthConnector({
       workspaceId,
@@ -85,16 +95,29 @@ router.get('/oauth/callback', async (req, res) => {
 
 router.use(jwtMiddleware)
 
+// ━━━ GET /catalog — liste publique des providers (sanitized) ━━━
+// Renvoie tout sauf les colonnes *_encrypted. Le flag credentials_configured
+// permet au frontend de savoir si un provider est réellement connectable.
+router.get('/catalog', async (req, res, next) => {
+  try {
+    const catalog = await providersService.listForCatalog()
+    res.json({ catalog })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // ━━━ GET /oauth/authorize ━━━
 router.get(
   '/oauth/authorize',
   [
     query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
-    query('source')
-      .isIn(SUPPORTED_SOURCES)
-      .withMessage(`source doit être l'un de: ${SUPPORTED_SOURCES.join(', ')}.`),
+    query('source').isString().notEmpty().withMessage('source requis.'),
     query('accountId').optional().isString(),
     query('accountName').optional().isString(),
+    // Pour les providers qui ont besoin d'un sub-domaine (Shopify) ou d'un
+    // identifiant compte (Meta) — passé en query.subst (JSON-encoded).
+    query('subst').optional().isString(),
   ],
   runValidation,
   workspaceScope,
@@ -102,16 +125,14 @@ router.get(
   async (req, res, next) => {
     try {
       const { source, accountId, accountName } = req.query
+      const subst = req.query.subst ? JSON.parse(req.query.subst) : {}
 
-      let scopes
-      if (source === 'ga4') scopes = googleOAuth.SCOPES.ga4
-      else if (source === 'search_console') scopes = googleOAuth.SCOPES.searchConsole
-      else if (source === 'google_ads') scopes = googleOAuth.SCOPES.googleAds
-      else {
-        throw new UserFacingError(`OAuth pour "${source}" pas encore supporté.`, {
-          statusCode: 400,
-          code: 'OAUTH_PROVIDER_UNSUPPORTED',
-        })
+      const connectables = await _sourcesConnectables()
+      if (!connectables.includes(source)) {
+        throw new UserFacingError(
+          `Source "${source}" non connectable (app OAuth non configurée ou status≠available).`,
+          { statusCode: 400, code: 'SOURCE_NOT_CONNECTABLE' },
+        )
       }
 
       const state = oauthState.sign({
@@ -120,8 +141,9 @@ router.get(
         source,
         accountId,
         accountName,
+        subst,
       })
-      const url = googleOAuth.buildAuthorizeUrl({ scopes, state })
+      const url = await oauthGeneric.buildAuthorizeUrl({ source, state, subst })
 
       res.json({ authorize_url: url })
     } catch (err) {
@@ -151,7 +173,7 @@ router.post(
   '/',
   [
     body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
-    body('source').isIn(SUPPORTED_SOURCES).withMessage('Source non supportée.'),
+    body('source').isString().notEmpty().withMessage('source requise.'),
     body('accountId').isString().notEmpty().withMessage('accountId requis.'),
     body('accountName').optional().isString(),
     body('apiKey').isString().notEmpty().withMessage('apiKey requis.'),
@@ -161,6 +183,14 @@ router.post(
   requireRole('editor'),
   async (req, res, next) => {
     try {
+      // Verifie que le provider existe et qu'il est en mode apikey.
+      const provider = await providersService.getBySource(req.body.source)
+      if (provider.auth_kind !== 'apikey') {
+        throw new UserFacingError(
+          `Le connecteur "${req.body.source}" utilise OAuth, pas une clé API.`,
+          { statusCode: 400, code: 'AUTH_KIND_MISMATCH' },
+        )
+      }
       const connector = await connectorService.addApiKeyConnector({
         workspaceId: req.workspaceId,
         source: req.body.source,
