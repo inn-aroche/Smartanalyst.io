@@ -1,0 +1,294 @@
+---
+// Privacy policy — GDPR-compliant skeleton.
+// ⚠️ Placeholders to fill before publication (have a lawyer review):
+//   - [TO FILL: legal entity name] : full legal name (e.g. "SmartAnalyst SAS")
+//   - [TO FILL: registered office address]    : registered office address
+//   - [TO FILL: company registration number] : company registration number
+//   - contact@smartanalyst.io          : DPO or GDPR contact email
+//   - May 30, 2026       : date of last update
+import DarkBase from '../../../layouts/DarkBase.astro';
+---
+<DarkBase
+  title="Privacy Policy — SmartAnalyst"
+  description="How SmartAnalyst collects, processes and protects your personal data. GDPR-compliant, transparent about sub-processors, full user rights."
+  locale="en"
+>
+  <section class="page-hero">
+    <div class="glow" style="width:600px;height:400px;top:-80px;left:50%;transform:translateX(-50%);opacity:0.4"></div>
+    <div class="container" style="position:relative;z-index:1">
+      <div class="eyebrow">Legal</div>
+      <h1>Privacy <span class="gradient-text">policy.</span></h1>
+      <p class="lead">
+        How we collect, use, and protect your data. No legalese fluff but legally complete — the way we'd want it written for us.
+      </p>
+      <p class="meta">Last updated: <strong>May 30, 2026</strong></p>
+    </div>
+  </section>
+
+  <section class="page-section legal">
+    <div class="container">
+
+      <article>
+        <h2>1. Who's responsible for your data</h2>
+        <p>
+          The data controller under GDPR is <strong>[TO FILL: legal entity name]</strong>, registered office at <strong>[TO FILL: registered office address]</strong>, company number <strong>[TO FILL: company registration number]</strong>.
+        </p>
+        <p>
+          For any question about your data, reach out at <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>.
+        </p>
+      </article>
+
+      <article>
+        <h2>2. What we collect</h2>
+
+        <h3>2.1 — Account data (you as a user)</h3>
+        <ul>
+          <li>Email, full name, hashed password (bcrypt)</li>
+          <li>Workspace name, your role in the workspace</li>
+          <li>Preferences (language, display settings)</li>
+          <li>Authentication logs (timestamp, IP, user-agent) for security</li>
+        </ul>
+
+        <h3>2.2 — Business data via OAuth connectors</h3>
+        <p>When you connect a tool (GA4, Meta Ads, Shopify, etc.), we fetch and store:</p>
+        <ul>
+          <li>OAuth access tokens (<strong>encrypted via Supabase Vault</strong>, never logged in plaintext)</li>
+          <li>Aggregated marketing metrics: sessions, conversions, revenue, ad spend, etc.</li>
+          <li>Connected account/property identifiers (GA4 property ID, Meta account ID, Shopify domain)</li>
+        </ul>
+        <p>
+          <strong>We never collect</strong> personal data about your end customers (emails, addresses, card numbers, etc.) — only aggregates.
+        </p>
+
+        <h3>2.3 — Tracking events via the SmartTag</h3>
+        <p>If you install our <code>sa.js</code> script on your site, we collect per visitor:</p>
+        <ul>
+          <li>Page URLs (path + query keys — <strong>values are stripped</strong> to avoid capturing emails or tokens in URLs)</li>
+          <li>Referrer origin (host only, never the full path)</li>
+          <li>CSS selectors of clicked elements (never the text content)</li>
+          <li>A random session ID stored in <code>sessionStorage</code> (cleared when the tab closes — not a cookie)</li>
+          <li>IP prefix (e.g. <code>185.42.x.x</code>) for country-level geolocation only</li>
+        </ul>
+        <p>
+          Emails and phone numbers found in custom event properties are automatically stripped server-side as a safety net.
+        </p>
+      </article>
+
+      <article>
+        <h2>3. Why we collect it (purposes)</h2>
+        <ul>
+          <li><strong>Service delivery</strong> — render your dashboards, compute metrics, connect to your tools.</li>
+          <li><strong>Transactional communication</strong> — anomaly alerts, automated reports, security emails.</li>
+          <li><strong>Security</strong> — detect intrusion attempts, prevent abuse, meet legal obligations.</li>
+          <li><strong>Product improvement</strong> — aggregated, anonymized usage stats (which features are used, where things crash).</li>
+        </ul>
+        <p>
+          We <strong>never sell</strong> your data. We don't use it for third-party advertising, commercial profiling, or training third-party AI models.
+        </p>
+      </article>
+
+      <article>
+        <h2>4. Legal bases (GDPR article 6)</h2>
+        <table class="legal-table">
+          <thead><tr><th>Processing</th><th>Legal basis</th></tr></thead>
+          <tbody>
+            <tr><td>Account creation, service delivery</td><td>Performance of a contract (art. 6.1.b)</td></tr>
+            <tr><td>Connecting an OAuth tool</td><td>Explicit consent (art. 6.1.a)</td></tr>
+            <tr><td>SmartTag tracking on your site</td><td>Legitimate interest, no cookies (art. 6.1.f) — see §9</td></tr>
+            <tr><td>Security logs, fraud prevention</td><td>Legitimate interest (art. 6.1.f) + legal obligation (art. 6.1.c)</td></tr>
+            <tr><td>Product marketing emails</td><td>Explicit opt-in consent (art. 6.1.a)</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article>
+        <h2>5. Sub-processors & recipients</h2>
+        <p>We use the following sub-processors, all contractually bound to GDPR compliance:</p>
+        <table class="legal-table">
+          <thead><tr><th>Sub-processor</th><th>Role</th><th>Location</th></tr></thead>
+          <tbody>
+            <tr><td>Supabase Inc.</td><td>Database hosting and storage</td><td>Ireland (eu-west-1)</td></tr>
+            <tr><td>Hostinger</td><td>Application hosting (API, app, marketing site)</td><td>Lithuania / France</td></tr>
+            <tr><td>Anthropic, PBC</td><td>AI insight generation (Claude)</td><td>United States — covered by the EU Commission's Standard Contractual Clauses</td></tr>
+            <tr><td>Resend</td><td>Transactional email delivery</td><td>United States — SCCs</td></tr>
+            <tr><td>Stripe</td><td>Payments & subscriptions</td><td>Ireland / United States — SCCs</td></tr>
+          </tbody>
+        </table>
+        <p>
+          <strong>No data</strong> is shared with advertisers, data brokers, or ad platforms.
+        </p>
+      </article>
+
+      <article>
+        <h2>6. Transfers outside the EU</h2>
+        <p>
+          Most data is hosted in Europe (Supabase Ireland, Hostinger EU). Some US-based sub-processors (Anthropic, Resend, Stripe) process data on our behalf. These transfers are covered by the <strong>Standard Contractual Clauses (SCCs)</strong> adopted by the EU Commission on June 4, 2021.
+        </p>
+      </article>
+
+      <article>
+        <h2>7. How long we keep your data</h2>
+        <table class="legal-table">
+          <thead><tr><th>Data</th><th>Retention</th></tr></thead>
+          <tbody>
+            <tr><td>Active user account</td><td>As long as the account exists</td></tr>
+            <tr><td>Deleted account</td><td>Anonymization within 30 days, full purge within 90 days</td></tr>
+            <tr><td>Aggregated connector metrics</td><td>Subscription duration + 12 months</td></tr>
+            <tr><td>Raw SmartTag events</td><td>Free plan: not stored (real-time only). Paid plans: 30 to 365 days depending on plan</td></tr>
+            <tr><td>Security logs, invoices</td><td>5 to 10 years (accounting / tax obligations)</td></tr>
+            <tr><td>Revoked OAuth tokens</td><td>Deleted immediately</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article>
+        <h2>8. Your rights</h2>
+        <p>Under GDPR, you have the following rights:</p>
+        <ul>
+          <li><strong>Access</strong> — get a copy of all data we hold about you</li>
+          <li><strong>Rectification</strong> — correct inaccurate or incomplete data</li>
+          <li><strong>Erasure</strong> ("right to be forgotten") — request deletion of your account and data</li>
+          <li><strong>Portability</strong> — get your data in a machine-readable format (JSON)</li>
+          <li><strong>Restriction</strong> — temporarily limit processing</li>
+          <li><strong>Object</strong> to processing based on legitimate interest</li>
+          <li><strong>Withdraw consent</strong> at any time, without affecting prior processing</li>
+          <li><strong>Lodge a complaint</strong> with your local data protection authority — for EU residents that's typically your country's DPA (e.g. CNIL in France, ICO in the UK, etc.)</li>
+        </ul>
+        <p>
+          To exercise these rights, email <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>. We respond within one month (extendable by two months for complex requests, with notice).
+        </p>
+      </article>
+
+      <article>
+        <h2>9. Cookies & trackers</h2>
+        <p>
+          <strong>Marketing site (smartanalyst.io)</strong>: no tracking cookies, no third-party analytics. We only use technical session cookies for the contact form.
+        </p>
+        <p>
+          <strong>Application (app.smartanalyst.io)</strong>: strictly necessary session cookies for authentication (<code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Strict</code>). These cookies are exempt from prior consent under GDPR / PECR / CNIL guidance.
+        </p>
+        <p>
+          <strong>Our SmartTag (the <code>sa.js</code> script installed by our customers)</strong>: <strong>no cookies</strong>. Events are tied to a session ID stored in <code>sessionStorage</code> — which is not a cookie and is cleared when the tab closes. Per CNIL / EDPB guidance, this mechanism is exempt from consent for statistical analytics, provided it's not used for cross-site tracking or targeted advertising — which is our case.
+        </p>
+      </article>
+
+      <article>
+        <h2>10. Security</h2>
+        <p>
+          We implement appropriate technical and organizational measures: TLS 1.2+ encryption for all transfers, at-rest encryption via Supabase Vault for OAuth tokens, Postgres Row-Level Security for workspace isolation, bcrypt password hashing, audit logs for sensitive accesses, daily encrypted backups.
+        </p>
+        <p>
+          In case of a data breach likely to result in a risk to your rights, we notify the relevant DPA within 72 hours and inform you directly if the risk is high, per GDPR articles 33 and 34.
+        </p>
+      </article>
+
+      <article>
+        <h2>11. Changes</h2>
+        <p>
+          This policy may evolve. For material changes, we notify you by email at least 30 days before they take effect. The last-updated date is shown at the top of this page.
+        </p>
+      </article>
+
+      <article>
+        <h2>12. Contact</h2>
+        <p>
+          For any question, rights request, or complaint: <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>
+        </p>
+        <p>
+          You may also lodge a complaint with your local data protection authority. For EU residents, that's the supervisory authority in your country of residence.
+        </p>
+      </article>
+
+    </div>
+  </section>
+</DarkBase>
+
+<style is:global>
+  .meta {
+    font-family: var(--ff-m);
+    font-size: 13px;
+    color: var(--text-3);
+    margin-top: 16px;
+  }
+  .page-section.legal {
+    padding: 40px 0 80px;
+  }
+  .page-section.legal .container {
+    max-width: 760px;
+  }
+  .page-section.legal article {
+    margin-bottom: 48px;
+  }
+  .page-section.legal h2 {
+    font-family: var(--ff-h);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-1);
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+  }
+  .page-section.legal h3 {
+    font-family: var(--ff-h);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-1);
+    margin: 24px 0 10px;
+  }
+  .page-section.legal p,
+  .page-section.legal li {
+    font-family: var(--ff-b);
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-2);
+    margin: 0 0 12px;
+  }
+  .page-section.legal ul {
+    padding-left: 22px;
+    margin: 0 0 16px;
+  }
+  .page-section.legal li {
+    margin-bottom: 8px;
+  }
+  .page-section.legal strong {
+    color: var(--text-1);
+    font-weight: 600;
+  }
+  .page-section.legal a {
+    color: var(--brand-cyan, #22d3ee);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .page-section.legal code {
+    font-family: var(--ff-m);
+    font-size: 13px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text-1);
+  }
+  .legal-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px;
+    font-family: var(--ff-b);
+    font-size: 14px;
+  }
+  .legal-table th,
+  .legal-table td {
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text-2);
+  }
+  .legal-table th {
+    background: var(--card);
+    color: var(--text-1);
+    font-family: var(--ff-m);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+</style>

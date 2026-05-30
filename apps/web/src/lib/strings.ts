@@ -219,6 +219,75 @@ const en = {
   'settings.delete.button': 'Delete',
   'settings.language.body':
     'Change the language of the interface. Your choice is saved on this device.',
+  'settings.section.tracking': 'Tracking — SmartTag',
+
+  // ━━━ Tracking (SmartTag block inside Settings) ━━━
+  'tracking.writeKey.label': 'Write key',
+  'tracking.writeKey.body':
+    'Used by the tracking snippet to identify your workspace. Public-safe — can be exposed in client-side code.',
+  'tracking.snippet.title': 'Install snippet',
+  'tracking.snippet.body':
+    'Paste this in the <head> of every page you want to track. 1.5 KB gzipped, async, zero cookies.',
+  'tracking.cta.viewInstall': 'Full install guide',
+  'tracking.cta.viewLive': 'See live events',
+  'common.copy': 'Copy',
+  'common.copied': 'Copied',
+
+  // ━━━ Live polish (filters + sparkline) ━━━
+  'live.filter.all': 'All',
+  'live.filter.pageview': 'Pageviews',
+  'live.filter.click': 'Clicks',
+  'live.filter.error': 'Errors',
+  'live.filter.session_start': 'Sessions',
+  'live.filter.custom': 'Custom',
+  'live.chart.title': 'Pageviews per minute',
+  'live.chart.empty': 'Waiting for data…',
+
+  // ━━━ Install guide page (/tracking/install) ━━━
+  'install.kicker': 'Installation',
+  'install.title': 'Install your tracking tag in 3 steps.',
+  'install.subtitle':
+    'Takes 2 minutes. Works with any CMS — WordPress, Shopify, Webflow, Ghost, or plain HTML.',
+  'install.step1.title': '1. Copy your snippet',
+  'install.step1.body':
+    "It's already filled with your workspace write key. Just copy it.",
+  'install.step2.title': "2. Paste it in your site's <head>",
+  'install.step2.body': 'Pick your platform for the exact instructions:',
+  'install.step2.tab.html': 'Plain HTML',
+  'install.step2.tab.wordpress': 'WordPress',
+  'install.step2.tab.shopify': 'Shopify',
+  'install.step2.tab.webflow': 'Webflow',
+  'install.step2.tab.ghost': 'Ghost',
+  'install.step2.html.body':
+    'Open your site files and paste the snippet just before </head> on every page (or in your shared template / layout file).',
+  'install.step2.wordpress.body':
+    'WordPress admin → Appearance → Theme File Editor → header.php → paste just before </head>. Or use the free plugin "Insert Headers and Footers": Settings → Insert Headers and Footers → paste in the "Scripts in Header" field.',
+  'install.step2.shopify.body':
+    'Shopify admin → Online Store → Themes → Actions → Edit code → Layout → theme.liquid → paste just before </head>. Click Save.',
+  'install.step2.webflow.body':
+    'Webflow → Project Settings → Custom Code → Head Code → paste the snippet → Save → re-publish your site.',
+  'install.step2.ghost.body':
+    'Ghost admin → Settings → Code injection → Site Header → paste the snippet → Save.',
+  'install.step3.title': "3. Verify it's working",
+  'install.step3.body':
+    'Open your site in a new tab and click around. Then come back here and open the Live page — events should stream in within seconds.',
+  'install.step3.cta': 'Open Live page',
+  'install.faq.title': 'Frequently asked questions',
+  'install.faq.q1': 'Do I need a cookie banner?',
+  'install.faq.a1':
+    "No. Events are tied to a session ID kept in sessionStorage (cleared when the tab closes). The tag sets no cookies, doesn't track across sessions or sites, and doesn't require consent for analytics under CNIL / PECR guidance. If you also load Google Analytics or Meta Pixel, those still need consent.",
+  'install.faq.q2': 'Will it slow down my site?',
+  'install.faq.a2':
+    'The script is async (non-blocking) and 1.5 KB gzipped — smaller than a favicon. Events are sent via navigator.sendBeacon to never delay page unload. Zero impact on Core Web Vitals.',
+  'install.faq.q3': 'What data is collected?',
+  'install.faq.a3':
+    'Page URLs (path + query keys only, no values), referrer origin only, click selectors (no text content), and any custom events you send via Smartanalyst("track", ...). Emails and phone numbers in custom properties are stripped server-side as a safety net.',
+  'install.faq.q4': 'Can I send custom events?',
+  'install.faq.a4':
+    'Yes — Smartanalyst("track", "signup_completed", { plan: "pro" }). Property values must be strings, numbers, or booleans. Max 20 per event, strings truncated to 200 chars.',
+  'install.faq.q5': 'How do I disable auto-pageviews (SPA)?',
+  'install.faq.a5':
+    'Pass disableAutoPageview: true to Smartanalyst("init", { ... }), then call Smartanalyst("page") manually after each route change.',
 } as const
 
 const fr: Record<keyof typeof en, string> = {
@@ -443,6 +512,75 @@ const fr: Record<keyof typeof en, string> = {
   'settings.delete.button': 'Supprimer',
   'settings.language.body':
     'Change la langue de l’interface. Ton choix est gardé sur cet appareil.',
+  'settings.section.tracking': 'Tracking — SmartTag',
+
+  // ━━━ Tracking (bloc SmartTag dans Settings) ━━━
+  'tracking.writeKey.label': 'Clé d’écriture',
+  'tracking.writeKey.body':
+    'Utilisée par le snippet de tracking pour identifier ton espace. Publique — peut être exposée côté client sans risque.',
+  'tracking.snippet.title': 'Snippet à installer',
+  'tracking.snippet.body':
+    'Colle-le dans le <head> de chaque page à tracker. 1,5 Ko gzippé, asynchrone, zéro cookie.',
+  'tracking.cta.viewInstall': 'Guide d’installation complet',
+  'tracking.cta.viewLive': 'Voir le live',
+  'common.copy': 'Copier',
+  'common.copied': 'Copié',
+
+  // ━━━ Live polish (filtres + sparkline) ━━━
+  'live.filter.all': 'Tout',
+  'live.filter.pageview': 'Vues',
+  'live.filter.click': 'Clics',
+  'live.filter.error': 'Erreurs',
+  'live.filter.session_start': 'Sessions',
+  'live.filter.custom': 'Custom',
+  'live.chart.title': 'Pages vues par minute',
+  'live.chart.empty': 'En attente de données…',
+
+  // ━━━ Guide d’installation (/tracking/install) ━━━
+  'install.kicker': 'Installation',
+  'install.title': 'Installe ton tag en 3 étapes.',
+  'install.subtitle':
+    '2 minutes. Compatible avec n’importe quel CMS — WordPress, Shopify, Webflow, Ghost, ou HTML brut.',
+  'install.step1.title': '1. Copie ton snippet',
+  'install.step1.body':
+    'Il est déjà rempli avec la clé d’écriture de ton espace. Tu n’as qu’à le copier.',
+  'install.step2.title': '2. Colle-le dans le <head> de ton site',
+  'install.step2.body': 'Choisis ta plateforme pour les instructions exactes :',
+  'install.step2.tab.html': 'HTML brut',
+  'install.step2.tab.wordpress': 'WordPress',
+  'install.step2.tab.shopify': 'Shopify',
+  'install.step2.tab.webflow': 'Webflow',
+  'install.step2.tab.ghost': 'Ghost',
+  'install.step2.html.body':
+    'Ouvre les fichiers de ton site et colle le snippet juste avant </head> sur chaque page (ou dans ton template / layout partagé).',
+  'install.step2.wordpress.body':
+    'WordPress admin → Apparence → Éditeur de fichiers du thème → header.php → coller juste avant </head>. Ou via le plugin gratuit « Insert Headers and Footers » : Réglages → Insert Headers and Footers → champ « Scripts in Header ».',
+  'install.step2.shopify.body':
+    'Shopify admin → Boutique en ligne → Thèmes → Actions → Modifier le code → Layout → theme.liquid → coller juste avant </head>. Enregistrer.',
+  'install.step2.webflow.body':
+    'Webflow → Project Settings → Custom Code → Head Code → coller le snippet → Save → republier le site.',
+  'install.step2.ghost.body':
+    'Ghost admin → Settings → Code injection → Site Header → coller le snippet → Save.',
+  'install.step3.title': '3. Vérifie que ça marche',
+  'install.step3.body':
+    'Ouvre ton site dans un nouvel onglet et navigue. Reviens ensuite ici et ouvre la page Live — tu dois voir des événements apparaître en quelques secondes.',
+  'install.step3.cta': 'Ouvrir la page Live',
+  'install.faq.title': 'Questions fréquentes',
+  'install.faq.q1': 'Faut-il un bandeau cookies ?',
+  'install.faq.a1':
+    'Non. Les événements sont liés à un ID de session stocké en sessionStorage (effacé à la fermeture de l’onglet). Le tag ne pose aucun cookie, ne suit pas entre sessions ou entre sites, et n’a pas besoin de consentement pour l’analytique selon les lignes directrices CNIL / ePrivacy. Si tu charges aussi Google Analytics ou Meta Pixel à côté, eux nécessitent toujours du consentement.',
+  'install.faq.q2': 'Est-ce que ça ralentit mon site ?',
+  'install.faq.a2':
+    'Le script est asynchrone (non-bloquant) et pèse 1,5 Ko gzippé — moins qu’un favicon. Les événements sont envoyés via navigator.sendBeacon pour ne jamais retarder la fermeture de la page. Aucun impact sur les Core Web Vitals.',
+  'install.faq.q3': 'Quelles données sont collectées ?',
+  'install.faq.a3':
+    'URLs des pages (path + clés de query uniquement, pas les valeurs), origine du référent uniquement, sélecteurs de clics (pas le contenu texte), et tout événement custom envoyé via Smartanalyst("track", ...). Les emails et numéros de téléphone dans les propriétés custom sont retirés côté serveur en filet de sécurité.',
+  'install.faq.q4': 'Puis-je envoyer des événements custom ?',
+  'install.faq.a4':
+    'Oui — Smartanalyst("track", "signup_completed", { plan: "pro" }). Les valeurs doivent être des strings, nombres ou booléens. Max 20 propriétés par événement, strings tronquées à 200 caractères.',
+  'install.faq.q5': 'Comment désactiver les pageviews auto (SPA) ?',
+  'install.faq.a5':
+    'Passe disableAutoPageview: true à Smartanalyst("init", { ... }) puis appelle Smartanalyst("page") manuellement à chaque changement de route.',
 }
 
 export const STRINGS = { en, fr }

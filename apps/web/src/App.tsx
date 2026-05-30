@@ -10,6 +10,7 @@ import Live from './pages/Live'
 import Login from './pages/Login'
 import Settings from './pages/Settings'
 import Signup from './pages/Signup'
+import TrackingInstall from './pages/TrackingInstall'
 
 export default function App() {
   usePageViewTracker()
@@ -55,6 +56,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tracking/install"
+        element={
+          <ProtectedRoute>
+            <TrackingInstall />
           </ProtectedRoute>
         }
       />
