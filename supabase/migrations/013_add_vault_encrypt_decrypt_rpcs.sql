@@ -17,7 +17,13 @@
 
 CREATE EXTENSION IF NOT EXISTS supabase_vault;
 
-CREATE OR REPLACE FUNCTION public.vault_encrypt_secret(secret TEXT)
+-- DROP avant CREATE car CREATE OR REPLACE FUNCTION ne permet pas de
+-- changer le nom d'un paramètre. Sans le DROP, ré-exécuter la migration
+-- échouerait avec "cannot change name of input parameter".
+DROP FUNCTION IF EXISTS public.vault_encrypt_secret(TEXT);
+DROP FUNCTION IF EXISTS public.vault_decrypt_secret(TEXT);
+
+CREATE OR REPLACE FUNCTION public.vault_encrypt_secret(p_secret TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -26,15 +32,15 @@ AS $$
 DECLARE
   secret_id UUID;
 BEGIN
-  IF secret IS NULL THEN
+  IF p_secret IS NULL THEN
     RETURN NULL;
   END IF;
-  secret_id := vault.create_secret(secret);
+  secret_id := vault.create_secret(p_secret);
   RETURN secret_id::TEXT;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.vault_decrypt_secret(secret TEXT)
+CREATE OR REPLACE FUNCTION public.vault_decrypt_secret(p_secret TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -43,12 +49,12 @@ AS $$
 DECLARE
   plaintext TEXT;
 BEGIN
-  IF secret IS NULL OR secret = '' THEN
+  IF p_secret IS NULL OR p_secret = '' THEN
     RETURN NULL;
   END IF;
   SELECT decrypted_secret INTO plaintext
   FROM vault.decrypted_secrets
-  WHERE id = secret::UUID;
+  WHERE id = p_secret::UUID;
   RETURN plaintext;
 END;
 $$;
