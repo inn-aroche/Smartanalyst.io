@@ -42,11 +42,27 @@ async function once() {
   }
 }
 
+async function buildForTests() {
+  // Compile les modules purs (sanitize.ts) en ESM non-bundlé pour que les
+  // tests Node puissent les importer directement. Évite d'ajouter tsx /
+  // ts-node comme dépendance juste pour ~20 lignes de helpers.
+  await build({
+    entryPoints: ['src/sanitize.ts'],
+    outfile: 'dist/sanitize.mjs',
+    format: 'esm',
+    target: ['es2020'],
+    bundle: false,
+    minify: false,
+  })
+}
+
 if (process.argv.includes('--watch')) {
   const ctx = await context(SHARED)
   await ctx.watch()
   // eslint-disable-next-line no-console
   console.log('▸ watching for changes…')
+} else if (process.argv.includes('--tests')) {
+  await buildForTests()
 } else {
   await once()
 }

@@ -8,7 +8,7 @@
     "build": "node esbuild.config.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "size": "node esbuild.config.mjs && gzip -c dist/sa.js | wc -c | awk '{printf \"gzipped: %d bytes (%.1fKB)\\n\", $1, $1/1024}'",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node esbuild.config.mjs --tests && node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
