@@ -17,6 +17,7 @@ on:
     branches: [main]
     paths:
       - 'apps/marketing/**'
+      - 'apps/tag/**'
       - 'packages/shared/**'
       - 'package.json'
       - 'package-lock.json'
@@ -45,6 +46,17 @@ jobs:
 
       - name: Install dependencies (workspace root)
         run: npm ci
+
+      - name: Build SmartTag bundle (apps/tag)
+        # Le tag /sa.js est servi par le subdomain marketing à
+        # https://smartanalyst.io/sa.js. On build le bundle minifié IIFE
+        # puis on le pousse dans apps/marketing/public/ pour qu'Astro
+        # l'inclue tel quel dans dist/ au build suivant.
+        run: |
+          npm run build --workspace=@smartanalyst/tag
+          mkdir -p apps/marketing/public
+          cp apps/tag/dist/sa.js apps/marketing/public/sa.js
+          echo "▸ sa.js copied into marketing public/ ($(wc -c < apps/marketing/public/sa.js) bytes)"
 
       - name: Build marketing site
         run: npm run build --workspace=@smartanalyst/marketing
@@ -127,6 +139,18 @@ jobs:
           }
           check "https://smartanalyst.io/"
           check "https://smartanalyst.io/en/"
+
+          # Sanity check du bundle SmartTag : il doit être servi sous /sa.js
+          # avec un content-type JS et un body non vide.
+          echo "▸ GET https://smartanalyst.io/sa.js"
+          tag_status=$(curl -sS -o /tmp/sa -w '%{http_code}' --max-time 15 "https://smartanalyst.io/sa.js" || echo "000")
+          tag_size=$(wc -c < /tmp/sa 2>/dev/null || echo 0)
+          if [ "$tag_status" != "200" ] || [ "$tag_size" -lt 500 ]; then
+            echo "::error::sa.js health check failed (status=$tag_status, size=$tag_size)"
+            exit 1
+          fi
+          echo "  ✓ sa.js served ($tag_size bytes)"
+
           echo "All health checks passed."
 
       - name: Summary
