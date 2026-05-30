@@ -115,6 +115,7 @@ function createApp() {
   // Routes
   app.use('/api/v1/auth', require('./routes/auth.routes'))
   app.use('/api/v1/connectors', require('./routes/connectors.routes'))
+  app.use('/api/v1/nango', require('./routes/nango.routes'))
   app.use('/api/v1/onboarding', require('./routes/onboarding.routes'))
   app.use('/api/v1/metrics', require('./routes/metrics.routes'))
   app.use('/api/v1/chat', require('./routes/chat.routes'))
