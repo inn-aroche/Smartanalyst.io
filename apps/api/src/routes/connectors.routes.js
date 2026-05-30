@@ -123,7 +123,7 @@ router.get(
       })
       const url = googleOAuth.buildAuthorizeUrl({ scopes, state })
 
-      res.json({ authorizeUrl: url })
+      res.json({ authorize_url: url })
     } catch (err) {
       next(err)
     }
