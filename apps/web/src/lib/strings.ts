@@ -35,6 +35,10 @@ const en = {
   'chat.error': 'Something went wrong. Try again.',
   'chat.you': 'You',
   'chat.assistant': 'SmartAnalyst',
+  'chatWidget.open': 'Open AI assistant',
+  'chatWidget.close': 'Close',
+  'chatWidget.title': 'Ask SmartAnalyst',
+  'chatWidget.greeting': 'Ask me anything about your marketing, your data, or your audit.',
   'nav.reports': 'Reports',
   'nav.files': 'Files',
   'nav.settings': 'Settings',
@@ -197,6 +201,7 @@ const en = {
     'Paste this snippet in your site\'s <head> to start receiving events here.',
   'live.install.cta.guide': 'Full install guide',
   'live.install.cta.scroll': 'See events ↓',
+  'live.install.cta.audit': 'Audit my site',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Settings',
@@ -367,6 +372,10 @@ const fr: Record<keyof typeof en, string> = {
   'chat.error': 'Quelque chose a planté. Réessaie.',
   'chat.you': 'Toi',
   'chat.assistant': 'SmartAnalyst',
+  'chatWidget.open': 'Ouvrir l’assistant IA',
+  'chatWidget.close': 'Fermer',
+  'chatWidget.title': 'Demande à SmartAnalyst',
+  'chatWidget.greeting': 'Pose-moi une question sur ton marketing, tes données, ou ton audit.',
   'nav.reports': 'Rapports',
   'nav.files': 'Fichiers',
   'nav.settings': 'Paramètres',
@@ -533,6 +542,7 @@ const fr: Record<keyof typeof en, string> = {
     'Colle ce snippet dans le <head> de ton site pour recevoir des événements ici.',
   'live.install.cta.guide': 'Guide d’installation complet',
   'live.install.cta.scroll': 'Voir les events ↓',
+  'live.install.cta.audit': 'Auditer mon site',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Paramètres',

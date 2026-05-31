@@ -278,6 +278,9 @@ function InstallSnippetBlock({ workspaceId }: { workspaceId: string }) {
         <Link to="/tracking/install" className="sa-btn sa-btn-primary !text-xs">
           {t('live.install.cta.guide')} →
         </Link>
+        <Link to="/audit" className="sa-btn !text-xs">
+          ◇ {t('live.install.cta.audit')}
+        </Link>
         <a href="#live-events-section" className="sa-btn !text-xs">
           {t('live.install.cta.scroll')}
         </a>
