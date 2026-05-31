@@ -8,7 +8,7 @@
 CREATE TABLE audits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  triggered_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  triggered_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
 
   url TEXT NOT NULL,
   -- L'URL effective après suivi des redirections (peut différer de `url`).
