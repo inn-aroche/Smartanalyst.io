@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
 import { ApiError, apiFetch } from '@/lib/api'
@@ -36,6 +37,21 @@ type PerfResult = AnalyzerResult & {
   strategy?: 'mobile' | 'desktop'
 }
 
+type AiResult = AnalyzerResult & {
+  skipped?: boolean
+  reason?: string
+  ai?: {
+    value_prop_clarity: number
+    citation_worthiness: number
+    qa_structure: number
+    jargon_level: number
+    title_content_coherence: number
+    key_strengths: string[]
+    key_weaknesses: string[]
+    summary: string
+  }
+}
+
 type AuditRecord = {
   id: string
   url: string
@@ -47,6 +63,7 @@ type AuditRecord = {
     seo?: AnalyzerResult
     geo?: AnalyzerResult
     perf?: PerfResult
+    ai?: AiResult
     raw?: { finalUrl: string; httpStatus: number | null }
   } | null
   created_at: string
@@ -61,6 +78,7 @@ type ListItem = Pick<
 export default function AuditPage() {
   const t = useT()
   const { state } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const workspaceId = state.workspaces[0]?.id ?? ''
 
   const [url, setUrl] = useState('')
@@ -76,6 +94,16 @@ export default function AuditPage() {
       .then(setHistory)
       .catch(() => setHistory([]))
   }, [workspaceId])
+
+  // Si un ?id=... est présent dans l'URL (cas typique : on arrive depuis le
+  // tag runAudit() côté site client), on charge directement cet audit.
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (!id || !workspaceId) return
+    apiFetch<AuditRecord>(`/api/v1/audit/${id}?workspaceId=${workspaceId}`)
+      .then(setCurrent)
+      .catch(() => setError('audit.error.generic'))
+  }, [searchParams, workspaceId])
 
   const handleRun = useCallback(
     async (e: React.FormEvent) => {
@@ -116,13 +144,13 @@ export default function AuditPage() {
       try {
         const audit = await apiFetch<AuditRecord>(`/api/v1/audit/${id}?workspaceId=${workspaceId}`)
         setCurrent(audit)
-        // scroll up
+        setSearchParams({ id }) // garde l'URL sync pour le partage
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } catch (err) {
         setError(errorKeyFrom(err))
       }
     },
-    [workspaceId],
+    [workspaceId, setSearchParams],
   )
 
   return (
@@ -213,11 +241,12 @@ function AuditResult({ audit }: { audit: AuditRecord }) {
   const seo = audit.results?.seo
   const geo = audit.results?.geo
   const perf = audit.results?.perf
+  const ai = audit.results?.ai
 
   // Agrège les summary counts pour la pill row au sommet
   const totalSummary = useMemo(() => {
     const sum = { pass: 0, warn: 0, fail: 0, info: 0 }
-    for (const r of [seo, geo, perf]) {
+    for (const r of [seo, geo, perf, ai]) {
       if (!r) continue
       sum.pass += r.summary?.pass ?? 0
       sum.warn += r.summary?.warn ?? 0
@@ -225,9 +254,9 @@ function AuditResult({ audit }: { audit: AuditRecord }) {
       sum.info += r.summary?.info ?? 0
     }
     return sum
-  }, [seo, geo, perf])
+  }, [seo, geo, perf, ai])
 
-  if (!seo && !geo && !perf) return null
+  if (!seo && !geo && !perf && !ai) return null
 
   return (
     <div className="space-y-6">
@@ -246,7 +275,7 @@ function AuditResult({ audit }: { audit: AuditRecord }) {
             <SumPill label={t('audit.summary.fail')} value={totalSummary.fail} tone="fail" />
             <SumPill label={t('audit.summary.info')} value={totalSummary.info} tone="info" />
           </div>
-          <SubScoresRow seo={seo} geo={geo} perf={perf} />
+          <SubScoresRow seo={seo} geo={geo} perf={perf} ai={ai} />
           {audit.results?.raw?.httpStatus && (
             <div className="font-mono text-[11px] text-text-3">
               {t('audit.httpStatus')}: <span className="text-text-2">{audit.results.raw.httpStatus}</span>
@@ -261,6 +290,7 @@ function AuditResult({ audit }: { audit: AuditRecord }) {
       {seo && <FindingsSection title={t('audit.section.seo')} result={seo} />}
       {geo && <FindingsSection title={t('audit.section.geo')} result={geo} />}
       {perf && <FindingsSection title={t('audit.section.perf')} result={perf} skipped={perf.skipped} />}
+      {ai && <FindingsSection title={t('audit.section.ai')} result={ai} skipped={ai.skipped} />}
     </div>
   )
 }
@@ -304,19 +334,22 @@ function SubScoresRow({
   seo,
   geo,
   perf,
+  ai,
 }: {
   seo?: AnalyzerResult
   geo?: AnalyzerResult
   perf?: PerfResult
+  ai?: AiResult
 }) {
   const t = useT()
   const items = [
     { label: t('audit.subscore.seo'), score: seo?.score ?? null, skipped: false },
     { label: t('audit.subscore.geo'), score: geo?.score ?? null, skipped: false },
     { label: t('audit.subscore.perf'), score: perf?.score ?? null, skipped: perf?.skipped },
+    { label: t('audit.subscore.ai'), score: ai?.score ?? null, skipped: ai?.skipped },
   ]
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-4 gap-2">
       {items.map((it) => (
         <div key={it.label} className="rounded-md border border-border bg-bg-1 px-2 py-1.5 text-center">
           <div className={`font-head text-base font-bold ${scoreColor(it.score)}`}>

@@ -171,8 +171,29 @@ const api: SaApi = ((action: string, ...args: unknown[]): void => {
       }),
     )
   } else if (action === 'runAudit') {
-    // Audit SEO/GEO on-demand est implémenté dans une phase ultérieure.
-    // Pour l'instant on no-op pour ne pas casser une intégration anticipée.
+    // Audit SEO/GEO/Perf/AI on-demand. Trigger un audit côté API et ouvre
+    // le rapport dans un nouvel onglet vers app.smartanalyst.io/audit/:id.
+    // Optionnel: passer un override URL { url: '...' } sinon location.href.
+    if (!initialized || !config) return
+    const opts = (args[0] as { url?: string } | undefined) || {}
+    const targetUrl = opts.url || location.href
+    // /track endpoint → on remplace par /audit/trigger sur la même origine API.
+    const base = (config.endpoint || __SA_DEFAULT_ENDPOINT__).replace(/\/track$/, '')
+    fetch(base + '/audit/trigger', {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writeKey: config.writeKey, url: targetUrl }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && typeof data.appUrl === 'string') {
+          window.open(data.appUrl, '_blank', 'noopener')
+        }
+      })
+      .catch(() => {
+        /* fail silently — le site client n'a pas à voir l'erreur */
+      })
   }
 }) as SaApi
 

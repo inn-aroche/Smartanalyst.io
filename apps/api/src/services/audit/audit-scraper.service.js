@@ -18,6 +18,7 @@ const NAV_TIMEOUT_MS = 12_000
 const FETCH_TIMEOUT_MS = 5_000
 const ROBOTS_MAX_BYTES = 100_000
 const SITEMAP_MAX_BYTES = 200_000
+const BODY_TEXT_MAX_LEN = 5_000 // pour l'AI analyzer en Part 3
 
 /**
  * Scrape un site pour audit. Retourne tous les signaux dans un objet plat,
@@ -118,6 +119,16 @@ async function scrapeForAudit(url) {
 
     const og = Object.fromEntries(ogTags)
     const twitter = Object.fromEntries(twitterTags)
+
+    // bodyText pour l'AI analyzer (Part 3) — texte visible du <body>,
+    // sans markup. Truncate à 5000c pour limiter le coût tokens Anthropic.
+    const bodyText = (await page
+      .evaluate(() => document.body?.innerText || '')
+      .catch(() => ''))
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, BODY_TEXT_MAX_LEN)
+
     const parsedJsonLd = jsonLd
       .map((raw) => {
         try {
@@ -154,6 +165,7 @@ async function scrapeForAudit(url) {
       twitter,
       h1: h1List,
       h2: h2List,
+      bodyText,
       images: imgs,
       jsonLd: parsedJsonLd,
       robotsTxt, // null si fetch échec ou 404
