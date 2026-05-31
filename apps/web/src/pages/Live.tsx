@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import AppLayout from '@/components/AppLayout'
 import { useAuth } from '@/lib/auth'
-import { useT } from '@/lib/i18n'
+import { type StringKey, useT } from '@/lib/i18n'
+
+type EventType = 'pageview' | 'click' | 'error' | 'session_start' | 'custom'
 
 type LiveEvent = {
-  type: 'pageview' | 'click' | 'error' | 'session_start' | 'custom'
+  type: EventType
   sid: string
   ts: number
   url: string
@@ -18,13 +20,25 @@ type LiveEvent = {
 }
 
 type ConnState = 'connecting' | 'connected' | 'disconnected' | 'error' | 'unauthorized'
+type FilterValue = EventType | 'all'
 
-const WINDOW_MS = 5 * 60_000 // 5 min sliding window pour les compteurs
-const MAX_EVENTS = 50
+const WINDOW_MS = 5 * 60_000 // 5 min sliding window
+const MAX_EVENTS = 200
+const CHART_BUCKETS = 30 // 30 × 10s = 5 min
+const CHART_BUCKET_MS = WINDOW_MS / CHART_BUCKETS
+const NOW_TICK_MS = 5_000 // re-render counters + sparkline every 5 s
+
+const FILTERS: { value: FilterValue; labelKey: StringKey }[] = [
+  { value: 'all', labelKey: 'live.filter.all' },
+  { value: 'pageview', labelKey: 'live.filter.pageview' },
+  { value: 'click', labelKey: 'live.filter.click' },
+  { value: 'error', labelKey: 'live.filter.error' },
+  { value: 'session_start', labelKey: 'live.filter.session_start' },
+  { value: 'custom', labelKey: 'live.filter.custom' },
+]
 
 function wsUrlFor(token: string, workspaceId: string): string {
   const apiBase = (import.meta.env.VITE_API_URL ?? window.location.origin).replace(/\/$/, '')
-  // http(s):// → ws(s)://
   const wsBase = apiBase.replace(/^http/, 'ws')
   const qs = new URLSearchParams({ token, workspaceId })
   return `${wsBase}/ws/live?${qs.toString()}`
@@ -38,7 +52,16 @@ export default function LivePage() {
 
   const [connState, setConnState] = useState<ConnState>('connecting')
   const [events, setEvents] = useState<LiveEvent[]>([])
+  const [activeFilter, setActiveFilter] = useState<FilterValue>('all')
+  // `now` ticks every 5 s so the 5-min sliding window slides even when no
+  // new events arrive (otherwise old events would stay in the counters / chart).
+  const [now, setNow] = useState<number>(() => Date.now())
   const wsRef = useRef<WebSocket | null>(null)
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), NOW_TICK_MS)
+    return () => window.clearInterval(id)
+  }, [])
 
   useEffect(() => {
     if (!token || !workspaceId) {
@@ -55,32 +78,21 @@ export default function LivePage() {
       const ws = new WebSocket(wsUrlFor(token, workspaceId))
       wsRef.current = ws
 
-      ws.onopen = () => {
-        setConnState('connected')
-      }
+      ws.onopen = () => setConnState('connected')
       ws.onmessage = (msg) => {
         try {
           const parsed = JSON.parse(msg.data)
-          // Le 1er message envoyé par le serveur est un ack {type:'connected'},
-          // pas un événement de tracking. On le filtre.
           if (!parsed || typeof parsed !== 'object') return
-          if (parsed.type === 'connected') return
+          if (parsed.type === 'connected') return // serveur ack, pas un event
           if (!parsed.type || !parsed.sid) return
           setEvents((prev) => [parsed as LiveEvent, ...prev].slice(0, MAX_EVENTS))
         } catch {
           /* ignore non-JSON */
         }
       }
-      ws.onerror = () => {
-        setConnState('error')
-      }
+      ws.onerror = () => setConnState('error')
       ws.onclose = (e) => {
-        if (e.code === 1006 || e.code === 401 || e.code === 403) {
-          setConnState(e.code === 401 || e.code === 403 ? 'unauthorized' : 'disconnected')
-        } else {
-          setConnState('disconnected')
-        }
-        // Auto-reconnect après 3s (sauf si auth foirée)
+        setConnState(e.code === 401 || e.code === 403 ? 'unauthorized' : 'disconnected')
         if (!cancelled && e.code !== 401 && e.code !== 403) {
           retryTimer = window.setTimeout(open, 3000)
         }
@@ -88,7 +100,6 @@ export default function LivePage() {
     }
 
     open()
-
     return () => {
       cancelled = true
       if (retryTimer) window.clearTimeout(retryTimer)
@@ -96,9 +107,12 @@ export default function LivePage() {
     }
   }, [token, workspaceId])
 
+  const recent = useMemo(
+    () => events.filter((e) => e.ts >= now - WINDOW_MS),
+    [events, now],
+  )
+
   const stats = useMemo(() => {
-    const since = Date.now() - WINDOW_MS
-    const recent = events.filter((e) => e.ts >= since)
     const sessions = new Set<string>()
     let pageviews = 0
     let clicks = 0
@@ -109,13 +123,37 @@ export default function LivePage() {
       else if (e.type === 'click') clicks++
       else if (e.type === 'error') errors++
     }
-    return {
-      activeSessions: sessions.size,
-      pageviews,
-      clicks,
-      errors,
+    return { activeSessions: sessions.size, pageviews, clicks, errors }
+  }, [recent])
+
+  const filterCounts = useMemo(() => {
+    const c: Record<FilterValue, number> = {
+      all: recent.length,
+      pageview: 0,
+      click: 0,
+      error: 0,
+      session_start: 0,
+      custom: 0,
     }
-  }, [events])
+    for (const e of recent) c[e.type]++
+    return c
+  }, [recent])
+
+  const chartBuckets = useMemo(() => {
+    const buckets = new Array<number>(CHART_BUCKETS).fill(0)
+    const windowStart = now - WINDOW_MS
+    for (const e of recent) {
+      if (e.type !== 'pageview') continue
+      const idx = Math.floor((e.ts - windowStart) / CHART_BUCKET_MS)
+      if (idx >= 0 && idx < CHART_BUCKETS) buckets[idx]++
+    }
+    return buckets
+  }, [recent, now])
+
+  const filteredEvents = useMemo(
+    () => (activeFilter === 'all' ? events : events.filter((e) => e.type === activeFilter)),
+    [events, activeFilter],
+  )
 
   return (
     <AppLayout>
@@ -137,7 +175,7 @@ export default function LivePage() {
           <div className="sa-card text-center text-text-2">{t('live.err.unauthorized')}</div>
         ) : (
           <>
-            <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label={t('live.stat.activeSessions')} value={stats.activeSessions} />
               <Stat label={t('live.stat.pageviews')} value={stats.pageviews} />
               <Stat label={t('live.stat.clicks')} value={stats.clicks} />
@@ -148,7 +186,9 @@ export default function LivePage() {
               />
             </div>
 
-            <div className="mb-3 flex items-center justify-between">
+            <Sparkline buckets={chartBuckets} title={t('live.chart.title')} emptyLabel={t('live.chart.empty')} />
+
+            <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-head text-lg font-semibold text-text-1">
                 {t('live.recentEvents')}
               </h2>
@@ -157,13 +197,38 @@ export default function LivePage() {
               </span>
             </div>
 
-            {events.length === 0 ? (
+            <div className="mb-3 flex flex-wrap gap-1.5" role="tablist">
+              {FILTERS.map((f) => {
+                const count = filterCounts[f.value]
+                const isActive = activeFilter === f.value
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveFilter(f.value)}
+                    className={[
+                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[11px] uppercase tracking-widest transition-colors',
+                      isActive
+                        ? 'border-brand-cyan/40 bg-brand-cyan/10 text-brand-cyan'
+                        : 'border-border bg-card text-text-3 hover:border-border-br hover:text-text-2',
+                    ].join(' ')}
+                  >
+                    {t(f.labelKey)}
+                    <span className="font-mono text-[10px] opacity-70">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {filteredEvents.length === 0 ? (
               <div className="sa-card text-center text-text-2">
                 {connState === 'connected' ? t('live.empty') : t('live.connecting')}
               </div>
             ) : (
               <ul className="space-y-2">
-                {events.map((e, i) => (
+                {filteredEvents.map((e, i) => (
                   <EventRow key={`${e.sid}-${e.ts}-${i}`} event={e} />
                 ))}
               </ul>
@@ -174,6 +239,8 @@ export default function LivePage() {
     </AppLayout>
   )
 }
+
+// ─── Sub-components ───────────────────────────────────────────────────────
 
 function ConnIndicator({ state }: { state: ConnState }) {
   const t = useT()
@@ -186,7 +253,9 @@ function ConnIndicator({ state }: { state: ConnState }) {
   }
   const v = map[state]
   return (
-    <div className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest ${v.color}`}>
+    <div
+      className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest ${v.color}`}
+    >
       <span
         className={`inline-block h-2 w-2 rounded-full ${state === 'connected' ? 'animate-pulse bg-brand-green' : state === 'connecting' ? 'animate-pulse bg-brand-cyan' : 'bg-text-3'}`}
       />
@@ -206,7 +275,9 @@ function Stat({
 }) {
   return (
     <div className="sa-card">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">{label}</div>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+        {label}
+      </div>
       <div
         className={`mt-1 font-head text-3xl font-bold ${tone === 'warn' ? 'text-brand-red' : 'text-text-1'}`}
       >
@@ -216,12 +287,62 @@ function Stat({
   )
 }
 
+function Sparkline({
+  buckets,
+  title,
+  emptyLabel,
+}: {
+  buckets: number[]
+  title: string
+  emptyLabel: string
+}) {
+  const max = Math.max(1, ...buckets) // évite division par zéro
+  const total = buckets.reduce((a, b) => a + b, 0)
+
+  return (
+    <div className="sa-card">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+          {title}
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+          {total === 0 ? emptyLabel : `Σ ${total}`}
+        </div>
+      </div>
+      <svg
+        viewBox={`0 0 ${CHART_BUCKETS * 2} 40`}
+        preserveAspectRatio="none"
+        className="h-12 w-full"
+        aria-hidden="true"
+      >
+        {buckets.map((count, i) => {
+          // hauteur min 1px pour montrer la grille même quand 0
+          const h = count === 0 ? 1 : (count / max) * 38
+          const x = i * 2
+          const y = 40 - h
+          return (
+            <rect
+              key={i}
+              x={x + 0.25}
+              y={y}
+              width={1.5}
+              height={h}
+              fill={count === 0 ? 'currentColor' : '#60a5fa'}
+              opacity={count === 0 ? 0.15 : 0.9}
+            />
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
 function EventRow({ event }: { event: LiveEvent }) {
   const t = useT()
   const time = new Date(event.ts).toLocaleTimeString()
   const sidShort = event.sid.slice(0, 6)
 
-  const badgeStyles: Record<string, string> = {
+  const badgeStyles: Record<EventType, string> = {
     pageview: 'border-brand-blue/30 bg-brand-blue/10 text-brand-blue',
     click: 'border-brand-cyan/30 bg-brand-cyan/10 text-brand-cyan',
     error: 'border-brand-red/30 bg-brand-red/10 text-brand-red',
@@ -238,9 +359,9 @@ function EventRow({ event }: { event: LiveEvent }) {
     <li className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
       <span className="font-mono text-[10px] text-text-3">{time}</span>
       <span
-        className={`rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest ${badgeStyles[event.type] || badgeStyles.custom}`}
+        className={`rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest ${badgeStyles[event.type]}`}
       >
-        {t((`live.eventType.${event.type}` as never)) || event.type}
+        {t((`live.eventType.${event.type}`) as StringKey) || event.type}
       </span>
       <span className="font-mono text-[10px] text-text-3">{sidShort}</span>
       <span className="truncate text-text-2">{detail}</span>

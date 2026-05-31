@@ -1,4 +1,7 @@
+import { Link } from 'react-router-dom'
+
 import AppLayout from '@/components/AppLayout'
+import CopyButton from '@/components/CopyButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
@@ -31,6 +34,52 @@ export default function SettingsPage() {
           <Field label={t('settings.field.workspaceName')} value={workspace?.name ?? '—'} />
           <Field label={t('settings.field.workspaceId')} value={workspace?.id ?? '—'} mono />
           <Field label={t('settings.field.yourRole')} value={workspace?.role ?? '—'} />
+        </Section>
+
+        <Section title={t('settings.section.tracking')}>
+          <div className="sa-card flex flex-col gap-2">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+              {t('tracking.writeKey.label')}
+            </div>
+            <div className="text-xs text-text-2">{t('tracking.writeKey.body')}</div>
+            <div className="mt-1 flex items-center gap-2">
+              <code className="flex-1 break-all rounded-md border border-border bg-bg-1 px-3 py-2 font-mono text-xs text-text-1">
+                {workspace?.id ?? '—'}
+              </code>
+              <CopyButton value={workspace?.id ?? ''} size="sm" />
+            </div>
+          </div>
+
+          <div className="sa-card flex flex-col gap-3">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+                {t('tracking.snippet.title')}
+              </div>
+              <div className="mt-1 text-xs text-text-2">{t('tracking.snippet.body')}</div>
+            </div>
+            <div className="overflow-hidden rounded-md border border-border bg-bg-1">
+              <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+                  HTML
+                </span>
+                <CopyButton value={buildSettingsSnippet(workspace?.id ?? '')} size="sm" />
+              </div>
+              <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-text-1">
+                <code>{buildSettingsSnippet(workspace?.id ?? '')}</code>
+              </pre>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/tracking/install"
+                className="sa-btn sa-btn-primary !text-xs"
+              >
+                {t('tracking.cta.viewInstall')} →
+              </Link>
+              <Link to="/live" className="sa-btn !text-xs">
+                {t('tracking.cta.viewLive')}
+              </Link>
+            </div>
+          </div>
         </Section>
 
         <Section title={t('settings.section.language')}>
@@ -122,6 +171,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="flex flex-col gap-3">{children}</div>
     </section>
   )
+}
+
+function buildSettingsSnippet(writeKey: string): string {
+  const key = writeKey || 'YOUR_WRITE_KEY'
+  return `<script async src="https://smartanalyst.io/sa.js"></script>
+<script>Smartanalyst('init', { writeKey: '${key}' });</script>`
 }
 
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
