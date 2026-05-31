@@ -12,6 +12,8 @@ const { logger } = require('../../lib/logger')
 const { UserFacingError, NotFoundError } = require('../../lib/error-handler')
 const { scrapeForAudit } = require('./audit-scraper.service')
 const { analyzeSEO } = require('./analyzers/seo.analyzer')
+const { analyzeGEO } = require('./analyzers/geo.analyzer')
+const { analyzePerformance } = require('./performance.service')
 
 /**
  * Lance un audit pour une URL et retourne l'enregistrement complet.
@@ -55,9 +57,16 @@ async function runAudit({ workspaceId, userId, url }) {
     })
   }
 
-  // 2. Scrape + analyse
+  // 2. Scrape + Performance en PARALLÈLE (mutualisation des temps)
+  //    - scrape Playwright : 5-8s
+  //    - Performance (PageSpeed Insights) : 15-30s (lent côté Google)
+  //    Total = max(scrape, perf) ≈ 30s au lieu de séquentiel 35-40s.
   try {
-    const scraped = await scrapeForAudit(url)
+    const [scraped, perfResult] = await Promise.all([
+      scrapeForAudit(url),
+      analyzePerformance(url),
+    ])
+
     if (!scraped) {
       await _markFailed(supabase, created.id, 'SCRAPE_FAILED')
       throw new UserFacingError(
@@ -66,18 +75,24 @@ async function runAudit({ workspaceId, userId, url }) {
       )
     }
 
+    // Analyzers purs (instantanés)
     const seo = analyzeSEO(scraped)
+    const geo = analyzeGEO(scraped)
 
-    // Pour l'instant le score global = score SEO. À l'ajout des autres
-    // analyzers, on fera une moyenne pondérée seo/geo/perf/ai.
-    const score = seo.score
+    // Score agrégé pondéré : SEO 40%, GEO 30%, Perf 30%
+    // Si Performance skipped (pas de clé API ou erreur Google), on rebalance
+    // sur SEO 60% / GEO 40% pour ne pas mécaniquement plomber le score.
+    const score = _aggregateScore({
+      seo: seo.score,
+      geo: geo.score,
+      perf: perfResult.skipped ? null : perfResult.score,
+    })
 
     const results = {
       seo,
-      // Réservé pour les futures parties de Phase D :
-      // geo: analyzeGEO(scraped),
-      // perf: await analyzePerformance(url),
-      // ai: await analyzeAIReadiness(scraped),
+      geo,
+      perf: perfResult,
+      // ai: à venir en Part 3 (Anthropic Haiku scoring)
       raw: {
         finalUrl: scraped.finalUrl,
         httpStatus: scraped.httpStatus,
@@ -113,7 +128,9 @@ async function runAudit({ workspaceId, userId, url }) {
         workspaceId,
         url,
         score,
-        summary: seo.summary,
+        seoScore: seo.score,
+        geoScore: geo.score,
+        perfScore: perfResult.skipped ? null : perfResult.score,
       },
       'audit completed',
     )
@@ -163,6 +180,27 @@ async function listAudits({ workspaceId, limit = 20 }) {
     })
   }
   return data || []
+}
+
+/**
+ * Moyenne pondérée des scores partiels. Si Perf est null (skipped/error),
+ * on rebalance sur SEO/GEO uniquement (60%/40%) au lieu de mécaniquement
+ * faire baisser le score global.
+ *
+ * @param {{seo: number|null, geo: number|null, perf: number|null}} scores
+ * @returns {number|null}
+ */
+function _aggregateScore({ seo, geo, perf }) {
+  const weights = perf !== null
+    ? { seo: 0.4, geo: 0.3, perf: 0.3 }
+    : { seo: 0.6, geo: 0.4, perf: 0 }
+
+  let num = 0
+  let den = 0
+  if (seo !== null) { num += seo * weights.seo; den += weights.seo }
+  if (geo !== null) { num += geo * weights.geo; den += weights.geo }
+  if (perf !== null) { num += perf * weights.perf; den += weights.perf }
+  return den === 0 ? null : Math.round(num / den)
 }
 
 async function _markFailed(supabase, auditId, reason) {

@@ -128,12 +128,15 @@ async function scrapeForAudit(url) {
       })
       .filter(Boolean)
 
-    // Fetch robots.txt + sitemap.xml sur l'origine. Asynchrones, indépendants
-    // du scraping principal — un site sans robots.txt n'empêche pas l'audit.
+    // Fetch robots.txt + sitemap.xml + llms.txt sur l'origine. Asynchrones,
+    // indépendants — un site sans ces fichiers n'empêche pas l'audit.
+    // llms.txt est un standard récent (2024) qui permet aux LLMs de comprendre
+    // la structure du site — utilisé par le GEO analyzer en Part 2.
     const origin = new URL(finalUrl).origin
-    const [robotsTxt, sitemapXml] = await Promise.all([
+    const [robotsTxt, sitemapXml, llmsTxt] = await Promise.all([
       _fetchText(`${origin}/robots.txt`, ROBOTS_MAX_BYTES),
       _fetchText(`${origin}/sitemap.xml`, SITEMAP_MAX_BYTES),
+      _fetchText(`${origin}/llms.txt`, ROBOTS_MAX_BYTES),
     ])
 
     return {
@@ -155,6 +158,7 @@ async function scrapeForAudit(url) {
       jsonLd: parsedJsonLd,
       robotsTxt, // null si fetch échec ou 404
       sitemapXml,
+      llmsTxt,
     }
   } catch (err) {
     logger.warn(
