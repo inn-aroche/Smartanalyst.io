@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
 import CopyButton from '@/components/CopyButton'
+import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { type StringKey, useT } from '@/lib/i18n'
+
+import LiveOnboarding from './LiveOnboarding'
+
+type TagStatus = { installed: boolean; lastEventAt: number | null } | 'loading' | 'error'
 
 type EventType = 'pageview' | 'click' | 'error' | 'session_start' | 'custom'
 
@@ -46,10 +51,60 @@ function wsUrlFor(token: string, workspaceId: string): string {
   return `${wsBase}/ws/live?${qs.toString()}`
 }
 
+// Orchestrateur — décide entre onboarding (tag pas installé) et dashboard
+// (events qui arrivent). Le hook `useTagStatus` poll au mount, et expose un
+// `refresh()` que l'onboarding peut appeler dès qu'il a détecté le 1er event.
 export default function LivePage() {
-  const t = useT()
   const { state } = useAuth()
   const workspaceId = state.workspaces[0]?.id ?? ''
+  const { status, refresh } = useTagStatus(workspaceId)
+
+  if (status === 'loading') {
+    return (
+      <AppLayout>
+        <div className="mx-auto max-w-4xl px-6 py-10 text-center text-text-3">
+          <span className="font-mono text-xs uppercase tracking-widest">…</span>
+        </div>
+      </AppLayout>
+    )
+  }
+  // Une erreur de status (réseau, auth) ne doit pas bloquer l'utilisateur —
+  // on tombe sur l'onboarding (qui contient tout ce qu'il faut pour démarrer).
+  const installed = status !== 'error' && status.installed
+  return (
+    <AppLayout>
+      {installed ? (
+        <LiveDashboard workspaceId={workspaceId} />
+      ) : (
+        <LiveOnboarding workspaceId={workspaceId} onInstalled={refresh} />
+      )}
+    </AppLayout>
+  )
+}
+
+function useTagStatus(workspaceId: string): {
+  status: TagStatus
+  refresh: () => void
+} {
+  const [status, setStatus] = useState<TagStatus>('loading')
+  const fetchStatus = useCallback(() => {
+    if (!workspaceId) {
+      setStatus('error')
+      return
+    }
+    apiFetch<{ installed: boolean; lastEventAt: number | null }>(
+      `/api/v1/smarttag/status?workspaceId=${workspaceId}`,
+    )
+      .then(setStatus)
+      .catch(() => setStatus('error'))
+  }, [workspaceId])
+  useEffect(fetchStatus, [fetchStatus])
+  return { status, refresh: fetchStatus }
+}
+
+function LiveDashboard({ workspaceId }: { workspaceId: string }) {
+  const t = useT()
+  const { state } = useAuth()
   const token = state.token ?? ''
 
   const [connState, setConnState] = useState<ConnState>('connecting')
@@ -158,7 +213,7 @@ export default function LivePage() {
   )
 
   return (
-    <AppLayout>
+    <div>
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8 flex items-start justify-between">
           <div>
@@ -243,7 +298,7 @@ export default function LivePage() {
           </>
         )}
       </div>
-    </AppLayout>
+    </div>
   )
 }
 

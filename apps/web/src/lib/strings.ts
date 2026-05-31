@@ -203,6 +203,38 @@ const en = {
   'live.install.cta.scroll': 'See events ↓',
   'live.install.cta.audit': 'Audit my site',
 
+  // ━━━ Smart tag onboarding (no events received yet) ━━━
+  'live.onboarding.kicker': 'Smart tag setup',
+  'live.onboarding.title': 'Active your Smart tag in 3 minutes',
+  'live.onboarding.subtitle':
+    'One snippet to paste in your site. Real-time analytics, on-demand SEO/GEO audits, zero cookies.',
+  'live.onboarding.why.title': 'What the Smart tag gives you',
+  'live.onboarding.why.analytics.title': 'Real-time analytics',
+  'live.onboarding.why.analytics.body':
+    'Pageviews, clicks, errors streaming live — see your traffic as it happens, not the day after.',
+  'live.onboarding.why.audit.title': 'On-demand SEO + GEO audit',
+  'live.onboarding.why.audit.body':
+    'Run a 4-axis audit (SEO, AI search, perf, citation-worthiness) from any page in 30 seconds.',
+  'live.onboarding.why.privacy.title': 'No cookie, GDPR-friendly',
+  'live.onboarding.why.privacy.body':
+    'No cookie banner required. Session ID lives in sessionStorage — cleared at tab close. CNIL-compatible.',
+  'live.onboarding.step1.title': 'Copy your snippet',
+  'live.onboarding.step1.body':
+    'It\'s pre-filled with your workspace write key. Just copy it.',
+  'live.onboarding.step2.title': 'Paste it in your <head>',
+  'live.onboarding.step2.body':
+    'On every page you want to track (or in your shared layout / template). WordPress, Shopify, Webflow, Ghost — see the full guide for step-by-step.',
+  'live.onboarding.step2.cta': 'CMS-specific install guide',
+  'live.onboarding.step3.title': 'Verify it\'s working',
+  'live.onboarding.step3.body':
+    'Once installed, open your site in another tab and click around. Then come back here and hit "Test install" — we\'ll detect the first event live.',
+  'live.onboarding.step3.button': 'Test install',
+  'live.onboarding.step3.checking': 'Listening for events… (up to 30 seconds)',
+  'live.onboarding.step3.success': 'Tag detected — redirecting to your dashboard',
+  'live.onboarding.step3.timeout':
+    'No event received in 30 seconds. Check that the snippet is in your <head> and that you opened your site in another tab.',
+  'live.onboarding.step3.retry': 'Retry',
+
   // ━━━ Settings ━━━
   'settings.kicker': 'Settings',
   'settings.title': 'Account & workspace.',
@@ -545,6 +577,38 @@ const fr: Record<keyof typeof en, string> = {
   'live.install.cta.guide': 'Guide d’installation complet',
   'live.install.cta.scroll': 'Voir les events ↓',
   'live.install.cta.audit': 'Auditer mon site',
+
+  // ━━━ Smart tag onboarding (aucun event reçu) ━━━
+  'live.onboarding.kicker': 'Setup du Smart tag',
+  'live.onboarding.title': 'Active ton Smart tag en 3 minutes',
+  'live.onboarding.subtitle':
+    'Un snippet à coller dans ton site. Analytics temps réel, audits SEO/GEO à la demande, zéro cookie.',
+  'live.onboarding.why.title': 'Ce que le Smart tag te donne',
+  'live.onboarding.why.analytics.title': 'Analytics temps réel',
+  'live.onboarding.why.analytics.body':
+    'Pages vues, clics, erreurs en direct — vois ton trafic au moment où il se passe, pas le lendemain.',
+  'live.onboarding.why.audit.title': 'Audit SEO + GEO à la demande',
+  'live.onboarding.why.audit.body':
+    'Lance un audit 4 axes (SEO, recherche IA, perf, citabilité) sur n’importe quelle page en 30 secondes.',
+  'live.onboarding.why.privacy.title': 'Sans cookie, RGPD-friendly',
+  'live.onboarding.why.privacy.body':
+    'Pas de bandeau cookies. ID de session en sessionStorage, effacé à la fermeture de l’onglet. Compatible CNIL.',
+  'live.onboarding.step1.title': 'Copie ton snippet',
+  'live.onboarding.step1.body':
+    'Il est déjà rempli avec la clé d’écriture de ton espace. Tu n’as qu’à le copier.',
+  'live.onboarding.step2.title': 'Colle-le dans le <head>',
+  'live.onboarding.step2.body':
+    'Sur chaque page à tracker (ou dans ton template / layout partagé). WordPress, Shopify, Webflow, Ghost — voir le guide pour les étapes exactes.',
+  'live.onboarding.step2.cta': 'Guide d’installation par CMS',
+  'live.onboarding.step3.title': 'Vérifie que ça marche',
+  'live.onboarding.step3.body':
+    'Une fois installé, ouvre ton site dans un autre onglet et navigue. Reviens ici et clique « Tester » — on détecte le 1er event en direct.',
+  'live.onboarding.step3.button': 'Tester l’installation',
+  'live.onboarding.step3.checking': 'Écoute des événements en cours… (jusqu’à 30 secondes)',
+  'live.onboarding.step3.success': 'Tag détecté — redirection vers ton dashboard',
+  'live.onboarding.step3.timeout':
+    'Aucun event reçu après 30 secondes. Vérifie que le snippet est bien dans ton <head> et que tu as bien ouvert ton site dans un autre onglet.',
+  'live.onboarding.step3.retry': 'Réessayer',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Paramètres',
