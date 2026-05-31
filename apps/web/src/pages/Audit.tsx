@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
 import { ApiError, apiFetch } from '@/lib/api'
@@ -16,6 +17,41 @@ type Finding = {
   recommendation?: string
 }
 
+type AnalyzerResult = {
+  findings: Finding[]
+  score: number | null
+  summary: { pass: number; warn: number; fail: number; info: number }
+}
+
+type PerfResult = AnalyzerResult & {
+  skipped?: boolean
+  reason?: string
+  metrics?: {
+    lcp: number | null
+    inp: number | null
+    cls: number | null
+    fcp: number | null
+    tbt: number | null
+    tti: number | null
+  }
+  strategy?: 'mobile' | 'desktop'
+}
+
+type AiResult = AnalyzerResult & {
+  skipped?: boolean
+  reason?: string
+  ai?: {
+    value_prop_clarity: number
+    citation_worthiness: number
+    qa_structure: number
+    jargon_level: number
+    title_content_coherence: number
+    key_strengths: string[]
+    key_weaknesses: string[]
+    summary: string
+  }
+}
+
 type AuditRecord = {
   id: string
   url: string
@@ -24,11 +60,10 @@ type AuditRecord = {
   score: number | null
   error: string | null
   results: {
-    seo?: {
-      findings: Finding[]
-      score: number
-      summary: { pass: number; warn: number; fail: number; info: number }
-    }
+    seo?: AnalyzerResult
+    geo?: AnalyzerResult
+    perf?: PerfResult
+    ai?: AiResult
     raw?: { finalUrl: string; httpStatus: number | null }
   } | null
   created_at: string
@@ -43,6 +78,7 @@ type ListItem = Pick<
 export default function AuditPage() {
   const t = useT()
   const { state } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const workspaceId = state.workspaces[0]?.id ?? ''
 
   const [url, setUrl] = useState('')
@@ -58,6 +94,16 @@ export default function AuditPage() {
       .then(setHistory)
       .catch(() => setHistory([]))
   }, [workspaceId])
+
+  // Si un ?id=... est présent dans l'URL (cas typique : on arrive depuis le
+  // tag runAudit() côté site client), on charge directement cet audit.
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (!id || !workspaceId) return
+    apiFetch<AuditRecord>(`/api/v1/audit/${id}?workspaceId=${workspaceId}`)
+      .then(setCurrent)
+      .catch(() => setError('audit.error.generic'))
+  }, [searchParams, workspaceId])
 
   const handleRun = useCallback(
     async (e: React.FormEvent) => {
@@ -98,13 +144,13 @@ export default function AuditPage() {
       try {
         const audit = await apiFetch<AuditRecord>(`/api/v1/audit/${id}?workspaceId=${workspaceId}`)
         setCurrent(audit)
-        // scroll up
+        setSearchParams({ id }) // garde l'URL sync pour le partage
         window.scrollTo({ top: 0, behavior: 'smooth' })
       } catch (err) {
         setError(errorKeyFrom(err))
       }
     },
-    [workspaceId],
+    [workspaceId, setSearchParams],
   )
 
   return (
@@ -193,15 +239,24 @@ export default function AuditPage() {
 function AuditResult({ audit }: { audit: AuditRecord }) {
   const t = useT()
   const seo = audit.results?.seo
-  const findings = seo?.findings ?? []
-  // Groupe les findings par sévérité (ordre: fail > warn > pass > info).
-  // useMemo doit être appelé inconditionnellement (rules of hooks).
-  const grouped = useMemo(() => {
-    const order: Severity[] = ['fail', 'warn', 'pass', 'info']
-    return order.flatMap((sev) => findings.filter((f) => f.severity === sev))
-  }, [findings])
+  const geo = audit.results?.geo
+  const perf = audit.results?.perf
+  const ai = audit.results?.ai
 
-  if (!seo) return null
+  // Agrège les summary counts pour la pill row au sommet
+  const totalSummary = useMemo(() => {
+    const sum = { pass: 0, warn: 0, fail: 0, info: 0 }
+    for (const r of [seo, geo, perf, ai]) {
+      if (!r) continue
+      sum.pass += r.summary?.pass ?? 0
+      sum.warn += r.summary?.warn ?? 0
+      sum.fail += r.summary?.fail ?? 0
+      sum.info += r.summary?.info ?? 0
+    }
+    return sum
+  }, [seo, geo, perf, ai])
+
+  if (!seo && !geo && !perf && !ai) return null
 
   return (
     <div className="space-y-6">
@@ -215,11 +270,12 @@ function AuditResult({ audit }: { audit: AuditRecord }) {
             {audit.final_url || audit.url}
           </div>
           <div className="grid grid-cols-4 gap-2">
-            <SumPill label={t('audit.summary.pass')} value={seo.summary.pass} tone="pass" />
-            <SumPill label={t('audit.summary.warn')} value={seo.summary.warn} tone="warn" />
-            <SumPill label={t('audit.summary.fail')} value={seo.summary.fail} tone="fail" />
-            <SumPill label={t('audit.summary.info')} value={seo.summary.info} tone="info" />
+            <SumPill label={t('audit.summary.pass')} value={totalSummary.pass} tone="pass" />
+            <SumPill label={t('audit.summary.warn')} value={totalSummary.warn} tone="warn" />
+            <SumPill label={t('audit.summary.fail')} value={totalSummary.fail} tone="fail" />
+            <SumPill label={t('audit.summary.info')} value={totalSummary.info} tone="info" />
           </div>
+          <SubScoresRow seo={seo} geo={geo} perf={perf} ai={ai} />
           {audit.results?.raw?.httpStatus && (
             <div className="font-mono text-[11px] text-text-3">
               {t('audit.httpStatus')}: <span className="text-text-2">{audit.results.raw.httpStatus}</span>
@@ -228,25 +284,128 @@ function AuditResult({ audit }: { audit: AuditRecord }) {
         </div>
       </div>
 
-      {/* Findings list */}
-      <section>
-        <h2 className="mb-3 font-head text-sm font-semibold uppercase tracking-widest text-text-3">
-          {t('audit.section.seo')}
-        </h2>
-        <ul className="space-y-2">
-          {grouped.map((f) => (
-            <FindingRow key={f.key} finding={f} />
-          ))}
-        </ul>
-      </section>
+      {/* Performance metrics chips (LCP/INP/CLS) — visible si perf non-skipped */}
+      {perf && !perf.skipped && perf.metrics && <PerfMetrics metrics={perf.metrics} />}
 
-      {/* Coming-soon placeholders for the next analyzers */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <ComingSoonCard title={t('audit.section.geo')} />
-        <ComingSoonCard title={t('audit.section.perf')} />
+      {seo && <FindingsSection title={t('audit.section.seo')} result={seo} />}
+      {geo && <FindingsSection title={t('audit.section.geo')} result={geo} />}
+      {perf && <FindingsSection title={t('audit.section.perf')} result={perf} skipped={perf.skipped} />}
+      {ai && <FindingsSection title={t('audit.section.ai')} result={ai} skipped={ai.skipped} />}
+    </div>
+  )
+}
+
+function FindingsSection({
+  title,
+  result,
+  skipped,
+}: {
+  title: string
+  result: AnalyzerResult
+  skipped?: boolean
+}) {
+  const grouped = useMemo(() => {
+    const order: Severity[] = ['fail', 'warn', 'pass', 'info']
+    return order.flatMap((sev) => result.findings.filter((f) => f.severity === sev))
+  }, [result.findings])
+
+  return (
+    <section>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 className="font-head text-sm font-semibold uppercase tracking-widest text-text-3">
+          {title}
+        </h2>
+        {!skipped && result.score !== null && (
+          <span className="font-mono text-[11px] uppercase tracking-widest text-text-3">
+            <span className="text-text-1 font-bold">{result.score}</span> / 100
+          </span>
+        )}
+      </div>
+      <ul className="space-y-2">
+        {grouped.map((f) => (
+          <FindingRow key={f.key} finding={f} />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function SubScoresRow({
+  seo,
+  geo,
+  perf,
+  ai,
+}: {
+  seo?: AnalyzerResult
+  geo?: AnalyzerResult
+  perf?: PerfResult
+  ai?: AiResult
+}) {
+  const t = useT()
+  const items = [
+    { label: t('audit.subscore.seo'), score: seo?.score ?? null, skipped: false },
+    { label: t('audit.subscore.geo'), score: geo?.score ?? null, skipped: false },
+    { label: t('audit.subscore.perf'), score: perf?.score ?? null, skipped: perf?.skipped },
+    { label: t('audit.subscore.ai'), score: ai?.score ?? null, skipped: ai?.skipped },
+  ]
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {items.map((it) => (
+        <div key={it.label} className="rounded-md border border-border bg-bg-1 px-2 py-1.5 text-center">
+          <div className={`font-head text-base font-bold ${scoreColor(it.score)}`}>
+            {it.skipped ? '—' : (it.score ?? '—')}
+          </div>
+          <div className="font-mono text-[9px] uppercase tracking-widest text-text-3">{it.label}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PerfMetrics({ metrics }: { metrics: NonNullable<PerfResult['metrics']> }) {
+  const t = useT()
+  const items = [
+    { label: 'LCP', value: metrics.lcp !== null ? fmtMs(metrics.lcp) : null, threshold: { good: 2500, ok: 4000 }, raw: metrics.lcp },
+    { label: 'INP', value: metrics.inp !== null ? fmtMs(metrics.inp) : null, threshold: { good: 200, ok: 500 }, raw: metrics.inp },
+    { label: 'CLS', value: metrics.cls !== null ? metrics.cls.toFixed(3) : null, threshold: { good: 0.1, ok: 0.25 }, raw: metrics.cls },
+    { label: 'FCP', value: metrics.fcp !== null ? fmtMs(metrics.fcp) : null, threshold: { good: 1800, ok: 3000 }, raw: metrics.fcp },
+  ]
+  return (
+    <div className="sa-card">
+      <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-text-3">
+        {t('audit.cwv.title')}
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {items.map((it) => {
+          const tone =
+            it.raw === null || it.value === null
+              ? 'text-text-3'
+              : it.raw <= it.threshold.good
+                ? 'text-brand-green'
+                : it.raw <= it.threshold.ok
+                  ? 'text-yellow-500'
+                  : 'text-brand-red'
+          return (
+            <div key={it.label} className="rounded-md border border-border bg-bg-1 px-2 py-2 text-center">
+              <div className="font-mono text-[9px] uppercase tracking-widest text-text-3">{it.label}</div>
+              <div className={`font-head text-lg font-bold ${tone}`}>{it.value ?? '—'}</div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
+}
+
+function fmtMs(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`
+}
+
+function scoreColor(score: number | null): string {
+  if (score === null || score === undefined) return 'text-text-3'
+  if (score >= 80) return 'text-brand-green'
+  if (score >= 60) return 'text-yellow-500'
+  return 'text-brand-red'
 }
 
 function ScoreGauge({ score }: { score: number }) {
@@ -348,14 +507,6 @@ function FindingRow({ finding }: { finding: Finding }) {
         </div>
       )}
     </li>
-  )
-}
-
-function ComingSoonCard({ title }: { title: string }) {
-  return (
-    <div className="sa-card flex items-center justify-center border-dashed text-center text-text-3">
-      <span className="font-mono text-[11px] uppercase tracking-widest">{title}</span>
-    </div>
   )
 }
 

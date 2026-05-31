@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
+import CopyButton from '@/components/CopyButton'
 import { useAuth } from '@/lib/auth'
 import { type StringKey, useT } from '@/lib/i18n'
 
@@ -171,11 +173,16 @@ export default function LivePage() {
           <ConnIndicator state={connState} />
         </div>
 
+        {/* Install snippet — premier élément, toujours visible pour que
+            l'utilisateur ait le snippet à portée de main quand il arrive sur
+            cet onglet. Cf demande utilisateur de M4. */}
+        <InstallSnippetBlock workspaceId={workspaceId} />
+
         {connState === 'unauthorized' ? (
           <div className="sa-card text-center text-text-2">{t('live.err.unauthorized')}</div>
         ) : (
           <>
-            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div id="live-events-section" className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label={t('live.stat.activeSessions')} value={stats.activeSessions} />
               <Stat label={t('live.stat.pageviews')} value={stats.pageviews} />
               <Stat label={t('live.stat.clicks')} value={stats.clicks} />
@@ -241,6 +248,52 @@ export default function LivePage() {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────
+
+function InstallSnippetBlock({ workspaceId }: { workspaceId: string }) {
+  const t = useT()
+  const snippet = buildSnippet(workspaceId)
+
+  return (
+    <div className="sa-card mb-6 flex flex-col gap-3 border-brand-cyan/20 bg-brand-cyan/[0.03]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-head text-base font-semibold text-text-1">
+            {t('live.install.title')}
+          </div>
+          <div className="mt-1 text-sm text-text-2">{t('live.install.subtitle')}</div>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-md border border-border bg-bg-1">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+            HTML
+          </span>
+          <CopyButton value={snippet} size="sm" />
+        </div>
+        <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-text-1">
+          <code>{snippet}</code>
+        </pre>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link to="/tracking/install" className="sa-btn sa-btn-primary !text-xs">
+          {t('live.install.cta.guide')} →
+        </Link>
+        <Link to="/audit" className="sa-btn !text-xs">
+          ◇ {t('live.install.cta.audit')}
+        </Link>
+        <a href="#live-events-section" className="sa-btn !text-xs">
+          {t('live.install.cta.scroll')}
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function buildSnippet(writeKey: string): string {
+  const key = writeKey || 'YOUR_WRITE_KEY'
+  return `<script async src="https://smartanalyst.io/sa.js"></script>
+<script>Smartanalyst('init', { writeKey: '${key}' });</script>`
+}
 
 function ConnIndicator({ state }: { state: ConnState }) {
   const t = useT()

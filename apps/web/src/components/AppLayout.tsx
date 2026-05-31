@@ -2,18 +2,22 @@ import { type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 
 import Brand from './Brand'
+import ChatWidget from './ChatWidget'
 import LocaleSwitcher from './LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
 import { type StringKey, useT } from '@/lib/i18n'
 
 type NavItem = { to: string; labelKey: StringKey; icon: string; soon?: boolean }
 
+// Nav latérale "platform-level". L'IA assistant n'est pas ici — elle est
+// accessible partout via le widget chat flottant (cf ChatWidget en bas).
+// L'audit n'est pas dans la nav non plus : c'est une action contextuelle
+// déclenchée depuis la page Smart tag ("Audit this site") ou via URL
+// directe /audit.
 const NAV_ITEMS: NavItem[] = [
   { to: '/', labelKey: 'nav.dashboard', icon: '◧' },
   { to: '/live', labelKey: 'nav.live', icon: '◉' },
-  { to: '/audit', labelKey: 'nav.audit', icon: '◇' },
   { to: '/connectors', labelKey: 'nav.connectors', icon: '◴' },
-  { to: '/chat', labelKey: 'nav.chat', icon: '◑' },
   { to: '/reports', labelKey: 'nav.reports', icon: '▤', soon: true },
   { to: '/files', labelKey: 'nav.files', icon: '◫', soon: true },
   { to: '/settings', labelKey: 'nav.settings', icon: '◴' },
@@ -119,6 +123,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </header>
         <div className="flex-1">{children}</div>
       </main>
+
+      {/* Assistant IA flottant, accessible partout dans l'app authentifiée. */}
+      <ChatWidget />
     </div>
   )
 }
