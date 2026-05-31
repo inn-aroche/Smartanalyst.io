@@ -88,6 +88,15 @@ const allJsonLd = [...baseJsonLd, ...jsonLd];
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','GTM-MCHTX3BG');</script>
     <!-- End Google Tag Manager -->
+
+    <!-- SmartAnalyst SmartTag — dogfooding sur notre propre site marketing.
+         Sert l'analytics + le live + l'audit on-demand. Async, 1.5 KB gzipped,
+         zéro cookie. writeKey = workspace_id Aurélien. -->
+    <script async src="https://smartanalyst.io/sa.js"></script>
+    <script is:inline>
+      window.Smartanalyst = window.Smartanalyst || function(){(window.Smartanalyst.q=window.Smartanalyst.q||[]).push(arguments)};
+      Smartanalyst('init', { writeKey: '2ddbcd65-7258-4601-817d-a5b5e04bc911' });
+    </script>
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
