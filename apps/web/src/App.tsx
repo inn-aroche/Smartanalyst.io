@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import { usePageViewTracker } from './lib/gtm'
+import Audit from './pages/Audit'
 import AuthCallback from './pages/AuthCallback'
 import Chat from './pages/Chat'
 import Connectors from './pages/Connectors'
@@ -48,6 +49,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Live />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/audit"
+        element={
+          <ProtectedRoute>
+            <Audit />
           </ProtectedRoute>
         }
       />
