@@ -17,6 +17,13 @@ const CHANNEL_PREFIX = 'track:'
 // soient passés). TTL court (10 min) → vraiment ephemeral.
 const COUNTER_TTL_S = 600
 
+// Key Redis qui stampe le dernier event reçu par workspace, utilisée par
+// le frontend Smart tag pour détecter si le tag est installé et fonctionne
+// (sinon on affiche l'onboarding au lieu du dashboard). TTL long (30 jours)
+// pour que l'état persiste entre 2 sessions utilisateur.
+const STATUS_KEY_PREFIX = 'track:status:'
+const STATUS_TTL_S = 30 * 24 * 3600
+
 function channelFor(workspaceId) {
   return `${CHANNEL_PREFIX}${workspaceId}`
 }
@@ -47,6 +54,7 @@ async function publish(workspaceId, event, meta = {}) {
         .multi()
         .incr(counterKey)
         .expire(counterKey, COUNTER_TTL_S)
+        .set(`${STATUS_KEY_PREFIX}${workspaceId}`, String(Date.now()), 'EX', STATUS_TTL_S)
         .exec(),
     ])
   } catch (err) {
@@ -57,4 +65,29 @@ async function publish(workspaceId, event, meta = {}) {
   }
 }
 
-module.exports = { publish, channelFor }
+/**
+ * Renvoie l'état d'installation du tag pour un workspace.
+ * Utilisé par GET /api/v1/track/status pour décider onboarding vs dashboard
+ * côté front.
+ *
+ * @param {string} workspaceId
+ * @returns {Promise<{ installed: boolean, lastEventAt: number|null }>}
+ */
+async function getStatus(workspaceId) {
+  const redis = getRedis()
+  try {
+    const ts = await redis.get(`${STATUS_KEY_PREFIX}${workspaceId}`)
+    if (!ts) return { installed: false, lastEventAt: null }
+    const lastEventAt = Number(ts)
+    if (!Number.isFinite(lastEventAt)) return { installed: false, lastEventAt: null }
+    return { installed: true, lastEventAt }
+  } catch (err) {
+    logger.warn(
+      { event: 'tracking_status_lookup_failed', workspaceId, error: err.message },
+      'Tracking status lookup failed',
+    )
+    return { installed: false, lastEventAt: null }
+  }
+}
+
+module.exports = { publish, channelFor, getStatus }

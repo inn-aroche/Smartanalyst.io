@@ -120,6 +120,8 @@ function createApp() {
   app.use('/api/v1/chat', require('./routes/chat.routes'))
   // SmartTag ingestion (publique, CORS *, rate-limit dédié — cf track.routes.js)
   app.use('/api/v1/track', require('./routes/track.routes'))
+  // SmartTag dashboard (authentifié — status install, à enrichir)
+  app.use('/api/v1/smarttag', require('./routes/smarttag.routes'))
   // M4 Phase D — Audit SEO/GEO on-demand
   app.use('/api/v1/audit', require('./routes/audit.routes'))
   // TODO: reports
