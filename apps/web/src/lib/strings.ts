@@ -288,6 +288,41 @@ const en = {
   'install.faq.q5': 'How do I disable auto-pageviews (SPA)?',
   'install.faq.a5':
     'Pass disableAutoPageview: true to Smartanalyst("init", { ... }), then call Smartanalyst("page") manually after each route change.',
+
+  // ━━━ Audit (SEO / GEO on-demand) ━━━
+  'nav.audit': 'Audit',
+  'audit.kicker': 'Audit',
+  'audit.title': 'Audit your site in 5 seconds.',
+  'audit.subtitle':
+    'SEO checks across 14 signals: title, meta, canonical, Open Graph, structured data, sitemap, robots, alt, lang, viewport, HTTPS. GEO + performance + AI scoring coming soon.',
+  'audit.form.url.label': 'URL to audit',
+  'audit.form.url.placeholder': 'https://your-site.com',
+  'audit.form.run': 'Run audit',
+  'audit.form.running': 'Auditing…',
+  'audit.form.runningHint': 'Loading the page and analyzing — takes 5 to 10 seconds.',
+  'audit.score.label': 'Overall score',
+  'audit.score.outOf': '/ 100',
+  'audit.summary.pass': 'Pass',
+  'audit.summary.warn': 'Warnings',
+  'audit.summary.fail': 'Fails',
+  'audit.summary.info': 'Info',
+  'audit.section.seo': 'SEO findings',
+  'audit.section.geo': 'GEO (AI search) — coming soon',
+  'audit.section.perf': 'Performance — coming soon',
+  'audit.severity.pass': 'OK',
+  'audit.severity.warn': 'Warn',
+  'audit.severity.fail': 'Fail',
+  'audit.severity.info': 'Info',
+  'audit.findings.recommendation': 'Recommendation',
+  'audit.history.title': 'Recent audits',
+  'audit.history.empty': 'No audit yet — run your first one above.',
+  'audit.history.open': 'Open',
+  'audit.error.invalid_url': 'This URL doesn\'t look valid. Use https://example.com.',
+  'audit.error.scrape_failed':
+    'We couldn\'t reach the site (timeout, DNS, or SSL error). Check the URL and try again.',
+  'audit.error.generic': 'Something went wrong running the audit. Try again.',
+  'audit.finalUrl': 'Final URL after redirects',
+  'audit.httpStatus': 'HTTP status',
 } as const
 
 const fr: Record<keyof typeof en, string> = {
@@ -581,6 +616,41 @@ const fr: Record<keyof typeof en, string> = {
   'install.faq.q5': 'Comment désactiver les pageviews auto (SPA) ?',
   'install.faq.a5':
     'Passe disableAutoPageview: true à Smartanalyst("init", { ... }) puis appelle Smartanalyst("page") manuellement à chaque changement de route.',
+
+  // ━━━ Audit (SEO / GEO on-demand) ━━━
+  'nav.audit': 'Audit',
+  'audit.kicker': 'Audit',
+  'audit.title': 'Audite ton site en 5 secondes.',
+  'audit.subtitle':
+    'Checks SEO sur 14 signaux : title, meta, canonical, Open Graph, données structurées, sitemap, robots, alt, lang, viewport, HTTPS. GEO + performance + scoring IA bientôt.',
+  'audit.form.url.label': 'URL à auditer',
+  'audit.form.url.placeholder': 'https://ton-site.com',
+  'audit.form.run': 'Lancer l’audit',
+  'audit.form.running': 'Audit en cours…',
+  'audit.form.runningHint': 'Chargement de la page et analyse — 5 à 10 secondes.',
+  'audit.score.label': 'Score global',
+  'audit.score.outOf': '/ 100',
+  'audit.summary.pass': 'OK',
+  'audit.summary.warn': 'À surveiller',
+  'audit.summary.fail': 'À corriger',
+  'audit.summary.info': 'Info',
+  'audit.section.seo': 'Findings SEO',
+  'audit.section.geo': 'GEO (recherche IA) — bientôt',
+  'audit.section.perf': 'Performance — bientôt',
+  'audit.severity.pass': 'OK',
+  'audit.severity.warn': 'À voir',
+  'audit.severity.fail': 'Fail',
+  'audit.severity.info': 'Info',
+  'audit.findings.recommendation': 'Recommandation',
+  'audit.history.title': 'Audits récents',
+  'audit.history.empty': 'Pas encore d’audit — lance le premier ci-dessus.',
+  'audit.history.open': 'Ouvrir',
+  'audit.error.invalid_url': 'Cette URL n’a pas l’air valide. Utilise https://example.com.',
+  'audit.error.scrape_failed':
+    'On n’arrive pas à joindre le site (timeout, DNS, ou erreur SSL). Vérifie l’URL et réessaie.',
+  'audit.error.generic': 'Quelque chose a planté pendant l’audit. Réessaie.',
+  'audit.finalUrl': 'URL finale après redirections',
+  'audit.httpStatus': 'Code HTTP',
 }
 
 export const STRINGS = { en, fr }
