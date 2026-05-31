@@ -17,7 +17,7 @@ const en = {
   'nav.workspace': 'Workspace',
   'nav.noWorkspace': 'No workspace',
   'nav.dashboard': 'Dashboard',
-  'nav.live': 'Live',
+  'nav.live': 'Smart tag',
   'nav.connectors': 'Connectors',
   'nav.chat': 'Chat',
 
@@ -170,7 +170,7 @@ const en = {
   'connectors.subdomain.label': 'Your Shopify store',
 
   // ━━━ Live (SmartTag real-time dashboard) ━━━
-  'live.kicker': 'Real-time',
+  'live.kicker': 'Smart tag',
   'live.title': 'What\'s happening on your site, right now.',
   'live.subtitle': 'Events streamed live from your SmartAnalyst tag. No storage in the free tier — refresh resets the view.',
   'live.stat.activeSessions': 'Active sessions',
@@ -192,6 +192,11 @@ const en = {
   'live.eventType.error': 'error',
   'live.eventType.session_start': 'session',
   'live.eventType.custom': 'event',
+  'live.install.title': 'Install your SmartTag',
+  'live.install.subtitle':
+    'Paste this snippet in your site\'s <head> to start receiving events here.',
+  'live.install.cta.guide': 'Full install guide',
+  'live.install.cta.scroll': 'See events ↓',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Settings',
@@ -340,7 +345,7 @@ const fr: Record<keyof typeof en, string> = {
   'nav.workspace': 'Espace',
   'nav.noWorkspace': 'Aucun espace',
   'nav.dashboard': 'Tableau de bord',
-  'nav.live': 'Temps réel',
+  'nav.live': 'Smart tag',
   'nav.connectors': 'Connecteurs',
   'nav.chat': 'Chat',
 
@@ -497,7 +502,7 @@ const fr: Record<keyof typeof en, string> = {
   'connectors.subdomain.label': 'Sous-domaine de ta boutique Shopify',
 
   // ━━━ Live (SmartTag temps-réel) ━━━
-  'live.kicker': 'Temps réel',
+  'live.kicker': 'Smart tag',
   'live.title': 'Ce qui se passe sur ton site, maintenant.',
   'live.subtitle': 'Événements streamés en direct par ton tag SmartAnalyst. Pas de stockage en formule gratuite — un refresh remet à zéro.',
   'live.stat.activeSessions': 'Sessions actives',
@@ -519,6 +524,11 @@ const fr: Record<keyof typeof en, string> = {
   'live.eventType.error': 'erreur',
   'live.eventType.session_start': 'session',
   'live.eventType.custom': 'événement',
+  'live.install.title': 'Installe ton SmartTag',
+  'live.install.subtitle':
+    'Colle ce snippet dans le <head> de ton site pour recevoir des événements ici.',
+  'live.install.cta.guide': 'Guide d’installation complet',
+  'live.install.cta.scroll': 'Voir les events ↓',
 
   // ━━━ Settings ━━━
   'settings.kicker': 'Paramètres',
