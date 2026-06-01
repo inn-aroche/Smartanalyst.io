@@ -11,8 +11,16 @@
 
 const { logger } = require('./logger')
 
-const enabled =
-  process.env.VAULT_ENABLED === 'true' || process.env.VAULT_ENABLED === '1'
+// Évalué dynamiquement à chaque appel — sinon, si VAULT_ENABLED n'est pas
+// défini au boot du processus (cas vu en prod : env var ajoutée après le
+// 1er démarrage), tous les appels suivants retombent silencieusement en
+// passthrough et on stocke des UUIDs Vault en clair qui sont ensuite
+// renvoyés tels quels aux providers OAuth → erreur "invalid_client".
+function isEnabled() {
+  return (
+    process.env.VAULT_ENABLED === 'true' || process.env.VAULT_ENABLED === '1'
+  )
+}
 
 let disabledWarned = false
 
@@ -26,7 +34,7 @@ function warnDisabledOnce() {
 }
 
 async function encrypt(plaintext) {
-  if (!enabled) {
+  if (!isEnabled()) {
     warnDisabledOnce()
     return plaintext
   }
@@ -39,7 +47,7 @@ async function encrypt(plaintext) {
 }
 
 async function decrypt(ciphertext) {
-  if (!enabled) {
+  if (!isEnabled()) {
     warnDisabledOnce()
     return ciphertext
   }
@@ -47,7 +55,16 @@ async function decrypt(ciphertext) {
   const supabase = getServiceRoleClient()
   const { data, error } = await supabase.rpc('vault_decrypt_secret', { secret: ciphertext })
   if (error) throw error
+  // Sanity check : si on a reçu un UUID en input mais qu'on renvoie le même
+  // UUID en output, c'est qu'on est en passthrough alors qu'on pensait être
+  // chiffré. Logger une erreur explicite pour faciliter le debug futur.
+  if (data === ciphertext && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ciphertext)) {
+    logger.error(
+      { event: 'vault_decrypt_returned_uuid_unchanged' },
+      'vault_decrypt_secret returned an unchanged UUID — likely no matching secret in vault. Check that the encrypted value points to an existing vault.secrets row.',
+    )
+  }
   return data
 }
 
-module.exports = { encrypt, decrypt, isEnabled: () => enabled }
+module.exports = { encrypt, decrypt, isEnabled }
