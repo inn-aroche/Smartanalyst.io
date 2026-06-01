@@ -15,6 +15,7 @@ const { workspaceScope, requireRole } = require('../middleware/workspace-scope.m
 const { runValidation } = require('../middleware/validation.middleware')
 const connectorService = require('../services/connectors/connector.service')
 const providersService = require('../services/connectors/providers.service')
+const accountResolver = require('../services/connectors/account-resolver.service')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
 const oauthState = require('../services/auth/oauth-state.service')
 const { logger } = require('../lib/logger')
@@ -66,11 +67,37 @@ router.get('/oauth/callback', async (req, res) => {
       subst: subst || {},
     })
 
+    // Le flow d'init OAuth ne demande pas à l'utilisateur de choisir une
+    // property/account avant la redirection — c'est impossible pour la
+    // plupart des providers (GA4, Meta Ads…) qui exigent d'avoir le token
+    // pour lister les comptes disponibles. Si le state ne contient pas de
+    // accountId, on le résout maintenant via l'API du provider.
+    let resolvedAccountId = accountId
+    let resolvedAccountName = accountName
+    if (!resolvedAccountId) {
+      const resolved = await accountResolver.resolveAccount({
+        source,
+        accessToken: tokens.accessToken,
+        subst: subst || {},
+      })
+      resolvedAccountId = resolved.accountId
+      resolvedAccountName = resolved.accountName
+      logger.info(
+        {
+          event: 'oauth_account_resolved',
+          workspaceId,
+          source,
+          accountId: resolvedAccountId,
+        },
+        'Account resolved post-OAuth',
+      )
+    }
+
     await connectorService.finalizeOAuthConnector({
       workspaceId,
       source,
-      accountId,
-      accountName,
+      accountId: resolvedAccountId,
+      accountName: resolvedAccountName,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
