@@ -39,6 +39,31 @@ export const STRINGS = {
       gdpr: 'GDPR',
       status: 'Status',
       builtWith: 'Built in Paris · EU hosting · GDPR ready',
+      cookieSettings: 'Cookie settings',
+    },
+    consent: {
+      title: 'Cookies & analytics',
+      message:
+        'We use a small set of analytics tags (Google Analytics 4 via GTM) to understand how the site is used. Nothing is set before you choose. Necessary technical storage stays on regardless.',
+      privacyLink: 'Read our privacy policy',
+      acceptAll: 'Accept all',
+      rejectAll: 'Reject all',
+      customize: 'Customize',
+      save: 'Save my choices',
+      categories: {
+        necessary: {
+          label: 'Strictly necessary',
+          desc: 'Required for the site to work (security, language preference). Always on, no consent required.',
+        },
+        analytics: {
+          label: 'Audience measurement',
+          desc: 'Anonymous usage metrics (Google Analytics 4 via GTM). Helps us prioritize features.',
+        },
+        marketing: {
+          label: 'Marketing & remarketing',
+          desc: 'Ads-related tags (Google Ads, Meta Pixel). Currently not deployed — kept off by default.',
+        },
+      },
     },
   },
   fr: {
@@ -73,6 +98,31 @@ export const STRINGS = {
       gdpr: 'RGPD',
       status: 'État du service',
       builtWith: 'Conçu à Paris · Hébergement EU · Compatible RGPD',
+      cookieSettings: 'Préférences cookies',
+    },
+    consent: {
+      title: 'Cookies & mesure d’audience',
+      message:
+        'Nous utilisons un petit nombre de tags d’analyse (Google Analytics 4 via GTM) pour comprendre comment le site est utilisé. Rien n’est posé avant ton choix. Les stockages techniques nécessaires restent actifs dans tous les cas.',
+      privacyLink: 'Lire notre politique de confidentialité',
+      acceptAll: 'Tout accepter',
+      rejectAll: 'Tout refuser',
+      customize: 'Personnaliser',
+      save: 'Enregistrer mes choix',
+      categories: {
+        necessary: {
+          label: 'Strictement nécessaires',
+          desc: 'Indispensables au fonctionnement du site (sécurité, préférence de langue). Toujours actifs, aucun consentement requis.',
+        },
+        analytics: {
+          label: 'Mesure d’audience',
+          desc: 'Métriques d’usage anonymisées (Google Analytics 4 via GTM). Nous aide à prioriser les évolutions.',
+        },
+        marketing: {
+          label: 'Marketing & remarketing',
+          desc: 'Tags publicitaires (Google Ads, Meta Pixel). Non déployés à ce jour — désactivés par défaut.',
+        },
+      },
     },
   },
 };

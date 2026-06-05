@@ -2,6 +2,7 @@
 import '../styles/dark.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import ConsentBanner from '../components/ConsentBanner.astro';
 import { STRINGS, switchLocalePath } from '../i18n/strings.js';
 
 const { title, description, locale = 'en', jsonLd = [] } = Astro.props;
@@ -81,6 +82,42 @@ const allJsonLd = [...baseJsonLd, ...jsonLd];
       rel="stylesheet"
     />
 
+    <!-- Consent Mode v2 default — DOIT être posé AVANT GTM.
+         Tout part en 'denied' jusqu'au choix explicite de l'utilisateur.
+         La bannière (ConsentBanner.astro, montée en fin de <body>) émet
+         le gtag('consent','update',…) une fois le choix fait. Si un choix
+         valide (< 13 mois) existe en localStorage, on l'applique ici
+         pour ne pas attendre l'hydratation. -->
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){window.dataLayer.push(arguments);}
+      window.gtag = gtag;
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'granted',
+        security_storage: 'granted',
+        wait_for_update: 500,
+      });
+      try {
+        var raw = localStorage.getItem('sa-consent-v1');
+        if (raw) {
+          var c = JSON.parse(raw);
+          var stale = Date.now() - new Date(c.ts).getTime() > 13 * 30 * 24 * 3600 * 1000;
+          if (!stale) {
+            gtag('consent', 'update', {
+              ad_storage: c.ads ? 'granted' : 'denied',
+              ad_user_data: c.ads ? 'granted' : 'denied',
+              ad_personalization: c.ads ? 'granted' : 'denied',
+              analytics_storage: c.analytics ? 'granted' : 'denied',
+            });
+          }
+        }
+      } catch (e) {}
+    </script>
+
     <!-- Google Tag Manager -->
     <script is:inline>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -107,6 +144,7 @@ const allJsonLd = [...baseJsonLd, ...jsonLd];
     <Nav locale={locale} />
     <slot />
     <Footer locale={locale} />
+    <ConsentBanner locale={locale} />
 
     <script is:inline>
       // Nav: blur + background once scrolled

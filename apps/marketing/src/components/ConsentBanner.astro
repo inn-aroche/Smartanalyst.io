@@ -1,0 +1,297 @@
+---
+// Consent Mode v2 banner — custom léger, FR/EN, conforme CNIL.
+//
+// Pourquoi pas Axeptio/Cookiebot ? Notre footprint est minimal (GTM + GA4
+// pour l'instant). Une CMP managée coûte 10-100€/mois sans gain fonctionnel
+// face à 200 lignes d'Astro + 1 localStorage entry.
+//
+// Conformité CNIL/PECR :
+//   - "Refuser" aussi facile que "Accepter" (1 clic au même niveau visuel).
+//   - Default deny pour analytics & ads jusqu'au choix explicite.
+//   - Pas de cookie de tracking pour mémoriser le choix → localStorage only.
+//   - Granularité par catégorie via "Personnaliser".
+//   - Re-soumission après 13 mois (CNIL recommande max 13 mois).
+//   - Bouton "Préférences cookies" toujours accessible (Footer).
+//
+// Le snippet Consent Mode v2 *default* (deny all) est posé directement dans
+// DarkBase.astro AVANT le snippet GTM. Le composant ci-dessous se charge de
+// l'`update` une fois l'utilisateur a fait son choix.
+
+import { STRINGS } from '../i18n/strings.js';
+
+const { locale = 'en' } = Astro.props;
+const t = STRINGS[locale].consent;
+---
+
+<div id="sa-consent" class="sa-consent" hidden aria-hidden="true">
+  <div class="sa-consent-card" role="dialog" aria-modal="false" aria-labelledby="sa-consent-title">
+    <h2 id="sa-consent-title" class="sa-consent-title">{t.title}</h2>
+    <p class="sa-consent-msg">{t.message}</p>
+    <p class="sa-consent-link">
+      <a href={`/${locale}/legal/privacy`}>{t.privacyLink}</a>
+    </p>
+
+    <div class="sa-consent-actions" role="group" aria-label={t.title}>
+      <button type="button" class="sa-consent-btn sa-consent-btn--ghost" data-consent-action="reject">
+        {t.rejectAll}
+      </button>
+      <button type="button" class="sa-consent-btn sa-consent-btn--ghost" data-consent-action="toggle">
+        {t.customize}
+      </button>
+      <button type="button" class="sa-consent-btn sa-consent-btn--primary" data-consent-action="accept">
+        {t.acceptAll}
+      </button>
+    </div>
+
+    <div id="sa-consent-details" class="sa-consent-details" hidden>
+      <label class="sa-consent-cat">
+        <input type="checkbox" checked disabled />
+        <div>
+          <strong>{t.categories.necessary.label}</strong>
+          <span>{t.categories.necessary.desc}</span>
+        </div>
+      </label>
+      <label class="sa-consent-cat">
+        <input type="checkbox" data-consent-cat="analytics" />
+        <div>
+          <strong>{t.categories.analytics.label}</strong>
+          <span>{t.categories.analytics.desc}</span>
+        </div>
+      </label>
+      <label class="sa-consent-cat">
+        <input type="checkbox" data-consent-cat="marketing" />
+        <div>
+          <strong>{t.categories.marketing.label}</strong>
+          <span>{t.categories.marketing.desc}</span>
+        </div>
+      </label>
+      <div class="sa-consent-actions sa-consent-actions--save">
+        <button type="button" class="sa-consent-btn sa-consent-btn--primary" data-consent-action="save">
+          {t.save}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ConsentBanner runtime — décide affichage, écrit le choix,
+  // émet gtag('consent', 'update', …) pour appliquer en live.
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  (function () {
+    var STORAGE_KEY = 'sa-consent-v1';
+    var MAX_AGE_MS = 13 * 30 * 24 * 3600 * 1000; // 13 mois (CNIL)
+    var el = document.getElementById('sa-consent');
+    if (!el) return;
+
+    function readStored() {
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        var c = JSON.parse(raw);
+        if (!c || !c.ts) return null;
+        if (Date.now() - new Date(c.ts).getTime() > MAX_AGE_MS) return null;
+        return c;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function write(c) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
+      } catch (_) {}
+    }
+
+    function applyGtag(analytics, ads) {
+      if (typeof window.gtag !== 'function') {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+      }
+      window.gtag('consent', 'update', {
+        ad_storage: ads ? 'granted' : 'denied',
+        ad_user_data: ads ? 'granted' : 'denied',
+        ad_personalization: ads ? 'granted' : 'denied',
+        analytics_storage: analytics ? 'granted' : 'denied',
+      });
+    }
+
+    function show() {
+      el.hidden = false;
+      el.setAttribute('aria-hidden', 'false');
+    }
+    function hide() {
+      el.hidden = true;
+      el.setAttribute('aria-hidden', 'true');
+      var details = document.getElementById('sa-consent-details');
+      if (details) details.hidden = true;
+    }
+
+    function commit(analytics, ads) {
+      write({ analytics: !!analytics, ads: !!ads, ts: new Date().toISOString(), v: 1 });
+      applyGtag(!!analytics, !!ads);
+      hide();
+    }
+
+    el.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-consent-action]');
+      if (!btn) return;
+      var action = btn.getAttribute('data-consent-action');
+      if (action === 'accept') commit(true, true);
+      else if (action === 'reject') commit(false, false);
+      else if (action === 'toggle') {
+        var d = document.getElementById('sa-consent-details');
+        if (d) d.hidden = !d.hidden;
+      } else if (action === 'save') {
+        var analytics = !!document.querySelector('[data-consent-cat="analytics"]:checked');
+        var ads = !!document.querySelector('[data-consent-cat="marketing"]:checked');
+        commit(analytics, ads);
+      }
+    });
+
+    // Réouverture par lien externe (Footer "Préférences cookies").
+    window.addEventListener('sa:openConsent', show);
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('[data-consent-open]');
+      if (!a) return;
+      e.preventDefault();
+      var stored = readStored();
+      if (stored) {
+        // Pré-coche selon le choix existant pour qu'il puisse être modifié.
+        var ana = document.querySelector('[data-consent-cat="analytics"]');
+        var mkt = document.querySelector('[data-consent-cat="marketing"]');
+        if (ana) ana.checked = !!stored.analytics;
+        if (mkt) mkt.checked = !!stored.ads;
+        var d = document.getElementById('sa-consent-details');
+        if (d) d.hidden = false;
+      }
+      show();
+    });
+
+    // Affichage initial : seulement si pas de choix valide.
+    var stored = readStored();
+    if (!stored) {
+      // Léger délai pour ne pas concurrencer le 1er paint.
+      setTimeout(show, 600);
+    }
+  })();
+</script>
+
+<style is:global>
+  .sa-consent {
+    position: fixed;
+    inset: auto 16px 16px 16px;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .sa-consent[hidden] { display: none; }
+  .sa-consent-card {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 720px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    color: var(--text-1);
+    font-family: var(--ff-b);
+  }
+  .sa-consent-title {
+    font-family: var(--ff-h);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--text-1);
+    letter-spacing: -0.01em;
+  }
+  .sa-consent-msg {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-2);
+    margin: 0 0 8px;
+  }
+  .sa-consent-link {
+    margin: 0 0 16px;
+    font-size: 12.5px;
+  }
+  .sa-consent-link a {
+    color: var(--text-2);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .sa-consent-link a:hover { color: var(--text-1); }
+
+  .sa-consent-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .sa-consent-actions--save {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .sa-consent-btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-1);
+    font-family: var(--ff-m);
+    font-size: 13px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .sa-consent-btn:hover { border-color: var(--border-br); background: var(--card-h); }
+  .sa-consent-btn--primary {
+    background: var(--text-1);
+    color: var(--bg-0);
+    border-color: var(--text-1);
+  }
+  .sa-consent-btn--primary:hover { opacity: 0.9; }
+  .sa-consent-btn--ghost { color: var(--text-2); }
+
+  .sa-consent-details {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .sa-consent-cat {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+  }
+  .sa-consent-cat input[type="checkbox"] {
+    margin-top: 3px;
+    accent-color: var(--text-1);
+  }
+  .sa-consent-cat strong {
+    display: block;
+    font-family: var(--ff-m);
+    font-size: 13px;
+    color: var(--text-1);
+    margin-bottom: 2px;
+  }
+  .sa-consent-cat span {
+    font-size: 12.5px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 600px) {
+    .sa-consent { inset: auto 8px 8px 8px; }
+    .sa-consent-card { padding: 18px 18px; }
+    .sa-consent-actions { justify-content: stretch; }
+    .sa-consent-btn { flex: 1; }
+  }
+</style>

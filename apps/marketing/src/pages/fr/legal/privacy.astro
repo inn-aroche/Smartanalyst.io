@@ -1,12 +1,21 @@
 ---
-// Politique de confidentialité — squelette juridique conforme RGPD + CNIL.
-// ⚠️ Placeholders à compléter avant publication par un juriste :
-//   - [À COMPLÉTER : raison sociale] : raison sociale exacte (ex. "SmartAnalyst SAS")
-//   - [À COMPLÉTER : adresse du siège]    : adresse du siège
-//   - [À COMPLÉTER : RCS-SIRET] : RCS / SIRET
-//   - contact@smartanalyst.io          : email du DPO ou contact RGPD
-//   - 30 mai 2026       : date de dernière mise à jour
+// Politique de confidentialité — squelette RGPD + CNIL.
+//
+// ⚠️ TODO_LEGAL avant publication (passe juridique requise) :
+//   - TODO_LEGAL_NAME      : raison sociale exacte
+//                            Auto-entrepreneur : "Prénom NOM EI" ou "Prénom NOM"
+//   - TODO_LEGAL_ADDRESS   : adresse du siège (= domicile pour un EI sauf domicilation)
+//   - TODO_LEGAL_SIRET     : SIRET (14 chiffres). Pas de RCS pour un EI.
+//   - TODO_LEGAL_FORM      : forme juridique ("Entrepreneur individuel" pour EI)
+//   - TODO_LEGAL_DPO_EMAIL : email DPO / contact RGPD (par défaut privacy@smartanalyst.io)
+//   - TODO_LEGAL_UPDATED   : date de dernière mise à jour
+//
+// Tant que ces TODOs ne sont pas remplis, la bannière en haut de page
+// affiche "En cours de validation" — la PP reste accessible mais signalée.
 import DarkBase from '../../../layouts/DarkBase.astro';
+
+// Flip à `false` après la passe juridique pour masquer la bannière.
+const LEGAL_DRAFT = true;
 ---
 <DarkBase
   title="Politique de confidentialité — SmartAnalyst"
@@ -16,12 +25,18 @@ import DarkBase from '../../../layouts/DarkBase.astro';
   <section class="page-hero">
     <div class="glow" style="width:600px;height:400px;top:-80px;left:50%;transform:translateX(-50%);opacity:0.4"></div>
     <div class="container" style="position:relative;z-index:1">
+      {LEGAL_DRAFT && (
+        <div class="legal-draft-banner" role="alert">
+          ⚠️ <strong>Version en cours de validation juridique.</strong>
+          Les informations légales (raison sociale, adresse, SIRET) seront publiées une fois la passe juridique terminée. La version définitive prévaut.
+        </div>
+      )}
       <div class="eyebrow">Légal</div>
       <h1>Politique de <span class="gradient-text">confidentialité.</span></h1>
       <p class="lead">
         Comment on collecte, utilise et protège tes données. Sans jargon, mais juridiquement complet — comme on aimerait qu'on nous l'écrive.
       </p>
-      <p class="meta">Dernière mise à jour : <strong>30 mai 2026</strong></p>
+      <p class="meta">Dernière mise à jour : <strong>TODO_LEGAL_UPDATED</strong></p>
     </div>
   </section>
 
@@ -31,10 +46,10 @@ import DarkBase from '../../../layouts/DarkBase.astro';
       <article>
         <h2>1. Qui est responsable de tes données ?</h2>
         <p>
-          Le responsable du traitement au sens du RGPD est <strong>[À COMPLÉTER : raison sociale]</strong>, dont le siège est situé au <strong>[À COMPLÉTER : adresse du siège]</strong>, immatriculée sous le numéro <strong>[À COMPLÉTER : RCS-SIRET]</strong>.
+          Le responsable du traitement au sens du RGPD est <strong>TODO_LEGAL_NAME</strong> (<strong>TODO_LEGAL_FORM</strong>), dont le siège est situé au <strong>TODO_LEGAL_ADDRESS</strong>, immatriculée sous le SIRET <strong>TODO_LEGAL_SIRET</strong>.
         </p>
         <p>
-          Pour toute question relative à la protection de tes données, tu peux nous contacter à <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>.
+          Pour toute question relative à la protection de tes données, tu peux nous contacter à <a href="mailto:TODO_LEGAL_DPO_EMAIL">TODO_LEGAL_DPO_EMAIL</a>.
         </p>
       </article>
 
@@ -167,7 +182,7 @@ import DarkBase from '../../../layouts/DarkBase.astro';
           <li><strong>Réclamation auprès de la CNIL</strong> — <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/plaintes</a></li>
         </ul>
         <p>
-          Pour exercer ces droits, écris à <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>. On te répond dans le mois (allongeable de 2 mois si la demande est complexe, avec notification).
+          Pour exercer ces droits, écris à <a href="mailto:TODO_LEGAL_DPO_EMAIL">TODO_LEGAL_DPO_EMAIL</a>. On te répond dans le mois (allongeable de 2 mois si la demande est complexe, avec notification).
         </p>
       </article>
 
@@ -204,7 +219,7 @@ import DarkBase from '../../../layouts/DarkBase.astro';
       <article>
         <h2>12. Contact</h2>
         <p>
-          Pour toute question, exercice de droit, ou réclamation : <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>
+          Pour toute question, exercice de droit, ou réclamation : <a href="mailto:TODO_LEGAL_DPO_EMAIL">TODO_LEGAL_DPO_EMAIL</a>
         </p>
         <p>
           Tu peux aussi introduire une réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL), 3 Place de Fontenoy, 75007 Paris — <a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>.
@@ -216,6 +231,18 @@ import DarkBase from '../../../layouts/DarkBase.astro';
 </DarkBase>
 
 <style is:global>
+  .legal-draft-banner {
+    background: rgba(247, 192, 25, 0.08);
+    border: 1px solid rgba(247, 192, 25, 0.35);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-family: var(--ff-b);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+  .legal-draft-banner strong { color: var(--text-1); }
   .meta {
     font-family: var(--ff-m);
     font-size: 13px;
