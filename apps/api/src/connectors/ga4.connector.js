@@ -30,7 +30,13 @@ const GA4_METRICS = [
 
 class GA4Connector extends BaseConnector {
   async fetchData({ startDate, endDate }) {
-    const accessToken = await vault.decrypt(this.connector.access_token)
+    const accessToken = await vault.decrypt(this.connector.access_token, {
+      secretType: 'connector_oauth_token',
+      field: 'access_token',
+      workspaceId: this.connector.workspace_id,
+      connectorId: this.connector.id,
+      source: 'ga4',
+    })
     if (!accessToken) {
       const err = new Error('GA4 access token missing')
       err.code = 'INVALID_CREDENTIALS'
@@ -132,7 +138,16 @@ class GA4Connector extends BaseConnector {
   }
 
   async _doRefresh() {
-    const refreshToken = await vault.decrypt(this.connector.refresh_token)
+    const ctx = {
+      secretType: 'connector_oauth_token',
+      workspaceId: this.connector.workspace_id,
+      connectorId: this.connector.id,
+      source: 'ga4',
+    }
+    const refreshToken = await vault.decrypt(this.connector.refresh_token, {
+      ...ctx,
+      field: 'refresh_token',
+    })
     if (!refreshToken) {
       const err = new Error('GA4 refresh token missing — user must reauthorize')
       err.code = 'INVALID_CREDENTIALS'
@@ -145,7 +160,10 @@ class GA4Connector extends BaseConnector {
       refreshToken,
     })
 
-    const encryptedAccess = await vault.encrypt(accessToken)
+    const encryptedAccess = await vault.encrypt(accessToken, {
+      ...ctx,
+      field: 'access_token',
+    })
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString()
 
     const supabase = getServiceRoleClient()

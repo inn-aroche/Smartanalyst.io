@@ -99,7 +99,12 @@ async function addApiKeyConnector({
   validateApiKeyFormat(source, apiKey)
 
   const supabase = getServiceRoleClient()
-  const encrypted = await vault.encrypt(apiKey)
+  const encrypted = await vault.encrypt(apiKey, {
+    secretType: 'connector_api_key',
+    workspaceId,
+    source,
+    accountId,
+  })
 
   const { data, error } = await supabase
     .from(TABLE)
@@ -153,8 +158,11 @@ async function finalizeOAuthConnector({
   }
 
   const supabase = getServiceRoleClient()
-  const encryptedAccess = await vault.encrypt(accessToken)
-  const encryptedRefresh = refreshToken ? await vault.encrypt(refreshToken) : null
+  const ctx = { secretType: 'connector_oauth_token', workspaceId, source, accountId }
+  const encryptedAccess = await vault.encrypt(accessToken, { ...ctx, field: 'access_token' })
+  const encryptedRefresh = refreshToken
+    ? await vault.encrypt(refreshToken, { ...ctx, field: 'refresh_token' })
+    : null
   const expiresAt = expiresIn
     ? new Date(Date.now() + expiresIn * 1000).toISOString()
     : null

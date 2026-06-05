@@ -4,6 +4,7 @@
 
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
 const pinoHttp = require('pino-http')
 
@@ -28,6 +29,21 @@ function createApp() {
       return next()
     })
   }
+
+  // Security headers (CSP, HSTS, X-Frame-Options, etc.) via helmet.
+  // L'API ne sert pas de HTML : CSP par défaut 'none', frame-ancestors 'none'.
+  // crossOriginEmbedderPolicy désactivé : casserait les redirections OAuth.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    }),
+  )
 
   // Request logging structuré
   app.use(

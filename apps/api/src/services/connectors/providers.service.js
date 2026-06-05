@@ -90,9 +90,10 @@ async function getWithDecryptedCredentials(source) {
       { statusCode: 503, code: 'OAUTH_APP_NOT_CONFIGURED' },
     )
   }
+  const ctx = { secretType: 'provider_oauth_credentials', source }
   const [clientId, clientSecret] = await Promise.all([
-    vault.decrypt(row.client_id_encrypted),
-    vault.decrypt(row.client_secret_encrypted),
+    vault.decrypt(row.client_id_encrypted, { ...ctx, field: 'client_id' }),
+    vault.decrypt(row.client_secret_encrypted, { ...ctx, field: 'client_secret' }),
   ])
   return { ...row, clientId, clientSecret }
 }
@@ -103,9 +104,10 @@ async function getWithDecryptedCredentials(source) {
  */
 async function setCredentials(source, { clientId, clientSecret }) {
   const supabase = getServiceRoleClient()
+  const ctx = { secretType: 'provider_oauth_credentials', source }
   const [client_id_encrypted, client_secret_encrypted] = await Promise.all([
-    vault.encrypt(clientId),
-    vault.encrypt(clientSecret),
+    vault.encrypt(clientId, { ...ctx, field: 'client_id' }),
+    vault.encrypt(clientSecret, { ...ctx, field: 'client_secret' }),
   ])
   const { error } = await supabase
     .from(TABLE)
