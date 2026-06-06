@@ -56,48 +56,6 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
 
-      - name: Debug — SSH connectivity diagnostics (TEMP — remove once green)
-        # Cherche 3 causes possibles du ssh-keyscan exit 1 silencieux :
-        #   1. secret vide (longueur 0)
-        #   2. whitespace caché en bordure (longueur != longueur trimmée)
-        #   3. firewall / fail2ban : TCP refusé/timeout sur le port SSH
-        # Aucune valeur de secret n'est imprimée — seulement des longueurs et
-        # des codes de retour. GitHub Actions masque automatiquement toute
-        # valeur exacte d'un secret apparaissant dans la sortie.
-        env:
-          H: ${{ secrets.VPS_SSH_HOST }}
-          P: ${{ secrets.VPS_SSH_PORT }}
-          U: ${{ secrets.VPS_SSH_USER }}
-          K: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-        run: |
-          echo "::group::Longueurs des secrets"
-          echo "HOST length=${#H}"
-          echo "PORT length=${#P}"
-          echo "USER length=${#U}"
-          echo "KEY  length=${#K}"
-          echo "::endgroup::"
-
-          echo "::group::Whitespace caché en bordure ?"
-          H_T=$(printf '%s' "$H" | xargs)
-          P_T=$(printf '%s' "$P" | xargs)
-          U_T=$(printf '%s' "$U" | xargs)
-          [ "${#H}" -ne "${#H_T}" ] && echo "⚠️  HOST a du whitespace (${#H} → trimmed ${#H_T})" || echo "HOST OK (pas de whitespace)"
-          [ "${#P}" -ne "${#P_T}" ] && echo "⚠️  PORT a du whitespace (${#P} → trimmed ${#P_T})" || echo "PORT OK (pas de whitespace)"
-          [ "${#U}" -ne "${#U_T}" ] && echo "⚠️  USER a du whitespace (${#U} → trimmed ${#U_T})" || echo "USER OK (pas de whitespace)"
-          echo "::endgroup::"
-
-          echo "::group::Connectivité TCP au port SSH du VPS"
-          if timeout 8 bash -c "exec 3<>/dev/tcp/$H/$P && echo open && exec 3<&- 3>&-"; then
-            echo "✅ TCP OK — le runner peut joindre le port SSH"
-          else
-            echo "❌ TCP KO — connection refused / timeout / port filtré (fail2ban probable)"
-          fi
-          echo "::endgroup::"
-
-          echo "::group::ssh-keyscan verbose (révèle l'erreur stderr cachée)"
-          ssh-keyscan -v -T 8 -p "$P" "$H" 2>&1 | tail -30 || echo "(ssh-keyscan exit $?)"
-          echo "::endgroup::"
-
       - name: Trust VPS host key
         run: |
           mkdir -p ~/.ssh
