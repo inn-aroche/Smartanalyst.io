@@ -1,12 +1,17 @@
 ---
 // Privacy policy — GDPR-compliant skeleton.
-// ⚠️ Placeholders to fill before publication (have a lawyer review):
-//   - [TO FILL: legal entity name] : full legal name (e.g. "SmartAnalyst SAS")
-//   - [TO FILL: registered office address]    : registered office address
-//   - [TO FILL: company registration number] : company registration number
-//   - contact@smartanalyst.io          : DPO or GDPR contact email
-//   - May 30, 2026       : date of last update
+//
+// Data controller details (GDPR art. 13.1.a):
+//   - Aurélien Roche EI · Sole proprietorship (FR auto-entrepreneur)
+//   - Registered office: 174 Rue du Temple, 75003 Paris, France
+//   - SIRET: 908 185 564 00014
+//   - DPO / GDPR contact: privacy@smartanalyst.io
+//   - Last updated: June 5, 2026
 import DarkBase from '../../../layouts/DarkBase.astro';
+
+// "Draft pending legal review" banner — flip to `true` if a new
+// legal pass is required before publication.
+const LEGAL_DRAFT = false;
 ---
 <DarkBase
   title="Privacy Policy — SmartAnalyst"
@@ -16,12 +21,18 @@ import DarkBase from '../../../layouts/DarkBase.astro';
   <section class="page-hero">
     <div class="glow" style="width:600px;height:400px;top:-80px;left:50%;transform:translateX(-50%);opacity:0.4"></div>
     <div class="container" style="position:relative;z-index:1">
+      {LEGAL_DRAFT && (
+        <div class="legal-draft-banner" role="alert">
+          ⚠️ <strong>Draft pending legal review.</strong>
+          Legal details (entity name, address, registration number) will be published after the legal pass. The published version supersedes this draft.
+        </div>
+      )}
       <div class="eyebrow">Legal</div>
       <h1>Privacy <span class="gradient-text">policy.</span></h1>
       <p class="lead">
         How we collect, use, and protect your data. No legalese fluff but legally complete — the way we'd want it written for us.
       </p>
-      <p class="meta">Last updated: <strong>May 30, 2026</strong></p>
+      <p class="meta">Last updated: <strong>June 5, 2026</strong></p>
     </div>
   </section>
 
@@ -31,10 +42,10 @@ import DarkBase from '../../../layouts/DarkBase.astro';
       <article>
         <h2>1. Who's responsible for your data</h2>
         <p>
-          The data controller under GDPR is <strong>[TO FILL: legal entity name]</strong>, registered office at <strong>[TO FILL: registered office address]</strong>, company number <strong>[TO FILL: company registration number]</strong>.
+          The data controller under GDPR is <strong>Aurélien Roche EI</strong> (<strong>Sole proprietorship (FR auto-entrepreneur)</strong>), registered office at <strong>174 Rue du Temple, 75003 Paris, France</strong>, registered under SIRET <strong>908 185 564 00014</strong>.
         </p>
         <p>
-          For any question about your data, reach out at <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>.
+          For any question about your data, reach out at <a href="mailto:privacy@smartanalyst.io">privacy@smartanalyst.io</a>.
         </p>
       </article>
 
@@ -155,7 +166,7 @@ import DarkBase from '../../../layouts/DarkBase.astro';
           <li><strong>Lodge a complaint</strong> with your local data protection authority — for EU residents that's typically your country's DPA (e.g. CNIL in France, ICO in the UK, etc.)</li>
         </ul>
         <p>
-          To exercise these rights, email <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>. We respond within one month (extendable by two months for complex requests, with notice).
+          To exercise these rights, email <a href="mailto:privacy@smartanalyst.io">privacy@smartanalyst.io</a>. We respond within one month (extendable by two months for complex requests, with notice).
         </p>
       </article>
 
@@ -192,7 +203,7 @@ import DarkBase from '../../../layouts/DarkBase.astro';
       <article>
         <h2>12. Contact</h2>
         <p>
-          For any question, rights request, or complaint: <a href="mailto:contact@smartanalyst.io">contact@smartanalyst.io</a>
+          For any question, rights request, or complaint: <a href="mailto:privacy@smartanalyst.io">privacy@smartanalyst.io</a>
         </p>
         <p>
           You may also lodge a complaint with your local data protection authority. For EU residents, that's the supervisory authority in your country of residence.
@@ -204,6 +215,18 @@ import DarkBase from '../../../layouts/DarkBase.astro';
 </DarkBase>
 
 <style is:global>
+  .legal-draft-banner {
+    background: rgba(247, 192, 25, 0.08);
+    border: 1px solid rgba(247, 192, 25, 0.35);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-family: var(--ff-b);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+  .legal-draft-banner strong { color: var(--text-1); }
   .meta {
     font-family: var(--ff-m);
     font-size: 13px;
