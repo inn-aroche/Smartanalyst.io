@@ -42,26 +42,26 @@ export const STRINGS = {
       cookieSettings: 'Cookie settings',
     },
     consent: {
-      title: 'Cookies & analytics',
+      title: 'Cookies',
       message:
-        'We use a small set of analytics tags (Google Analytics 4 via GTM) to understand how the site is used. Nothing is set before you choose. Necessary technical storage stays on regardless.',
+        'We use cookies to improve your experience and measure how the site is used. You decide what stays on.',
       privacyLink: 'Read our privacy policy',
       acceptAll: 'Accept all',
       rejectAll: 'Reject all',
       customize: 'Customize',
-      save: 'Save my choices',
+      save: 'Save',
       categories: {
         necessary: {
-          label: 'Strictly necessary',
-          desc: 'Required for the site to work (security, language preference). Always on, no consent required.',
+          label: 'Essential',
+          desc: 'Required for the site to work. Always on.',
         },
         analytics: {
-          label: 'Audience measurement',
-          desc: 'Anonymous usage metrics (Google Analytics 4 via GTM). Helps us prioritize features.',
+          label: 'Analytics',
+          desc: 'Helps us understand how visitors use the site.',
         },
         marketing: {
-          label: 'Marketing & remarketing',
-          desc: 'Ads-related tags (Google Ads, Meta Pixel). Currently not deployed — kept off by default.',
+          label: 'Advertising',
+          desc: 'Used to personalize ads and measure campaigns.',
         },
       },
     },
@@ -101,26 +101,26 @@ export const STRINGS = {
       cookieSettings: 'Préférences cookies',
     },
     consent: {
-      title: 'Cookies & mesure d’audience',
+      title: 'Cookies',
       message:
-        'Nous utilisons un petit nombre de tags d’analyse (Google Analytics 4 via GTM) pour comprendre comment le site est utilisé. Rien n’est posé avant ton choix. Les stockages techniques nécessaires restent actifs dans tous les cas.',
+        'Nous utilisons des cookies pour améliorer ton expérience et mesurer l’usage du site. Tu choisis ce qui reste activé.',
       privacyLink: 'Lire notre politique de confidentialité',
       acceptAll: 'Tout accepter',
       rejectAll: 'Tout refuser',
       customize: 'Personnaliser',
-      save: 'Enregistrer mes choix',
+      save: 'Enregistrer',
       categories: {
         necessary: {
-          label: 'Strictement nécessaires',
-          desc: 'Indispensables au fonctionnement du site (sécurité, préférence de langue). Toujours actifs, aucun consentement requis.',
+          label: 'Essentiels',
+          desc: 'Nécessaires au fonctionnement du site. Toujours actifs.',
         },
         analytics: {
           label: 'Mesure d’audience',
-          desc: 'Métriques d’usage anonymisées (Google Analytics 4 via GTM). Nous aide à prioriser les évolutions.',
+          desc: 'Nous aide à comprendre comment les visiteurs utilisent le site.',
         },
         marketing: {
-          label: 'Marketing & remarketing',
-          desc: 'Tags publicitaires (Google Ads, Meta Pixel). Non déployés à ce jour — désactivés par défaut.',
+          label: 'Publicité',
+          desc: 'Personnalise les pubs et mesure les campagnes.',
         },
       },
     },
