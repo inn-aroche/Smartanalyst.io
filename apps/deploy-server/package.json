@@ -1,0 +1,17 @@
+{
+  "name": "@smartanalyst/deploy-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mini service HTTP local au VPS qui reçoit les triggers de déploiement de GHA et exécute git pull + reload PM2. Évite de garder SSH+rsync dans la CI.",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "pino": "^9.5.0"
+  }
+}
