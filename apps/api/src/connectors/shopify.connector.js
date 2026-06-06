@@ -35,7 +35,13 @@ class ShopifyConnector extends BaseConnector {
   }
 
   async _getAccessToken() {
-    const token = await vault.decrypt(this.connector.access_token)
+    const token = await vault.decrypt(this.connector.access_token, {
+      secretType: 'connector_oauth_token',
+      field: 'access_token',
+      workspaceId: this.connector.workspace_id,
+      connectorId: this.connector.id,
+      source: 'shopify',
+    })
     if (!token) {
       const err = new Error('Shopify access token missing')
       err.code = 'INVALID_CREDENTIALS'

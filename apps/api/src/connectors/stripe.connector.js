@@ -33,7 +33,13 @@ class StripeConnector extends BaseConnector {
   // ━━━ helpers HTTP ━━━
 
   async _getApiKey() {
-    const key = await vault.decrypt(this.connector.access_token)
+    const key = await vault.decrypt(this.connector.access_token, {
+      secretType: 'connector_api_key',
+      field: 'access_token',
+      workspaceId: this.connector.workspace_id,
+      connectorId: this.connector.id,
+      source: 'stripe',
+    })
     if (!key) {
       const err = new Error('Stripe API key missing')
       err.code = 'INVALID_CREDENTIALS'

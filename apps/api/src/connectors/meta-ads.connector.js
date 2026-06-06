@@ -35,7 +35,13 @@ const DEFAULT_CONVERSION_ACTIONS = new Set([
 
 class MetaAdsConnector extends BaseConnector {
   async _getAccessToken() {
-    const token = await vault.decrypt(this.connector.access_token)
+    const token = await vault.decrypt(this.connector.access_token, {
+      secretType: 'connector_oauth_token',
+      field: 'access_token',
+      workspaceId: this.connector.workspace_id,
+      connectorId: this.connector.id,
+      source: 'meta_ads',
+    })
     if (!token) {
       const err = new Error('Meta access token missing')
       err.code = 'INVALID_CREDENTIALS'
@@ -155,7 +161,16 @@ class MetaAdsConnector extends BaseConnector {
     // gère le grant_type=refresh_token standard. Quelques apps Meta n'ont
     // pas de refresh_token (utilisent fb_exchange_token), à ajuster dans
     // un second temps si besoin.
-    const refreshToken = await vault.decrypt(this.connector.refresh_token)
+    const ctx = {
+      secretType: 'connector_oauth_token',
+      workspaceId: this.connector.workspace_id,
+      connectorId: this.connector.id,
+      source: 'meta_ads',
+    }
+    const refreshToken = await vault.decrypt(this.connector.refresh_token, {
+      ...ctx,
+      field: 'refresh_token',
+    })
     if (!refreshToken) {
       const err = new Error('Meta refresh token missing — user must reauthorize')
       err.code = 'INVALID_CREDENTIALS'
@@ -168,7 +183,10 @@ class MetaAdsConnector extends BaseConnector {
       refreshToken,
     })
 
-    const encryptedAccess = await vault.encrypt(accessToken)
+    const encryptedAccess = await vault.encrypt(accessToken, {
+      ...ctx,
+      field: 'access_token',
+    })
     const expiresAt = new Date(Date.now() + (expiresIn || 60 * 24 * 60 * 60) * 1000).toISOString()
 
     const supabase = getServiceRoleClient()
