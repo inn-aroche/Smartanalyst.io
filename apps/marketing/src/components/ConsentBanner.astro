@@ -1,21 +1,17 @@
 ---
-// Consent Mode v2 banner — custom léger, FR/EN, conforme CNIL.
+// Consent Mode v2 banner — style Axeptio (compact, bottom-right, glassmorphism).
 //
-// Pourquoi pas Axeptio/Cookiebot ? Notre footprint est minimal (GTM + GA4
-// pour l'instant). Une CMP managée coûte 10-100€/mois sans gain fonctionnel
-// face à 200 lignes d'Astro + 1 localStorage entry.
+// Conformité PECR/CNIL :
+//   - 3 boutons au même niveau visuel (Tout refuser / Choisir / Tout accepter).
+//   - Toggles décochés par défaut pour analytics & ads (consentement EXPLICITE).
+//   - Pas de cookie de tracking → localStorage uniquement.
+//   - Bannière non-bloquante : pas de backdrop, pas de scroll lock. La page
+//     reste totalement utilisable derrière (idem Axeptio, Cookiebot).
+//   - Bouton "Préférences cookies" dans le Footer pour rouvrir à tout moment.
+//   - Re-soumission après 13 mois (CNIL).
 //
-// Conformité CNIL/PECR :
-//   - "Refuser" aussi facile que "Accepter" (1 clic au même niveau visuel).
-//   - Default deny pour analytics & ads jusqu'au choix explicite.
-//   - Pas de cookie de tracking pour mémoriser le choix → localStorage only.
-//   - Granularité par catégorie via "Personnaliser".
-//   - Re-soumission après 13 mois (CNIL recommande max 13 mois).
-//   - Bouton "Préférences cookies" toujours accessible (Footer).
-//
-// Le snippet Consent Mode v2 *default* (deny all) est posé directement dans
-// DarkBase.astro AVANT le snippet GTM. Le composant ci-dessous se charge de
-// l'`update` une fois l'utilisateur a fait son choix.
+// Le snippet Consent Mode v2 *default* (deny all) est posé dans DarkBase.astro
+// AVANT GTM. Le composant émet gtag('consent','update',…) une fois le choix fait.
 
 import { STRINGS } from '../i18n/strings.js';
 
@@ -25,63 +21,68 @@ const t = STRINGS[locale].consent;
 
 <div id="sa-consent" class="sa-consent" hidden aria-hidden="true">
   <div class="sa-consent-card" role="dialog" aria-modal="false" aria-labelledby="sa-consent-title">
-    <h2 id="sa-consent-title" class="sa-consent-title">{t.title}</h2>
-    <p class="sa-consent-msg">{t.message}</p>
-    <p class="sa-consent-link">
-      <a href={`/${locale}/legal/privacy`}>{t.privacyLink}</a>
-    </p>
+    <div class="sa-consent-header">
+      <h2 id="sa-consent-title" class="sa-consent-title">🍪 {t.title}</h2>
+      <p class="sa-consent-msg">{t.message}</p>
+    </div>
+
+    <div class="sa-consent-cats" id="sa-consent-cats">
+      <div class="sa-consent-cat sa-consent-cat--locked">
+        <div class="sa-consent-cat-info">
+          <strong>{t.categories.necessary.label}</strong>
+          <span>{t.categories.necessary.desc}</span>
+        </div>
+        <label class="sa-toggle sa-toggle--locked" aria-label={t.categories.necessary.label}>
+          <input type="checkbox" checked disabled />
+          <span class="sa-toggle-track" aria-hidden="true"><span class="sa-toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="sa-consent-cat">
+        <div class="sa-consent-cat-info">
+          <strong>{t.categories.analytics.label}</strong>
+          <span>{t.categories.analytics.desc}</span>
+        </div>
+        <label class="sa-toggle" aria-label={t.categories.analytics.label}>
+          <input type="checkbox" data-consent-cat="analytics" />
+          <span class="sa-toggle-track" aria-hidden="true"><span class="sa-toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="sa-consent-cat">
+        <div class="sa-consent-cat-info">
+          <strong>{t.categories.marketing.label}</strong>
+          <span>{t.categories.marketing.desc}</span>
+        </div>
+        <label class="sa-toggle" aria-label={t.categories.marketing.label}>
+          <input type="checkbox" data-consent-cat="marketing" />
+          <span class="sa-toggle-track" aria-hidden="true"><span class="sa-toggle-thumb"></span></span>
+        </label>
+      </div>
+    </div>
 
     <div class="sa-consent-actions" role="group" aria-label={t.title}>
       <button type="button" class="sa-consent-btn sa-consent-btn--ghost" data-consent-action="reject">
         {t.rejectAll}
       </button>
-      <button type="button" class="sa-consent-btn sa-consent-btn--ghost" data-consent-action="toggle">
-        {t.customize}
+      <button type="button" class="sa-consent-btn sa-consent-btn--outline" data-consent-action="save">
+        {t.save}
       </button>
       <button type="button" class="sa-consent-btn sa-consent-btn--primary" data-consent-action="accept">
         {t.acceptAll}
       </button>
     </div>
 
-    <div id="sa-consent-details" class="sa-consent-details" hidden>
-      <label class="sa-consent-cat">
-        <input type="checkbox" checked disabled />
-        <div>
-          <strong>{t.categories.necessary.label}</strong>
-          <span>{t.categories.necessary.desc}</span>
-        </div>
-      </label>
-      <label class="sa-consent-cat">
-        <input type="checkbox" data-consent-cat="analytics" />
-        <div>
-          <strong>{t.categories.analytics.label}</strong>
-          <span>{t.categories.analytics.desc}</span>
-        </div>
-      </label>
-      <label class="sa-consent-cat">
-        <input type="checkbox" data-consent-cat="marketing" />
-        <div>
-          <strong>{t.categories.marketing.label}</strong>
-          <span>{t.categories.marketing.desc}</span>
-        </div>
-      </label>
-      <div class="sa-consent-actions sa-consent-actions--save">
-        <button type="button" class="sa-consent-btn sa-consent-btn--primary" data-consent-action="save">
-          {t.save}
-        </button>
-      </div>
-    </div>
+    <p class="sa-consent-link">
+      <a href={`/${locale}/legal/privacy`}>{t.privacyLink}</a>
+    </p>
   </div>
 </div>
 
 <script is:inline>
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ConsentBanner runtime — décide affichage, écrit le choix,
-  // émet gtag('consent', 'update', …) pour appliquer en live.
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   (function () {
     var STORAGE_KEY = 'sa-consent-v1';
-    var MAX_AGE_MS = 13 * 30 * 24 * 3600 * 1000; // 13 mois (CNIL)
+    var MAX_AGE_MS = 13 * 30 * 24 * 3600 * 1000;
     var el = document.getElementById('sa-consent');
     if (!el) return;
 
@@ -93,17 +94,11 @@ const t = STRINGS[locale].consent;
         if (!c || !c.ts) return null;
         if (Date.now() - new Date(c.ts).getTime() > MAX_AGE_MS) return null;
         return c;
-      } catch (_) {
-        return null;
-      }
+      } catch (_) { return null; }
     }
-
     function write(c) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
-      } catch (_) {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)); } catch (_) {}
     }
-
     function applyGtag(analytics, ads) {
       if (typeof window.gtag !== 'function') {
         window.dataLayer = window.dataLayer || [];
@@ -116,18 +111,18 @@ const t = STRINGS[locale].consent;
         analytics_storage: analytics ? 'granted' : 'denied',
       });
     }
-
     function show() {
       el.hidden = false;
       el.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(function () { el.classList.add('is-visible'); });
     }
     function hide() {
-      el.hidden = true;
-      el.setAttribute('aria-hidden', 'true');
-      var details = document.getElementById('sa-consent-details');
-      if (details) details.hidden = true;
+      el.classList.remove('is-visible');
+      setTimeout(function () {
+        el.hidden = true;
+        el.setAttribute('aria-hidden', 'true');
+      }, 260);
     }
-
     function commit(analytics, ads) {
       write({ analytics: !!analytics, ads: !!ads, ts: new Date().toISOString(), v: 1 });
       applyGtag(!!analytics, !!ads);
@@ -140,158 +135,231 @@ const t = STRINGS[locale].consent;
       var action = btn.getAttribute('data-consent-action');
       if (action === 'accept') commit(true, true);
       else if (action === 'reject') commit(false, false);
-      else if (action === 'toggle') {
-        var d = document.getElementById('sa-consent-details');
-        if (d) d.hidden = !d.hidden;
-      } else if (action === 'save') {
+      else if (action === 'save') {
         var analytics = !!document.querySelector('[data-consent-cat="analytics"]:checked');
         var ads = !!document.querySelector('[data-consent-cat="marketing"]:checked');
         commit(analytics, ads);
       }
     });
 
-    // Réouverture par lien externe (Footer "Préférences cookies").
-    window.addEventListener('sa:openConsent', show);
+    // Réouverture depuis le Footer.
     document.addEventListener('click', function (e) {
       var a = e.target.closest('[data-consent-open]');
       if (!a) return;
       e.preventDefault();
       var stored = readStored();
-      if (stored) {
-        // Pré-coche selon le choix existant pour qu'il puisse être modifié.
-        var ana = document.querySelector('[data-consent-cat="analytics"]');
-        var mkt = document.querySelector('[data-consent-cat="marketing"]');
-        if (ana) ana.checked = !!stored.analytics;
-        if (mkt) mkt.checked = !!stored.ads;
-        var d = document.getElementById('sa-consent-details');
-        if (d) d.hidden = false;
-      }
+      var ana = document.querySelector('[data-consent-cat="analytics"]');
+      var mkt = document.querySelector('[data-consent-cat="marketing"]');
+      if (ana) ana.checked = !!(stored && stored.analytics);
+      if (mkt) mkt.checked = !!(stored && stored.ads);
       show();
     });
 
     // Affichage initial : seulement si pas de choix valide.
     var stored = readStored();
     if (!stored) {
-      // Léger délai pour ne pas concurrencer le 1er paint.
-      setTimeout(show, 600);
+      setTimeout(show, 500);
     }
   })();
 </script>
 
 <style is:global>
+  /* Wrapper non-bloquant : pointer-events: none → on peut cliquer/scroller
+     derrière la zone vide ; pointer-events: auto seulement sur la card. */
   .sa-consent {
     position: fixed;
-    inset: auto 16px 16px 16px;
+    inset: auto 16px 16px auto;
     z-index: 100;
-    display: flex;
-    justify-content: center;
     pointer-events: none;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .sa-consent.is-visible {
+    transform: translateY(0);
+    opacity: 1;
   }
   .sa-consent[hidden] { display: none; }
+
   .sa-consent-card {
     pointer-events: auto;
-    width: 100%;
-    max-width: 720px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 22px 24px;
-    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    width: min(420px, calc(100vw - 32px));
+    /* Glassmorphism : fond semi-transparent + flou en arrière-plan */
+    background: color-mix(in srgb, var(--card) 82%, transparent);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    border-radius: 16px;
+    padding: 20px 22px 16px;
+    box-shadow:
+      0 1px 0 color-mix(in srgb, white 6%, transparent) inset,
+      0 24px 48px -12px rgba(0, 0, 0, 0.55),
+      0 8px 16px -8px rgba(0, 0, 0, 0.4);
     color: var(--text-1);
     font-family: var(--ff-b);
   }
+
+  .sa-consent-header { margin-bottom: 14px; }
   .sa-consent-title {
     font-family: var(--ff-h);
-    font-size: 16px;
+    font-size: 14.5px;
     font-weight: 600;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     color: var(--text-1);
     letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .sa-consent-msg {
-    font-size: 13.5px;
-    line-height: 1.55;
-    color: var(--text-2);
-    margin: 0 0 8px;
-  }
-  .sa-consent-link {
-    margin: 0 0 16px;
     font-size: 12.5px;
-  }
-  .sa-consent-link a {
+    line-height: 1.5;
     color: var(--text-2);
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    margin: 0;
   }
-  .sa-consent-link a:hover { color: var(--text-1); }
 
+  /* Catégories visibles d'emblée (pas de bouton "Personnaliser") */
+  .sa-consent-cats {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 14px 0;
+    border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .sa-consent-cat {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 13px;
+    background: color-mix(in srgb, var(--bg-0) 30%, transparent);
+    transition: background 0.12s;
+  }
+  .sa-consent-cat + .sa-consent-cat {
+    border-top: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+  }
+  .sa-consent-cat:hover { background: color-mix(in srgb, var(--bg-0) 50%, transparent); }
+  .sa-consent-cat--locked { opacity: 0.88; }
+  .sa-consent-cat-info { flex: 1; min-width: 0; }
+  .sa-consent-cat strong {
+    display: block;
+    font-family: var(--ff-m);
+    font-size: 12.5px;
+    color: var(--text-1);
+    margin-bottom: 2px;
+  }
+  .sa-consent-cat span {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-2);
+    line-height: 1.45;
+  }
+
+  /* Toggle iOS-style — switch moderne plutôt que checkbox brute */
+  .sa-toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: pointer;
+    user-select: none;
+    margin-top: 1px;
+  }
+  .sa-toggle--locked { cursor: not-allowed; }
+  .sa-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sa-toggle-track {
+    width: 34px;
+    height: 20px;
+    background: color-mix(in srgb, var(--text-3) 35%, transparent);
+    border-radius: 999px;
+    position: relative;
+    transition: background 0.18s;
+  }
+  .sa-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.18s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  }
+  .sa-toggle input:checked + .sa-toggle-track {
+    background: #10b981; /* émeraude, signal "on" */
+  }
+  .sa-toggle input:checked + .sa-toggle-track .sa-toggle-thumb {
+    transform: translateX(14px);
+  }
+  .sa-toggle--locked .sa-toggle-track {
+    background: color-mix(in srgb, #10b981 55%, transparent);
+  }
+
+  /* Actions : 3 boutons même niveau visuel (exigence CNIL) */
   .sa-consent-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    justify-content: flex-end;
-  }
-  .sa-consent-actions--save {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
+    margin-top: 4px;
   }
   .sa-consent-btn {
+    flex: 1;
     appearance: none;
     border: 1px solid var(--border);
     background: transparent;
     color: var(--text-1);
     font-family: var(--ff-m);
-    font-size: 13px;
-    padding: 9px 16px;
-    border-radius: 10px;
+    font-size: 12.5px;
+    padding: 9px 10px;
+    border-radius: 9px;
     cursor: pointer;
+    white-space: nowrap;
     transition: all 0.12s;
   }
-  .sa-consent-btn:hover { border-color: var(--border-br); background: var(--card-h); }
+  .sa-consent-btn:hover {
+    border-color: var(--border-br);
+    background: color-mix(in srgb, var(--card-h) 80%, transparent);
+  }
+  .sa-consent-btn--ghost {
+    color: var(--text-2);
+    border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  }
+  .sa-consent-btn--outline { color: var(--text-1); }
   .sa-consent-btn--primary {
     background: var(--text-1);
     color: var(--bg-0);
     border-color: var(--text-1);
+    font-weight: 600;
   }
   .sa-consent-btn--primary:hover { opacity: 0.9; }
-  .sa-consent-btn--ghost { color: var(--text-2); }
 
-  .sa-consent-details {
-    margin-top: 18px;
-    padding-top: 18px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+  .sa-consent-link {
+    margin: 12px 0 0;
+    font-size: 11px;
+    text-align: center;
   }
-  .sa-consent-cat {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    cursor: pointer;
+  .sa-consent-link a {
+    color: var(--text-3);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
-  .sa-consent-cat input[type="checkbox"] {
-    margin-top: 3px;
-    accent-color: var(--text-1);
-  }
-  .sa-consent-cat strong {
-    display: block;
-    font-family: var(--ff-m);
-    font-size: 13px;
-    color: var(--text-1);
-    margin-bottom: 2px;
-  }
-  .sa-consent-cat span {
-    font-size: 12.5px;
-    color: var(--text-2);
-    line-height: 1.5;
-  }
+  .sa-consent-link a:hover { color: var(--text-2); }
 
+  /* Mobile : la card prend ~tout l'écran en bas mais reste non-bloquante */
   @media (max-width: 600px) {
     .sa-consent { inset: auto 8px 8px 8px; }
-    .sa-consent-card { padding: 18px 18px; }
-    .sa-consent-actions { justify-content: stretch; }
-    .sa-consent-btn { flex: 1; }
+    .sa-consent-card { width: 100%; padding: 16px 16px 14px; }
+    .sa-consent-msg { font-size: 12px; }
+  }
+
+  /* Respect "Réduire les animations" */
+  @media (prefers-reduced-motion: reduce) {
+    .sa-consent { transition: opacity 0.1s ease; transform: none; }
+    .sa-consent.is-visible { transform: none; }
   }
 </style>
