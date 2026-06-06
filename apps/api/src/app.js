@@ -94,7 +94,12 @@ function createApp() {
     }),
   )
 
-  // Body parsers (raw pour Stripe webhook plus tard, JSON pour le reste)
+  // Webhooks signés cryptographiquement — DOIVENT être montés avant le
+  // body parser JSON pour conserver le raw Buffer nécessaire à la
+  // vérification de signature (Stripe HMAC).
+  app.use('/api/v1/webhooks', require('./routes/webhooks.routes'))
+
+  // Body parsers (JSON pour le reste de l'API)
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 
