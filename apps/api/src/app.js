@@ -123,8 +123,11 @@ function createApp() {
   app.use(require('./routes/health.routes'))
 
   // Admin queues (observabilité DLQ + retry manuel) — protégé par X-Admin-Token.
+  // IMPORTANT : monté sur /admin/queues SPÉCIFIQUEMENT. Sans le path, le
+  // middleware requireAdminToken s'appliquerait à toutes les requêtes de l'API
+  // (régression vécue le 08/06/2026 — auth users cassée).
   // Exposé via Nginx /admin/queues/* qui proxy vers cet endpoint API.
-  app.use(require('./routes/admin-queues.routes'))
+  app.use('/admin/queues', require('./routes/admin-queues.routes'))
 
   // Placeholder root
   app.get('/', (req, res) => {
