@@ -17,24 +17,37 @@ BRANCH="${DEPLOY_BRANCH:-main}"
 echo "▶ Pull origin/${BRANCH} dans ${REPO_DIR}"
 cd "$REPO_DIR"
 git fetch origin "$BRANCH"
+# Checkout main propre (au cas où le repo serait sur une autre branche
+# après un debug manuel) puis reset hard à la dernière version origin.
+git checkout "$BRANCH" 2>/dev/null || git checkout -B "$BRANCH" "origin/${BRANCH}"
 git reset --hard "origin/${BRANCH}"
 COMMIT=$(git rev-parse --short HEAD)
 echo "  commit=${COMMIT}"
 
 echo "▶ Sync vers ${APP_DIR}"
-mkdir -p "$APP_DIR"
+mkdir -p "$APP_DIR/apps/api" "$APP_DIR/packages"
+
+# apps/api/ → APP_DIR/apps/api/ (trailing slash = contenu, pas le dossier).
+# --exclude='.env' CRITIQUE : sans ça, --delete supprime le .env de prod
+# (gitignored donc absent du repo source → diff côté dest → delete).
 rsync -a --delete \
+  --exclude='.env' \
   --exclude='node_modules/' \
-  --exclude='.git/' \
   --exclude='coverage/' \
   --exclude='test-results/' \
   --exclude='playwright-report/' \
   --exclude='logs/' \
-  apps/api packages package.json package-lock.json .nvmrc \
-  "$APP_DIR/"
+  apps/api/ "$APP_DIR/apps/api/"
 
-echo "▶ Préserve le .env de prod (le deploy-server ne doit jamais l'écraser)"
-# Le .env est maintenu manuellement / via API_ENV_FILE GHA → on ne touche pas.
+# packages/ → APP_DIR/packages/ (pas de .env dans packages partagés)
+rsync -a --delete \
+  --exclude='node_modules/' \
+  packages/ "$APP_DIR/packages/"
+
+# Root files. Pas de --delete pour ne pas virer d'autres fichiers à la racine.
+rsync -a \
+  package.json package-lock.json .nvmrc \
+  "$APP_DIR/"
 
 echo "▶ npm ci (prod only)"
 cd "$APP_DIR"
