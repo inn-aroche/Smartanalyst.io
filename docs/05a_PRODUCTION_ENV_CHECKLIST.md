@@ -39,7 +39,6 @@ rempli dans un canal non-chiffré (Slack, email, chat).
 | `RESEND_API_KEY`, `EMAIL_FROM` | Resend | Emails transactionnels |
 | `REDIS_URL` | Redis (BullMQ + cache + WS pub/sub) | URL avec auth si Redis managé |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Google Gemini (optionnel, fallback) | Pas bloquant |
-| `ADMIN_TOKEN` | Auth pour `/admin/queues/*` (DLQ + retry, voir doc 20). ≥ 32 chars. Sans ça, les endpoints répondent 503 et la prod fail-fast au boot. Génère avec `openssl rand -hex 32`. |
 
 ## Observabilité (optionnels mais recommandés)
 
@@ -47,6 +46,7 @@ rempli dans un canal non-chiffré (Slack, email, chat).
 |---|---|
 | `LOG_LEVEL=info` | Niveau de log Pino (default debug en dev, info en prod) |
 | `SLACK_WEBHOOK_URL` | Alertes ops (jobs failed, sync errors) |
+| `ADMIN_TOKEN` | Auth pour `/admin/queues/*` (DLQ + retry, voir doc 20). ≥ 32 chars. Si absent, les endpoints répondent 503 `admin_disabled` mais l'API tourne normalement. Génère avec `openssl rand -hex 32`. |
 | `SENTRY_DSN` | Error tracking. Sans ça, les erreurs prod ne partent nulle part. Crée un projet "Node.js" sur sentry.io. |
 | `SENTRY_ENVIRONMENT=production` | Tag les events Sentry (default = `NODE_ENV`). |
 | `SENTRY_TRACES_SAMPLE_RATE=0.1` | % de requêtes échantillonnées pour les traces perf. 0.1 = 10%. Mettre 1.0 en debug, 0 pour désactiver. |

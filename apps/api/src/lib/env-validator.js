@@ -1,5 +1,17 @@
 // Validation des variables d'environnement au démarrage.
 // Source: docs/01_CONVENTIONS_GLOBALES.md §4.2
+//
+// Philosophie :
+//   - REQUIRED       → l'app NE PEUT PAS faire son job sans (DB, Redis, JWT_SECRET).
+//                      Si absent → throw au boot. Fail-fast.
+//   - PRODUCTION_REQUIRED → idem mais critique seulement en prod (Stripe, Resend).
+//   - RECOMMENDED    → features optionnelles qui dégradent gracieusement si absentes
+//                      (Sentry no-op, OAuth providers désactivés, ADMIN_TOKEN
+//                      = endpoints admin renvoient 503).
+//
+// Règle d'or : ne JAMAIS rendre REQUIRED un secret qui n'est pas nécessaire au
+// boot du process Node lui-même. Sinon un secret manquant tue la prod entière
+// alors qu'on pourrait juste désactiver une feature.
 
 const REQUIRED_VARS = [
   'SUPABASE_URL',
@@ -15,9 +27,6 @@ const PRODUCTION_REQUIRED_VARS = [
   'STRIPE_WEBHOOK_SECRET',
   'RESEND_API_KEY',
   'APP_URL',
-  // Admin token pour /admin/queues/* — sans ça les endpoints répondent 503.
-  // Fail-fast au boot prod plutôt que de découvrir le souci au 1er incident.
-  'ADMIN_TOKEN',
 ]
 
 const RECOMMENDED_VARS = [
@@ -27,9 +36,14 @@ const RECOMMENDED_VARS = [
   'META_APP_SECRET',
   'EMAIL_FROM',
   'GEMINI_MODEL',
-  // Observability — l'app boote sans, mais les erreurs prod doivent partir
-  // quelque part. SENTRY_DSN manquant en prod = warning au démarrage.
+  // Sentry — l'app boote sans (no-op silencieux), mais en prod sans Sentry
+  // les erreurs partent au néant. Warning au boot pour le rappeler.
   'SENTRY_DSN',
+  // ADMIN_TOKEN — protège /admin/queues/*. Si absent, ces endpoints répondent
+  // 503 admin_disabled (fail-closed côté middleware). Le reste de l'API tourne.
+  // PR follow-up de #38 : auparavant en PRODUCTION_REQUIRED, ce qui tuait la
+  // prod si oublié. Remis en RECOMMENDED pour que la dégradation soit graceful.
+  'ADMIN_TOKEN',
 ]
 
 function validateEnv() {
