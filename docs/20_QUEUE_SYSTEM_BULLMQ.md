@@ -117,26 +117,75 @@ dataSyncQueue.process(async (job) => {
 
 ## Error Handling
 
-- Max 3 retries with exponential backoff
-- Failed jobs → Dead-letter queue
-- Admin dashboard shows failed jobs
-- Alert if too many failures
+- Max 3 retries with exponential backoff (configurable via `DEFAULT_JOB_OPTIONS.attempts`)
+- Failed jobs gardés 7 jours dans Redis (`removeOnFail: { age: 7 * 86400 }`)
+- Distinction transient (retry à venir) vs final (épuisé) — voir `apps/api/src/queue-jobs/workers.js`
+- Sur fail final : `recordFinalFailure()` → Sentry capture + sliding window counter
 
-## Monitoring
+## Monitoring & DLQ (Lot 3 PR #B)
+
+### Sentry capture sur job failed
+
+Le `worker.on('failed', ...)` distingue 2 cas :
 
 ```javascript
-dataSyncQueue.on('failed', (job, err) => {
-  logger.error('Job failed', { jobId: job.id, error: err.message })
-  
-  // Alert if critical
-  if (err.message.includes('API')) {
-    slack.notify('🔴 API sync failure')
-  }
-})
-
-dataSyncQueue.on('completed', (job) => {
-  logger.info('Job completed', { jobId: job.id })
-})
+const isFinal = attemptsMade >= maxAttempts
+if (isFinal) {
+  await recordFinalFailure({ queueName, jobName, jobId, error, jobData, attemptsMade })
+}
 ```
+
+- **Fail transient** (retry à venir) → log warn + pino. Pas de capture Sentry pour éviter le spam pendant les retries normaux.
+- **Fail final** (retries épuisés) → log error + `captureException` Sentry avec tags `queue`, `jobName`, `service=worker`, extras `jobId`, `attemptsMade`, `jobData` tronqué à 2 KB.
+
+### Sliding window burst detection
+
+Chaque fail final est enregistré dans un sorted set Redis `dlq:failures:<queue>` avec timestamp.
+Si > `BURST_THRESHOLD` (10 par défaut) fails dans la dernière heure sur la même queue :
+
+```javascript
+captureMessage(
+  `DLQ burst on queue "${queueName}": ${recentCount} jobs failed in last hour`,
+  'error',
+  { tags: { alert: 'dlq_burst', queue: queueName } },
+)
+```
+
+Côté Sentry, configurer une **Alert Rule** sur `tag:alert = dlq_burst` qui ping Slack / email. Évite la chute silencieuse de tout un connecteur (ex: Meta token expiré → 100 jobs failed en 1h).
+
+### Endpoints admin (auth via `X-Admin-Token`)
+
+Tous derrière `requireAdminToken` (cf `apps/api/src/middleware/admin-token.middleware.js`).
+Token ≥ 32 chars, généré avec `openssl rand -hex 32`, stocké dans `ADMIN_TOKEN` env.
+
+| Endpoint | Action |
+|---|---|
+| `GET /admin/queues` | Liste des queues |
+| `GET /admin/queues/:name/stats` | Counts par état + `recentFailureCount` (sliding window) |
+| `GET /admin/queues/:name/failed?limit=20` | Jobs en DLQ avec failedReason + stacktrace |
+| `POST /admin/queues/:name/failed/:jobId/retry` | Re-enqueue (BullMQ `job.retry()`) |
+| `POST /admin/queues/:name/failed/:jobId/remove` | Delete sans rejouer |
+
+Exposé via Nginx — les requêtes `/admin/queues/*` arrivent naturellement sur l'API (port 3000) via le `location /` du bloc nginx existant. Pas de config nginx supplémentaire requise.
+
+#### Exemple : inspecter les fails d'une queue
+
+```bash
+TOKEN="<contenu d'ADMIN_TOKEN>"
+curl -sS -H "X-Admin-Token: $TOKEN" https://api.smartanalyst.io/admin/queues/data-sync/stats | jq
+# → {"queue":"data-sync","counts":{...},"recentFailureCount":7,...}
+
+curl -sS -H "X-Admin-Token: $TOKEN" https://api.smartanalyst.io/admin/queues/data-sync/failed?limit=5 | jq
+# → liste des 5 derniers jobs failed avec stacktrace tronqué
+
+# Rejouer un job spécifique
+curl -sS -X POST -H "X-Admin-Token: $TOKEN" \
+  https://api.smartanalyst.io/admin/queues/data-sync/failed/<jobId>/retry
+```
+
+### Tests
+
+- `apps/api/tests/dlq.test.js` : helper (18 tests)
+- `apps/api/tests/admin-queues.test.js` : routes admin (auth + endpoints)
 
 ---

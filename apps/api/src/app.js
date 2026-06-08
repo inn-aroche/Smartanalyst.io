@@ -122,6 +122,10 @@ function createApp() {
   // Voir apps/api/src/routes/health.routes.js.
   app.use(require('./routes/health.routes'))
 
+  // Admin queues (observabilité DLQ + retry manuel) — protégé par X-Admin-Token.
+  // Exposé via Nginx /admin/queues/* qui proxy vers cet endpoint API.
+  app.use(require('./routes/admin-queues.routes'))
+
   // Placeholder root
   app.get('/', (req, res) => {
     res.json({ name: 'SmartAnalyst API', version: '0.1.0' })

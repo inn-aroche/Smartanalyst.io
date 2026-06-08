@@ -8,6 +8,7 @@ const { Worker } = require('bullmq')
 const { getRedis } = require('../lib/redis')
 const { logger } = require('../lib/logger')
 const { QUEUE_NAMES, JOB_NAMES, getQueue } = require('./queues')
+const { recordFinalFailure } = require('../lib/dlq')
 
 const syncHandler = require('./handlers/sync.handler')
 const insightsHandler = require('./handlers/insights.handler')
@@ -35,18 +36,40 @@ function wireWorker(queueName, processor) {
     )
   })
 
-  worker.on('failed', (job, err) => {
+  worker.on('failed', async (job, err) => {
+    // Distinction transient (retry à venir) vs final (épuisé).
+    // BullMQ ne fournit pas de flag direct, on déduit depuis attemptsMade.
+    // attemptsMade = nb de fois où le job a été tenté (incrémenté à chaque échec).
+    // opts.attempts = max total. Si attemptsMade >= attempts → final.
+    const maxAttempts = job?.opts?.attempts ?? 1
+    const attemptsMade = job?.attemptsMade ?? 0
+    const isFinal = attemptsMade >= maxAttempts
+
     logger.error(
       {
-        event: 'job_failed',
+        event: isFinal ? 'job_final_failure' : 'job_transient_failure',
         queue: queueName,
         jobName: job?.name,
         jobId: job?.id,
-        attemptsMade: job?.attemptsMade,
+        attemptsMade,
+        maxAttempts,
         error: err.message,
       },
-      'Job failed',
+      isFinal ? 'Job failed (final, will not retry)' : 'Job failed (will retry)',
     )
+
+    // Sentry capture UNIQUEMENT sur fail final — sinon spam pendant les retries
+    // transients qui sont attendus et normaux.
+    if (isFinal && job) {
+      await recordFinalFailure({
+        queueName,
+        jobName: job.name,
+        jobId: job.id,
+        error: err,
+        jobData: job.data,
+        attemptsMade,
+      })
+    }
   })
 
   worker.on('error', (err) => {
