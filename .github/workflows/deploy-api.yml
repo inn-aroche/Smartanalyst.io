@@ -1,18 +1,19 @@
 name: Deploy API to VPS
 
-# Builds the API workspace, rsyncs it to the Hostinger VPS, and reloads PM2.
-# Triggers on push to main, only when API / shared / lockfile changes.
+# Déclenche le webhook deploy-server sur le VPS au lieu de SSH+rsync.
+# Avantages : pas de port 22 dans la CI → plus de risque de blocage SSH /
+# Anti-DDoS Hostinger / fail2ban. Le VPS pull lui-même depuis GitHub via
+# sa deploy key SSH, puis pm2 reload.
 #
-# Required GitHub secrets (Settings → Secrets and variables → Actions):
-#   VPS_SSH_HOST          IP or hostname of the VPS (e.g. 2.24.9.186)
-#   VPS_SSH_PORT          22 (default) or whatever you've set
-#   VPS_SSH_USER          deploy
-#   VPS_SSH_PRIVATE_KEY   PEM contents of the private key authorized in /home/deploy/.ssh/authorized_keys
+# Pré-requis (setup une fois côté VPS — voir docs/05b_VPS_DEPLOY_SERVER.md) :
+#   1. Cloner le repo dans /srv/smartanalyst-repo (deploy key SSH lecture-only).
+#   2. PM2 process "deploy-server" qui écoute sur 127.0.0.1:3001.
+#   3. Nginx proxy /admin/deploy/* → 127.0.0.1:3001/deploy/*.
+#   4. Secret GitHub DEPLOY_TOKEN = même valeur que la var DEPLOY_TOKEN
+#      du deploy-server VPS.
 #
-# Optional secrets (for the production .env, written to /srv/smartanalyst-api/.env at deploy):
-#   API_ENV_FILE          full multi-line contents of the production .env
-#
-# See docs/DEPLOYMENT_API.md for the one-time setup.
+# Required GitHub secrets:
+#   DEPLOY_TOKEN   token long (≥ 32 chars) authentifiant le call webhook.
 
 on:
   push:
@@ -22,6 +23,7 @@ on:
       - 'packages/shared/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'scripts/deploy-api.sh'
       - '.github/workflows/deploy-api.yml'
   workflow_dispatch:
 
@@ -51,65 +53,63 @@ jobs:
       - name: Run API tests
         run: npm run test --workspace=@smartanalyst/api
 
-      - name: Load SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-
-      - name: Trust VPS host key
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ secrets.VPS_SSH_PORT }}" -H "${{ secrets.VPS_SSH_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Rsync source to VPS
-        # We ship the monorepo subset the API needs: apps/api, packages/shared, root manifest,
-        # ecosystem config. node_modules is rebuilt on the server (npm ci --omit=dev).
-        # -R preserves the relative path so apps/api lands at <dest>/apps/api (not <dest>/api),
-        # keeping the workspace layout intact for `npm ci --workspaces` on the VPS.
-        run: |
-          rsync -avzR --delete \
-            --exclude='node_modules/' \
-            --exclude='.git/' \
-            --exclude='coverage/' \
-            --exclude='test-results/' \
-            --exclude='playwright-report/' \
-            --exclude='logs/' \
-            -e "ssh -p ${{ secrets.VPS_SSH_PORT }}" \
-            apps/api \
-            packages \
-            package.json \
-            package-lock.json \
-            .nvmrc \
-            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}:/srv/smartanalyst-api/"
-
-      - name: Write production .env (if provided)
-        if: ${{ env.HAS_ENV_FILE == 'true' }}
+      - name: Trigger deploy webhook on VPS
+        # Le serveur lance scripts/deploy-api.sh côté VPS : git pull origin/main,
+        # rsync vers /srv/smartanalyst-api, npm ci --omit=dev, pm2 reload.
         env:
-          HAS_ENV_FILE: ${{ secrets.API_ENV_FILE != '' }}
-          API_ENV_FILE: ${{ secrets.API_ENV_FILE }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
-          ssh -p "${{ secrets.VPS_SSH_PORT }}" \
-            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
-            "umask 077 && cat > /srv/smartanalyst-api/apps/api/.env" <<< "$API_ENV_FILE"
-
-      - name: Install prod deps + reload PM2 on VPS
-        run: |
-          ssh -p "${{ secrets.VPS_SSH_PORT }}" \
-            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
-            bash -s <<'REMOTE'
           set -euo pipefail
-          cd /srv/smartanalyst-api
-          npm ci --omit=dev --workspaces --include-workspace-root
-          # Reload (zero-downtime if already running, otherwise start)
-          pm2 reload apps/api/ecosystem.config.cjs --update-env || \
-            pm2 start apps/api/ecosystem.config.cjs
-          pm2 save
-          pm2 status
-          REMOTE
+          : "${DEPLOY_TOKEN:?DEPLOY_TOKEN secret is empty or unset}"
+
+          echo "▸ POST https://api.smartanalyst.io/admin/deploy/api"
+          response=$(curl -sS -w '\n%{http_code}' \
+            -X POST https://api.smartanalyst.io/admin/deploy/api \
+            -H "X-Deploy-Token: $DEPLOY_TOKEN" \
+            -H "Content-Type: application/json" \
+            --max-time 480 \
+            -d '{}')
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | sed '$d')
+          echo "HTTP $http_code"
+          # On tronque la sortie : utile pour debug si échec, pas pour parsing.
+          echo "$body" | jq -r '.stdout // empty' 2>/dev/null | tail -50 || true
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::error::Deploy webhook failed (HTTP $http_code)"
+            echo "$body" | head -100
+            exit 1
+          fi
+          echo "▸ Deploy webhook OK"
+
+      - name: Verify deploy (health check + Helmet header sanity)
+        # On vérifie 2 choses : l'API répond 200 ET un header Helmet est posé.
+        # Si Helmet manque, c'est que pm2 sert encore l'ancienne version.
+        run: |
+          set -euo pipefail
+          sleep 5
+          for attempt in 1 2 3 4 5; do
+            echo "▸ [$attempt/5] curl -I https://api.smartanalyst.io/health"
+            headers=$(curl -sSI --max-time 10 https://api.smartanalyst.io/health || true)
+            status=$(echo "$headers" | head -1 || echo "")
+            has_helmet=$(echo "$headers" | grep -i 'strict-transport-security' || true)
+            if echo "$status" | grep -qE '200|HTTP/[12] 200'; then
+              if [ -n "$has_helmet" ]; then
+                echo "  ✓ 200 OK + Helmet active"
+                exit 0
+              fi
+              echo "  ⚠ 200 OK mais pas de header Helmet (cache navigateur ? pm2 pas reload ?)"
+            fi
+            [ "$attempt" -lt 5 ] && sleep 6
+          done
+          echo "::error::Health check failed after 5 attempts"
+          exit 1
 
       - name: Summary
         run: |
-          echo "### API deployed" >> $GITHUB_STEP_SUMMARY
+          echo "### API deployed via webhook" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- API: https://api.smartanalyst.io" >> $GITHUB_STEP_SUMMARY
+          echo "- Methode: POST /admin/deploy/api (pas de SSH)" >> $GITHUB_STEP_SUMMARY
