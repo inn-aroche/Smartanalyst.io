@@ -1,11 +1,16 @@
 // Admin queues router — observabilité et contrôle des queues BullMQ.
 //
-// Endpoints (tous protégés par X-Admin-Token) :
-//   GET    /admin/queues                          - liste des queues
-//   GET    /admin/queues/:name/stats              - counts par état
-//   GET    /admin/queues/:name/failed?limit=20    - jobs en DLQ
-//   POST   /admin/queues/:name/failed/:jobId/retry  - re-enqueue
-//   POST   /admin/queues/:name/failed/:jobId/remove - delete
+// Endpoints (tous protégés par X-Admin-Token, monté sur /admin/queues
+// dans app.js — les routes ci-dessous sont relatives) :
+//   GET    /                          - liste des queues
+//   GET    /:name/stats               - counts par état
+//   GET    /:name/failed?limit=20     - jobs en DLQ
+//   POST   /:name/failed/:jobId/retry  - re-enqueue
+//   POST   /:name/failed/:jobId/remove - delete
+//
+// IMPORTANT : monter ce router via app.use('/admin/queues', router). Sinon
+// le middleware requireAdminToken s'applique à TOUTES les requêtes de l'API
+// (régression vécue en prod le 08/06/2026 — auth users cassée).
 //
 // Pas d'UI : ces endpoints sont consommés manuellement (curl) ou par un
 // dashboard ops externe. Pour V2 on pourra ajouter une page bull-board.
@@ -26,11 +31,11 @@ const ALLOWED_QUEUE_NAMES = Object.values(QUEUE_NAMES)
 
 router.use(requireAdminToken)
 
-router.get('/admin/queues', (req, res) => {
+router.get('/', (req, res) => {
   res.json({ queues: ALLOWED_QUEUE_NAMES })
 })
 
-router.get('/admin/queues/:name/stats', async (req, res) => {
+router.get('/:name/stats', async (req, res) => {
   const { name } = req.params
   if (!ALLOWED_QUEUE_NAMES.includes(name)) {
     return res.status(404).json({ error: 'unknown_queue' })
@@ -57,7 +62,7 @@ router.get('/admin/queues/:name/stats', async (req, res) => {
   }
 })
 
-router.get('/admin/queues/:name/failed', async (req, res) => {
+router.get('/:name/failed', async (req, res) => {
   const { name } = req.params
   if (!ALLOWED_QUEUE_NAMES.includes(name)) {
     return res.status(404).json({ error: 'unknown_queue' })
@@ -72,7 +77,7 @@ router.get('/admin/queues/:name/failed', async (req, res) => {
   }
 })
 
-router.post('/admin/queues/:name/failed/:jobId/retry', async (req, res) => {
+router.post('/:name/failed/:jobId/retry', async (req, res) => {
   const { name, jobId } = req.params
   if (!ALLOWED_QUEUE_NAMES.includes(name)) {
     return res.status(404).json({ error: 'unknown_queue' })
@@ -87,7 +92,7 @@ router.post('/admin/queues/:name/failed/:jobId/retry', async (req, res) => {
   }
 })
 
-router.post('/admin/queues/:name/failed/:jobId/remove', async (req, res) => {
+router.post('/:name/failed/:jobId/remove', async (req, res) => {
   const { name, jobId } = req.params
   if (!ALLOWED_QUEUE_NAMES.includes(name)) {
     return res.status(404).json({ error: 'unknown_queue' })

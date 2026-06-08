@@ -95,7 +95,12 @@ async function withServer(envToken, opts, fn) {
   const app = express()
   app.set('trust proxy', false)
   app.use(express.json())
-  app.use(router)
+  // CRITIQUE : path-scoped pour ne pas que requireAdminToken intercepte
+  // toutes les routes de l'app. Voir app.js.
+  app.use('/admin/queues', router)
+  // Route bidon pour vérifier qu'elle n'est PAS interceptée par le middleware
+  // admin (test de régression du bug de PR #38).
+  app.get('/api/v1/auth/google/start', (req, res) => res.json({ ok: true, public: true }))
 
   const server = http.createServer(app)
   await new Promise((res) => server.listen(0, '127.0.0.1', res))
@@ -237,5 +242,27 @@ test('404 sur retry d\'un jobId inconnu', async () => {
     )
     assert.equal(statusCode, 404)
     assert.equal(body.error, 'job_not_found')
+  })
+})
+
+// ───────── Test de régression du bug PR #38 ─────────
+// Le middleware requireAdminToken NE DOIT PAS intercepter les routes hors
+// /admin/queues/*. Avant le hotfix, `router.use(requireAdminToken)` combiné
+// à `app.use(router)` faisait que TOUTE l'API renvoyait 403 sans le header.
+
+test('REGRESSION : middleware admin ne touche PAS les routes hors /admin/queues', async () => {
+  await withServer(VALID_TOKEN, {}, async (port) => {
+    // Pas de token, pas de header admin — devrait fonctionner.
+    const { statusCode, body } = await req(port, '/api/v1/auth/google/start')
+    assert.equal(statusCode, 200, 'Routes publiques doivent être accessibles sans X-Admin-Token')
+    assert.equal(body.ok, true)
+    assert.equal(body.public, true)
+  })
+})
+
+test('REGRESSION : route publique répond meme avec X-Admin-Token invalide', async () => {
+  await withServer(VALID_TOKEN, {}, async (port) => {
+    const { statusCode } = await req(port, '/api/v1/auth/google/start', { token: 'wrong' })
+    assert.equal(statusCode, 200)
   })
 })
