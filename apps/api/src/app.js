@@ -54,9 +54,9 @@ function createApp() {
         if (res.statusCode >= 400) return 'warn'
         return 'info'
       },
-      // /health ne pollue pas les logs
+      // /health* ne pollue pas les logs (uptime monitors les pollent ~1×/min)
       autoLogging: {
-        ignore: (req) => req.url === '/health',
+        ignore: (req) => req.url === '/health' || req.url === '/health/ready',
       },
     }),
   )
@@ -118,15 +118,9 @@ function createApp() {
   })
   app.use('/api/', globalLimiter)
 
-  // Health endpoint (doc 05 §5)
-  app.get('/health', (req, res) => {
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-    })
-  })
+  // Health endpoints — /health (liveness) + /health/ready (readiness DB+Redis).
+  // Voir apps/api/src/routes/health.routes.js.
+  app.use(require('./routes/health.routes'))
 
   // Placeholder root
   app.get('/', (req, res) => {
@@ -147,6 +141,14 @@ function createApp() {
   app.use('/api/v1/audit', require('./routes/audit.routes'))
   // TODO: reports
   // app.use('/api/v1/reports', require('./routes/reports.routes'))
+
+  // Sentry Express error handler — DOIT être avant les autres error handlers.
+  // En v8+ du SDK, c'est `setupExpressErrorHandler` qui s'occupe d'attacher
+  // l'auto-instrumentation et de capturer les exceptions remontées via next(err).
+  const { enabled: sentryEnabled, Sentry } = require('./lib/sentry')
+  if (sentryEnabled) {
+    Sentry.setupExpressErrorHandler(app)
+  }
 
   // 404 + error handler (toujours en dernier)
   app.use(notFoundHandler)
