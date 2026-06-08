@@ -1,11 +1,16 @@
 // Entry point: charge .env, valide les vars, démarre le serveur HTTP, gère le shutdown.
 // Source: docs/01_CONVENTIONS_GLOBALES.md §4.2
 
+// MUST be first — Sentry instrument OpenTelemetry doit s'attacher avant tout
+// autre require (express, ioredis, supabase…). Voir apps/api/src/instrument.js.
+require('./instrument')
+
 require('dotenv').config()
 
 const { validateEnv } = require('./lib/env-validator')
 const { logger } = require('./lib/logger')
 const { closeRedis } = require('./lib/redis')
+const { captureException, flush: sentryFlush } = require('./lib/sentry')
 
 async function main() {
   const { missingRecommended } = validateEnv()
@@ -70,16 +75,24 @@ async function main() {
 
   process.on('unhandledRejection', (reason) => {
     logger.error({ event: 'unhandled_rejection', reason: String(reason) }, 'Unhandled rejection')
+    captureException(reason instanceof Error ? reason : new Error(String(reason)), {
+      tags: { kind: 'unhandled_rejection' },
+    })
   })
 
-  process.on('uncaughtException', (err) => {
+  process.on('uncaughtException', async (err) => {
     logger.fatal({ event: 'uncaught_exception', error: err.message, stack: err.stack }, 'Uncaught exception')
+    captureException(err, { tags: { kind: 'uncaught_exception' }, level: 'fatal' })
+    // Best-effort flush avant exit, sinon l'event reste en mémoire.
+    await sentryFlush(2000)
     process.exit(1)
   })
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   // eslint-disable-next-line no-console
   console.error('Fatal error during startup:', err.message)
+  captureException(err, { tags: { kind: 'startup_error' }, level: 'fatal' })
+  await sentryFlush(2000)
   process.exit(1)
 })

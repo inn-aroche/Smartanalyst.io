@@ -5,6 +5,7 @@
 
 const { logger } = require('../lib/logger')
 const { UserFacingError } = require('../lib/error-handler')
+const { captureException } = require('../lib/sentry')
 
 function notFoundHandler(req, res) {
   res.status(404).json({
@@ -48,6 +49,15 @@ function errorHandler(err, req, res, next) {
     },
     'Unhandled error',
   )
+
+  // Report à Sentry — no-op si DSN absent (dev local).
+  // Sentry.setupExpressErrorHandler() est censé le faire automatiquement,
+  // mais on double-capture explicitement avec des tags business utiles.
+  captureException(err, {
+    tags: { route: `${req.method} ${req.route?.path || req.path}` },
+    extra: { method: req.method, path: req.path },
+    user: req.user?.id ? { id: req.user.id } : undefined,
+  })
 
   res.status(500).json({
     error: {

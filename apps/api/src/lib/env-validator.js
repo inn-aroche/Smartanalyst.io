@@ -24,6 +24,9 @@ const RECOMMENDED_VARS = [
   'META_APP_SECRET',
   'EMAIL_FROM',
   'GEMINI_MODEL',
+  // Observability — l'app boote sans, mais les erreurs prod doivent partir
+  // quelque part. SENTRY_DSN manquant en prod = warning au démarrage.
+  'SENTRY_DSN',
 ]
 
 function validateEnv() {

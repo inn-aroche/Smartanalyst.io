@@ -46,7 +46,24 @@ rempli dans un canal non-chiffré (Slack, email, chat).
 |---|---|
 | `LOG_LEVEL=info` | Niveau de log Pino (default debug en dev, info en prod) |
 | `SLACK_WEBHOOK_URL` | Alertes ops (jobs failed, sync errors) |
-| `SENTRY_DSN` | Error tracking (à câbler — voir Lot 3 du chantier d'audit) |
+| `SENTRY_DSN` | Error tracking. Sans ça, les erreurs prod ne partent nulle part. Crée un projet "Node.js" sur sentry.io. |
+| `SENTRY_ENVIRONMENT=production` | Tag les events Sentry (default = `NODE_ENV`). |
+| `SENTRY_TRACES_SAMPLE_RATE=0.1` | % de requêtes échantillonnées pour les traces perf. 0.1 = 10%. Mettre 1.0 en debug, 0 pour désactiver. |
+| `SENTRY_RELEASE` | **Ne pas mettre dans le `.env` prod**. Injecté automatiquement par `scripts/deploy-api.sh` = commit SHA. Permet à Sentry d'associer chaque event à une release et de proposer un rollback. |
+
+### Setup Sentry (5 min)
+
+1. https://sentry.io → New project → Platform: Node.js → Project name: `smartanalyst-api`.
+2. Copie le DSN affiché.
+3. Ajoute dans le secret GitHub `API_ENV_FILE` (et localement dans `apps/api/.env`) :
+   ```
+   SENTRY_DSN=https://xxx@oNNN.ingest.sentry.io/PROJECT_ID
+   SENTRY_ENVIRONMENT=production
+   SENTRY_TRACES_SAMPLE_RATE=0.1
+   ```
+4. Redéploie. Au prochain crash 5xx, l'event apparaît dans Sentry avec le commit SHA, le route, l'IP, le user.id (si auth) et le stack trace.
+
+Sans `SENTRY_DSN`, l'API boote normalement — c'est juste qu'aucun event n'est envoyé (no-op silencieux).
 
 ## Vérification au boot
 

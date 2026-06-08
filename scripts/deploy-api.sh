@@ -53,9 +53,14 @@ echo "▶ npm ci (prod only)"
 cd "$APP_DIR"
 npm ci --omit=dev --workspaces --include-workspace-root
 
-echo "▶ pm2 reload"
-pm2 reload apps/api/ecosystem.config.cjs --update-env || \
-  pm2 start apps/api/ecosystem.config.cjs
+echo "▶ pm2 reload (avec SENTRY_RELEASE = ${COMMIT})"
+# SENTRY_RELEASE = commit SHA → Sentry sait à quelle version associer les
+# erreurs reçues. Sans ça, tous les events tombent dans "no release" et le
+# regroupement / rollback Sentry ne marche pas.
+SENTRY_RELEASE="$COMMIT" \
+  pm2 reload apps/api/ecosystem.config.cjs --update-env || \
+  SENTRY_RELEASE="$COMMIT" \
+    pm2 start apps/api/ecosystem.config.cjs
 pm2 save
 
 echo "✔ deploy-api OK (commit ${COMMIT})"
