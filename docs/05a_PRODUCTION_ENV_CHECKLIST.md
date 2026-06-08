@@ -39,6 +39,7 @@ rempli dans un canal non-chiffré (Slack, email, chat).
 | `RESEND_API_KEY`, `EMAIL_FROM` | Resend | Emails transactionnels |
 | `REDIS_URL` | Redis (BullMQ + cache + WS pub/sub) | URL avec auth si Redis managé |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Google Gemini (optionnel, fallback) | Pas bloquant |
+| `ADMIN_TOKEN` | Auth pour `/admin/queues/*` (DLQ + retry, voir doc 20). ≥ 32 chars. Sans ça, les endpoints répondent 503 et la prod fail-fast au boot. Génère avec `openssl rand -hex 32`. |
 
 ## Observabilité (optionnels mais recommandés)
 

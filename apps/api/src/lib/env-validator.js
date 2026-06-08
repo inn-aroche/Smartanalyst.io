@@ -15,6 +15,9 @@ const PRODUCTION_REQUIRED_VARS = [
   'STRIPE_WEBHOOK_SECRET',
   'RESEND_API_KEY',
   'APP_URL',
+  // Admin token pour /admin/queues/* — sans ça les endpoints répondent 503.
+  // Fail-fast au boot prod plutôt que de découvrir le souci au 1er incident.
+  'ADMIN_TOKEN',
 ]
 
 const RECOMMENDED_VARS = [
@@ -47,6 +50,10 @@ function validateEnv() {
 
   if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
     throw new Error('JWT_SECRET must be at least 32 characters long')
+  }
+
+  if (process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN.length < 32) {
+    throw new Error('ADMIN_TOKEN must be at least 32 characters long')
   }
 
   const missingRecommended = RECOMMENDED_VARS.filter((name) => !process.env[name])
