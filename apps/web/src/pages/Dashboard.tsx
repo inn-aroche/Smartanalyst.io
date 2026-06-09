@@ -48,15 +48,24 @@ export default function Dashboard() {
   const t = useT()
   const fmt = useFormatters()
   const [windowDays, setWindowDays] = useState(7)
+  const workspaceId = state.workspaces[0]?.id ?? ''
 
   const summary = useQuery({
-    queryKey: ['metrics', 'summary', windowDays],
-    queryFn: () => apiFetch<SummaryResponse>(`/api/v1/metrics/summary?days=${windowDays}`),
+    queryKey: ['metrics', 'summary', workspaceId, windowDays],
+    enabled: Boolean(workspaceId),
+    queryFn: () =>
+      apiFetch<SummaryResponse>(
+        `/api/v1/metrics/summary?workspaceId=${workspaceId}&days=${windowDays}`,
+      ),
   })
 
   const connectors = useQuery({
-    queryKey: ['connectors', 'list'],
-    queryFn: () => apiFetch<{ connectors: WorkspaceConnector[] }>('/api/v1/connectors'),
+    queryKey: ['connectors', 'list', workspaceId],
+    enabled: Boolean(workspaceId),
+    queryFn: () =>
+      apiFetch<{ connectors: WorkspaceConnector[] }>(
+        `/api/v1/connectors?workspaceId=${workspaceId}`,
+      ),
   })
 
   const activeConnectors = (connectors.data?.connectors ?? []).filter(
