@@ -2,8 +2,13 @@
 -- Beta waitlist — formulaire public d'inscription pré-launch.
 -- Voir apps/api/src/services/waitlist/waitlist.service.js.
 --
--- Pas de RLS : la table est uniquement écrite/lue par le service role
--- depuis l'API. Le frontend marketing n'a pas accès direct à Supabase.
+-- RLS : activée sans aucune policy → deny-by-default pour les clés
+-- `anon` et `authenticated`. Le `service_role` (qu'utilise notre API
+-- côté backend via getServiceRoleClient) bypass RLS automatiquement,
+-- donc le service continue de fonctionner.
+--
+-- Le frontend marketing n'a JAMAIS d'accès direct à Supabase pour cette
+-- table — il fait un POST vers notre endpoint /api/v1/waitlist.
 
 CREATE TABLE IF NOT EXISTS waitlist_signups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -25,5 +30,6 @@ CREATE TABLE IF NOT EXISTS waitlist_signups (
 CREATE INDEX IF NOT EXISTS idx_waitlist_signups_status ON waitlist_signups(status);
 CREATE INDEX IF NOT EXISTS idx_waitlist_signups_created_at ON waitlist_signups(created_at DESC);
 
--- RLS désactivé volontairement (accès uniquement via service role).
-ALTER TABLE waitlist_signups DISABLE ROW LEVEL SECURITY;
+-- Deny-by-default : activer RLS sans policy bloque anon + authenticated.
+-- service_role bypass automatiquement → backend API continue à marcher.
+ALTER TABLE waitlist_signups ENABLE ROW LEVEL SECURITY;
