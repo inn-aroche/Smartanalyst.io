@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
 import CopyButton from '@/components/CopyButton'
-import { apiFetch } from '@/lib/api'
+import {
+  AiSubScores,
+  AuditEmptyState,
+  CoreWebVitalsChips,
+  FindingsList,
+  ScoreGauge,
+  SectionHeader,
+  SkippedBanner,
+  scoreColor,
+} from '@/components/audit/AuditViz'
+import { ApiError, apiFetch } from '@/lib/api'
+import type { AuditRecord, AuditListItem } from '@/lib/audit-types'
 import { useAuth } from '@/lib/auth'
 import { type StringKey, useT } from '@/lib/i18n'
 
@@ -28,12 +39,21 @@ type LiveEvent = {
 
 type ConnState = 'connecting' | 'connected' | 'disconnected' | 'error' | 'unauthorized'
 type FilterValue = EventType | 'all'
+type Tab = 'analytics' | 'seo' | 'geo' | 'perf' | 'ai'
 
-const WINDOW_MS = 5 * 60_000 // 5 min sliding window
+const TABS: { value: Tab; labelKey: StringKey }[] = [
+  { value: 'analytics', labelKey: 'dash.tab.analytics' },
+  { value: 'seo', labelKey: 'dash.tab.seo' },
+  { value: 'geo', labelKey: 'dash.tab.geo' },
+  { value: 'perf', labelKey: 'dash.tab.perf' },
+  { value: 'ai', labelKey: 'dash.tab.ai' },
+]
+
+const WINDOW_MS = 5 * 60_000
 const MAX_EVENTS = 200
-const CHART_BUCKETS = 30 // 30 × 10s = 5 min
+const CHART_BUCKETS = 30
 const CHART_BUCKET_MS = WINDOW_MS / CHART_BUCKETS
-const NOW_TICK_MS = 5_000 // re-render counters + sparkline every 5 s
+const NOW_TICK_MS = 5_000
 
 const FILTERS: { value: FilterValue; labelKey: StringKey }[] = [
   { value: 'all', labelKey: 'live.filter.all' },
@@ -51,9 +71,8 @@ function wsUrlFor(token: string, workspaceId: string): string {
   return `${wsBase}/ws/live?${qs.toString()}`
 }
 
-// Orchestrateur — décide entre onboarding (tag pas installé) et dashboard
-// (events qui arrivent). Le hook `useTagStatus` poll au mount, et expose un
-// `refresh()` que l'onboarding peut appeler dès qu'il a détecté le 1er event.
+// ─── Orchestrateur — onboarding vs dashboard ──────────────────────────────
+
 export default function LivePage() {
   const { state } = useAuth()
   const workspaceId = state.workspaces[0]?.id ?? ''
@@ -68,8 +87,6 @@ export default function LivePage() {
       </AppLayout>
     )
   }
-  // Une erreur de status (réseau, auth) ne doit pas bloquer l'utilisateur —
-  // on tombe sur l'onboarding (qui contient tout ce qu'il faut pour démarrer).
   const installed = status !== 'error' && status.installed
   return (
     <AppLayout>
@@ -102,7 +119,77 @@ function useTagStatus(workspaceId: string): {
   return { status, refresh: fetchStatus }
 }
 
+// ─── Dashboard à onglets ──────────────────────────────────────────────────
+
 function LiveDashboard({ workspaceId }: { workspaceId: string }) {
+  const t = useT()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = (searchParams.get('tab') as Tab | null) ?? 'analytics'
+  const activeTab: Tab = TABS.some((tt) => tt.value === tabParam) ? tabParam : 'analytics'
+
+  const setTab = useCallback(
+    (value: Tab) => {
+      const next = new URLSearchParams(searchParams)
+      if (value === 'analytics') next.delete('tab')
+      else next.set('tab', value)
+      setSearchParams(next, { replace: true })
+    },
+    [searchParams, setSearchParams],
+  )
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mb-6">
+        <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
+          {t('live.kicker')}
+        </span>
+        <h1 className="mt-2 font-head text-3xl font-bold text-text-1">
+          {t('live.title')}
+        </h1>
+      </div>
+
+      {/* Install snippet — toujours visible, premier élément, pour qu'on
+          ait son writeKey à portée de main quel que soit le tab. */}
+      <InstallSnippetBlock workspaceId={workspaceId} />
+
+      {/* Tab bar — scroll horizontal sur mobile */}
+      <div className="mb-6 -mx-2 overflow-x-auto px-2" role="tablist">
+        <div className="inline-flex min-w-full gap-1 border-b border-border">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.value
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setTab(tab.value)}
+                className={[
+                  'whitespace-nowrap border-b-2 px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors',
+                  isActive
+                    ? 'border-brand-cyan text-text-1'
+                    : 'border-transparent text-text-3 hover:text-text-2',
+                ].join(' ')}
+              >
+                {t(tab.labelKey)}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'analytics' && <AnalyticsTab workspaceId={workspaceId} />}
+      {activeTab !== 'analytics' && (
+        <AuditTab section={activeTab} workspaceId={workspaceId} />
+      )}
+    </div>
+  )
+}
+
+// ─── Tab Analytics — events live ──────────────────────────────────────────
+
+function AnalyticsTab({ workspaceId }: { workspaceId: string }) {
   const t = useT()
   const { state } = useAuth()
   const token = state.token ?? ''
@@ -110,8 +197,6 @@ function LiveDashboard({ workspaceId }: { workspaceId: string }) {
   const [connState, setConnState] = useState<ConnState>('connecting')
   const [events, setEvents] = useState<LiveEvent[]>([])
   const [activeFilter, setActiveFilter] = useState<FilterValue>('all')
-  // `now` ticks every 5 s so the 5-min sliding window slides even when no
-  // new events arrive (otherwise old events would stay in the counters / chart).
   const [now, setNow] = useState<number>(() => Date.now())
   const wsRef = useRef<WebSocket | null>(null)
 
@@ -125,22 +210,19 @@ function LiveDashboard({ workspaceId }: { workspaceId: string }) {
       setConnState('unauthorized')
       return
     }
-
     let cancelled = false
     let retryTimer: number | null = null
-
     function open() {
       if (cancelled) return
       setConnState('connecting')
       const ws = new WebSocket(wsUrlFor(token, workspaceId))
       wsRef.current = ws
-
       ws.onopen = () => setConnState('connected')
       ws.onmessage = (msg) => {
         try {
           const parsed = JSON.parse(msg.data)
           if (!parsed || typeof parsed !== 'object') return
-          if (parsed.type === 'connected') return // serveur ack, pas un event
+          if (parsed.type === 'connected') return
           if (!parsed.type || !parsed.sid) return
           setEvents((prev) => [parsed as LiveEvent, ...prev].slice(0, MAX_EVENTS))
         } catch {
@@ -155,7 +237,6 @@ function LiveDashboard({ workspaceId }: { workspaceId: string }) {
         }
       }
     }
-
     open()
     return () => {
       cancelled = true
@@ -185,12 +266,7 @@ function LiveDashboard({ workspaceId }: { workspaceId: string }) {
 
   const filterCounts = useMemo(() => {
     const c: Record<FilterValue, number> = {
-      all: recent.length,
-      pageview: 0,
-      click: 0,
-      error: 0,
-      session_start: 0,
-      custom: 0,
+      all: recent.length, pageview: 0, click: 0, error: 0, session_start: 0, custom: 0,
     }
     for (const e of recent) c[e.type]++
     return c
@@ -213,110 +289,282 @@ function LiveDashboard({ workspaceId }: { workspaceId: string }) {
   )
 
   return (
-    <div>
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
-              {t('live.kicker')}
-            </span>
-            <h1 className="mt-2 font-head text-3xl font-bold text-text-1">
-              {t('live.title')}
-            </h1>
-            <p className="mt-2 text-text-2">{t('live.subtitle')}</p>
-          </div>
-          <ConnIndicator state={connState} />
-        </div>
-
-        {/* Install snippet — premier élément, toujours visible pour que
-            l'utilisateur ait le snippet à portée de main quand il arrive sur
-            cet onglet. Cf demande utilisateur de M4. */}
-        <InstallSnippetBlock workspaceId={workspaceId} />
-
-        {connState === 'unauthorized' ? (
-          <div className="sa-card text-center text-text-2">{t('live.err.unauthorized')}</div>
-        ) : (
-          <>
-            <div id="live-events-section" className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label={t('live.stat.activeSessions')} value={stats.activeSessions} />
-              <Stat label={t('live.stat.pageviews')} value={stats.pageviews} />
-              <Stat label={t('live.stat.clicks')} value={stats.clicks} />
-              <Stat
-                label={t('live.stat.errors')}
-                value={stats.errors}
-                tone={stats.errors > 0 ? 'warn' : undefined}
-              />
-            </div>
-
-            <Sparkline buckets={chartBuckets} title={t('live.chart.title')} emptyLabel={t('live.chart.empty')} />
-
-            <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-head text-lg font-semibold text-text-1">
-                {t('live.recentEvents')}
-              </h2>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-                {t('live.windowHint')}
-              </span>
-            </div>
-
-            <div className="mb-3 flex flex-wrap gap-1.5" role="tablist">
-              {FILTERS.map((f) => {
-                const count = filterCounts[f.value]
-                const isActive = activeFilter === f.value
-                return (
-                  <button
-                    key={f.value}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setActiveFilter(f.value)}
-                    className={[
-                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[11px] uppercase tracking-widest transition-colors',
-                      isActive
-                        ? 'border-brand-cyan/40 bg-brand-cyan/10 text-brand-cyan'
-                        : 'border-border bg-card text-text-3 hover:border-border-br hover:text-text-2',
-                    ].join(' ')}
-                  >
-                    {t(f.labelKey)}
-                    <span className="font-mono text-[10px] opacity-70">{count}</span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {filteredEvents.length === 0 ? (
-              <div className="sa-card text-center text-text-2">
-                {connState === 'connected' ? t('live.empty') : t('live.connecting')}
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {filteredEvents.map((e, i) => (
-                  <EventRow key={`${e.sid}-${e.ts}-${i}`} event={e} />
-                ))}
-              </ul>
-            )}
-          </>
-        )}
+    <>
+      <div className="mb-4 flex items-center justify-end">
+        <ConnIndicator state={connState} />
       </div>
+
+      {connState === 'unauthorized' ? (
+        <div className="sa-card text-center text-text-2">{t('live.err.unauthorized')}</div>
+      ) : (
+        <>
+          <div id="live-events-section" className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label={t('live.stat.activeSessions')} value={stats.activeSessions} />
+            <Stat label={t('live.stat.pageviews')} value={stats.pageviews} />
+            <Stat label={t('live.stat.clicks')} value={stats.clicks} />
+            <Stat
+              label={t('live.stat.errors')}
+              value={stats.errors}
+              tone={stats.errors > 0 ? 'warn' : undefined}
+            />
+          </div>
+
+          <Sparkline buckets={chartBuckets} title={t('live.chart.title')} emptyLabel={t('live.chart.empty')} />
+
+          <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-head text-lg font-semibold text-text-1">
+              {t('live.recentEvents')}
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+              {t('live.windowHint')}
+            </span>
+          </div>
+
+          <div className="mb-3 flex flex-wrap gap-1.5" role="tablist">
+            {FILTERS.map((f) => {
+              const count = filterCounts[f.value]
+              const isActive = activeFilter === f.value
+              return (
+                <button
+                  key={f.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveFilter(f.value)}
+                  className={[
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[11px] uppercase tracking-widest transition-colors',
+                    isActive
+                      ? 'border-brand-cyan/40 bg-brand-cyan/10 text-brand-cyan'
+                      : 'border-border bg-card text-text-3 hover:border-border-br hover:text-text-2',
+                  ].join(' ')}
+                >
+                  {t(f.labelKey)}
+                  <span className="font-mono text-[10px] opacity-70">{count}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {filteredEvents.length === 0 ? (
+            <div className="sa-card text-center text-text-2">
+              {connState === 'connected' ? t('live.empty') : t('live.connecting')}
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {filteredEvents.map((e, i) => (
+                <EventRow key={`${e.sid}-${e.ts}-${i}`} event={e} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
+// ─── Tab audit (SEO/GEO/Perf/AI) ──────────────────────────────────────────
+
+function AuditTab({
+  section,
+  workspaceId,
+}: {
+  section: Exclude<Tab, 'analytics'>
+  workspaceId: string
+}) {
+  const t = useT()
+  const { audit, loading, error, triggerAudit, busy } = useLatestAudit(workspaceId)
+
+  if (loading) {
+    return (
+      <div className="sa-card text-center text-text-3">
+        <span className="font-mono text-xs uppercase tracking-widest">{t('common.loading')}</span>
+      </div>
+    )
+  }
+
+  if (!audit) {
+    return (
+      <AuditEmptyState
+        busy={busy}
+        onTrigger={(url) => void triggerAudit(url)}
+      />
+    )
+  }
+
+  const result =
+    section === 'seo' ? audit.results?.seo
+    : section === 'geo' ? audit.results?.geo
+    : section === 'perf' ? audit.results?.perf
+    : audit.results?.ai
+
+  const sectionTitle =
+    section === 'seo' ? t('audit.section.seo')
+    : section === 'geo' ? t('audit.section.geo')
+    : section === 'perf' ? t('audit.section.perf')
+    : t('audit.section.ai')
+
+  const skipped =
+    (section === 'perf' && (audit.results?.perf as { skipped?: boolean })?.skipped) ||
+    (section === 'ai' && (audit.results?.ai as { skipped?: boolean })?.skipped) ||
+    false
+
+  return (
+    <div className="space-y-6">
+      {/* Audit metadata + Re-run */}
+      <div className="sa-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+            {t('dash.audit.lastRun')}
+          </div>
+          <div className="mt-0.5 truncate text-sm text-text-1">
+            {audit.final_url || audit.url}
+          </div>
+          <div className="mt-0.5 font-mono text-[10px] text-text-3">
+            {audit.completed_at
+              ? new Date(audit.completed_at).toLocaleString()
+              : new Date(audit.created_at).toLocaleString()}
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void triggerAudit(audit.url)}
+          className="sa-btn !text-xs disabled:opacity-50"
+        >
+          {busy ? t('dash.audit.rerunning') : `↻ ${t('dash.audit.rerun')}`}
+        </button>
+      </div>
+
+      {error && (
+        <div className="sa-card border-brand-red/30 bg-brand-red/5 text-sm text-brand-red">
+          {error}
+        </div>
+      )}
+
+      {/* Section content */}
+      {!result ? (
+        <div className="sa-card text-center text-text-3">
+          {t('dash.audit.sectionMissing')}
+        </div>
+      ) : skipped ? (
+        <SkippedBanner
+          reason={
+            section === 'perf'
+              ? t('dash.audit.perfSkipped')
+              : t('dash.audit.aiSkipped')
+          }
+        />
+      ) : (
+        <>
+          {/* Score gauge + section title */}
+          <div className="sa-card flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <SectionHeader title={sectionTitle} score={result.score} />
+            <ScoreGauge score={result.score ?? 0} size={120} />
+          </div>
+
+          {/* Perf : Core Web Vitals chips */}
+          {section === 'perf' && (audit.results?.perf as { metrics?: { lcp: number | null; inp: number | null; cls: number | null; fcp: number | null; tbt: number | null; tti: number | null } })?.metrics && (
+            <CoreWebVitalsChips metrics={audit.results!.perf!.metrics!} />
+          )}
+
+          {/* AI : sous-scores + forces/faiblesses + verdict */}
+          {section === 'ai' && audit.results?.ai?.ai && <AiSubScores ai={audit.results.ai.ai} />}
+
+          {/* Findings list */}
+          <div>
+            <SectionHeader title={t('dash.audit.findings')} score={result.score} />
+            <FindingsList result={result} />
+          </div>
+
+          {/* Lien vers la page audit complète pour cross-référencer les autres sections */}
+          <div className="text-center">
+            <Link to={`/audit?id=${audit.id}`} className="font-mono text-[11px] uppercase tracking-widest text-text-3 hover:text-text-1">
+              {t('dash.audit.openFull')} →
+            </Link>
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────
+// ─── Hooks ────────────────────────────────────────────────────────────────
+
+function useLatestAudit(workspaceId: string) {
+  const t = useT()
+  const [audit, setAudit] = useState<AuditRecord | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchLatest = useCallback(async () => {
+    if (!workspaceId) {
+      setLoading(false)
+      return
+    }
+    try {
+      const list = await apiFetch<AuditListItem[]>(
+        `/api/v1/audit?workspaceId=${workspaceId}&limit=1`,
+      )
+      const last = list[0]
+      if (!last) {
+        setAudit(null)
+        return
+      }
+      const full = await apiFetch<AuditRecord>(
+        `/api/v1/audit/${last.id}?workspaceId=${workspaceId}`,
+      )
+      setAudit(full)
+    } catch {
+      setAudit(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [workspaceId])
+
+  useEffect(() => {
+    void fetchLatest()
+  }, [fetchLatest])
+
+  const triggerAudit = useCallback(
+    async (url: string) => {
+      if (!workspaceId || !url || busy) return
+      setBusy(true)
+      setError(null)
+      try {
+        const created = await apiFetch<AuditRecord>(
+          `/api/v1/audit?workspaceId=${workspaceId}`,
+          { method: 'POST', body: { url } },
+        )
+        setAudit(created)
+      } catch (err) {
+        setError(
+          err instanceof ApiError && err.status === 502
+            ? t('audit.error.scrape_failed')
+            : t('audit.error.generic'),
+        )
+      } finally {
+        setBusy(false)
+      }
+    },
+    [workspaceId, busy, t],
+  )
+
+  return { audit, loading, error, busy, triggerAudit, refetch: fetchLatest }
+}
+
+// ─── Helpers reused from previous version ────────────────────────────────
 
 function InstallSnippetBlock({ workspaceId }: { workspaceId: string }) {
   const t = useT()
   const snippet = buildSnippet(workspaceId)
-
   return (
     <div className="sa-card mb-6 flex flex-col gap-3 border-brand-cyan/20 bg-brand-cyan/[0.03]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="font-head text-base font-semibold text-text-1">
-            {t('live.install.title')}
-          </div>
-          <div className="mt-1 text-sm text-text-2">{t('live.install.subtitle')}</div>
+      <div>
+        <div className="font-head text-base font-semibold text-text-1">
+          {t('live.install.title')}
         </div>
+        <div className="mt-1 text-sm text-text-2">{t('live.install.subtitle')}</div>
       </div>
       <div className="overflow-hidden rounded-md border border-border bg-bg-1">
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
@@ -336,9 +584,6 @@ function InstallSnippetBlock({ workspaceId }: { workspaceId: string }) {
         <Link to="/audit" className="sa-btn !text-xs">
           ◇ {t('live.install.cta.audit')}
         </Link>
-        <a href="#live-events-section" className="sa-btn !text-xs">
-          {t('live.install.cta.scroll')}
-        </a>
       </div>
     </div>
   )
@@ -361,9 +606,7 @@ function ConnIndicator({ state }: { state: ConnState }) {
   }
   const v = map[state]
   return (
-    <div
-      className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest ${v.color}`}
-    >
+    <div className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest ${v.color}`}>
       <span
         className={`inline-block h-2 w-2 rounded-full ${state === 'connected' ? 'animate-pulse bg-brand-green' : state === 'connecting' ? 'animate-pulse bg-brand-cyan' : 'bg-text-3'}`}
       />
@@ -383,9 +626,7 @@ function Stat({
 }) {
   return (
     <div className="sa-card">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-        {label}
-      </div>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">{label}</div>
       <div
         className={`mt-1 font-head text-3xl font-bold ${tone === 'warn' ? 'text-brand-red' : 'text-text-1'}`}
       >
@@ -404,9 +645,8 @@ function Sparkline({
   title: string
   emptyLabel: string
 }) {
-  const max = Math.max(1, ...buckets) // évite division par zéro
+  const max = Math.max(1, ...buckets)
   const total = buckets.reduce((a, b) => a + b, 0)
-
   return (
     <div className="sa-card">
       <div className="mb-2 flex items-center justify-between">
@@ -424,7 +664,6 @@ function Sparkline({
         aria-hidden="true"
       >
         {buckets.map((count, i) => {
-          // hauteur min 1px pour montrer la grille même quand 0
           const h = count === 0 ? 1 : (count / max) * 38
           const x = i * 2
           const y = 40 - h
@@ -449,7 +688,6 @@ function EventRow({ event }: { event: LiveEvent }) {
   const t = useT()
   const time = new Date(event.ts).toLocaleTimeString()
   const sidShort = event.sid.slice(0, 6)
-
   const badgeStyles: Record<EventType, string> = {
     pageview: 'border-brand-blue/30 bg-brand-blue/10 text-brand-blue',
     click: 'border-brand-cyan/30 bg-brand-cyan/10 text-brand-cyan',
@@ -457,12 +695,10 @@ function EventRow({ event }: { event: LiveEvent }) {
     session_start: 'border-brand-green/30 bg-brand-green/10 text-brand-green',
     custom: 'border-border bg-card text-text-2',
   }
-
   let detail = event.url
   if (event.type === 'click' && event.el) detail = `${event.el} on ${event.url}`
   else if (event.type === 'error' && event.err) detail = event.err
   else if (event.type === 'custom' && event.name) detail = event.name
-
   return (
     <li className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
       <span className="font-mono text-[10px] text-text-3">{time}</span>
@@ -473,6 +709,7 @@ function EventRow({ event }: { event: LiveEvent }) {
       </span>
       <span className="font-mono text-[10px] text-text-3">{sidShort}</span>
       <span className="truncate text-text-2">{detail}</span>
+      <span className={`ml-auto shrink-0 font-mono text-[9px] ${scoreColor(null)}`} />
     </li>
   )
 }
