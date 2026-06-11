@@ -1,5 +1,17 @@
 // Google Gemini SDK wrapper. Reads config from env so callers don't have
 // to care about model selection or API-key plumbing.
+//
+// Default model — `gemini-2.5-flash` est le sweet spot prix/perf pour un chat
+// marketing (rapide, capable, ~$0.30/M tokens). Surchargeable par env
+// GEMINI_MODEL si besoin de bascule (2.5-pro pour analyses profondes,
+// 2.5-flash-lite pour quick replies).
+//
+// IMPORTANT : ne jamais hardcoder un modèle expérimental (suffixe `-exp`)
+// en default. Google les retire sans préavis — vécu en juin 2026 avec
+// `gemini-2.0-flash-exp` qui a planté tout le chat IA en prod (404 not
+// found côté Gemini API).
+
+const DEFAULT_MODEL = 'gemini-2.5-flash'
 
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 
@@ -19,7 +31,7 @@ function getClient() {
 }
 
 function getModel(name) {
-  const modelName = name || process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp'
+  const modelName = name || process.env.GEMINI_MODEL || DEFAULT_MODEL
   return getClient().getGenerativeModel({ model: modelName })
 }
 
@@ -34,7 +46,7 @@ function getModel(name) {
  * @returns {Promise<{ text: string, modelName: string }>}
  */
 async function generateOnce({ systemPrompt, userMessage, temperature = 0.4 }) {
-  const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp'
+  const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL
   const model = getModel(modelName)
   const result = await model.generateContent({
     systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
