@@ -8,6 +8,7 @@
 const { getServiceRoleClient, getAnonClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { UserFacingError, AuthError } = require('../../lib/error-handler')
+const { assertBetaAccess } = require('../../lib/beta-access')
 const { signAccessToken, signRefreshToken, verifyToken } = require('./jwt.utils')
 
 /**
@@ -15,6 +16,12 @@ const { signAccessToken, signRefreshToken, verifyToken } = require('./jwt.utils'
  * Idempotence non garantie: appeler une seule fois par email.
  */
 async function signup({ email, password, organizationName }) {
+  // Beta lockdown : refuse l'inscription si l'email n'est pas dans la
+  // whitelist BETA_ALLOWED_EMAILS. Évite qu'un user random crée un compte
+  // pendant la période pré-launch (pas de billing en place). Voir
+  // apps/api/src/lib/beta-access.js.
+  assertBetaAccess(email)
+
   const anon = getAnonClient()
   const service = getServiceRoleClient()
 
@@ -124,6 +131,9 @@ async function signup({ email, password, organizationName }) {
  * et la liste des workspaces accessibles.
  */
 async function login({ email, password, ipAddress, userAgent }) {
+  // Beta lockdown — voir signup() ci-dessus pour le rationale.
+  assertBetaAccess(email)
+
   const anon = getAnonClient()
   const service = getServiceRoleClient()
 

@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken')
 const { getServiceRoleClient, getAnonClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { UserFacingError } = require('../../lib/error-handler')
+const { assertBetaAccess } = require('../../lib/beta-access')
 const { signAccessToken, signRefreshToken } = require('./jwt.utils')
 
 const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth'
@@ -240,6 +241,14 @@ async function handleCallback({ code, state, ipAddress, userAgent }) {
   const user = signInData.user
   const fullName =
     user.user_metadata?.full_name || user.user_metadata?.name || null
+
+  // Beta lockdown — refuse la connexion Google si l'email n'est pas
+  // dans la whitelist. Important pour ce flow car Supabase a déjà créé
+  // l'user au signInWithIdToken, mais on lui refuse d'aller plus loin
+  // (pas de workspace bootstrap, pas de JWT interne). Le user reste en
+  // Supabase Auth mais ne peut pas utiliser l'app.
+  // Voir apps/api/src/lib/beta-access.js.
+  assertBetaAccess(user.email)
 
   await ensureWorkspace({
     userId: user.id,
