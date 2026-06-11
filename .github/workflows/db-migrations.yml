@@ -1,0 +1,125 @@
+name: DB migrations
+
+# Applique les migrations Supabase de manière contrôlée :
+#   - PR qui touche supabase/migrations/** → lint (naming + syntaxe basique)
+#   - Push main qui touche supabase/migrations/** → lint + supabase db push
+#
+# La logique apply-only-on-main évite qu'une PR en review modifie la DB de prod.
+# Le `concurrency` empêche 2 deploys parallèles (race entre 2 merges quasi-simultanés).
+#
+# Pré-requis (setup une fois — voir docs/05c_DB_MIGRATIONS_CI.md) :
+#   - Secret GitHub SUPABASE_ACCESS_TOKEN (PAT créé sur supabase.com/dashboard/account/tokens)
+#   - Secret GitHub SUPABASE_PROJECT_REF (visible dans l'URL Supabase, ex: abcdefghijklmnop)
+#   - Secret GitHub SUPABASE_DB_PASSWORD (mot de passe du user postgres, dashboard → DB settings)
+#
+# Sans ces 3 secrets, le job `apply` skip avec un message clair (pas d'échec dur).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/lint-migrations.sh'
+      - '.github/workflows/db-migrations.yml'
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/lint-migrations.sh'
+      - '.github/workflows/db-migrations.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: db-migrations
+  cancel-in-progress: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint migration files
+        run: bash scripts/lint-migrations.sh
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Migration lint" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Files: \`$(ls supabase/migrations/*.sql 2>/dev/null | wc -l)\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest: \`$(ls -1 supabase/migrations/*.sql 2>/dev/null | sort | tail -1 | xargs -n1 basename)\`" >> $GITHUB_STEP_SUMMARY
+
+  apply:
+    # Apply ONLY on push main + tag environment so on peut éventuellement
+    # ajouter une protection rule "required reviewers" sur le job.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: lint
+    runs-on: ubuntu-latest
+    environment:
+      name: production-db
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        # Fail-fast clair plutôt que des erreurs cryptiques de la CLI Supabase.
+        # Le `: "${VAR:?msg}"` throw avec message custom si VAR vide.
+        run: |
+          : "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN secret manquant — voir docs/05c_DB_MIGRATIONS_CI.md}"
+          : "${SUPABASE_PROJECT_REF:?SUPABASE_PROJECT_REF secret manquant — voir docs/05c_DB_MIGRATIONS_CI.md}"
+          : "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD secret manquant — voir docs/05c_DB_MIGRATIONS_CI.md}"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+      - name: List unapplied migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        # Affiche les migrations en attente AVANT le push. Si la sortie est
+        # vide → tout est déjà appliqué, le push est un no-op (pas d'erreur).
+        run: |
+          echo "▸ Migrations status before push:"
+          supabase migration list --linked 2>&1 | tail -50 || true
+
+      - name: Push migrations to Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        # --include-all pour ne pas être interactif. Le CLI échoue
+        # explicitement si une migration n'est plus appliquable (renaming,
+        # etc.) — on veut ce signal en CI.
+        run: |
+          echo "▸ Pushing migrations to project ${{ secrets.SUPABASE_PROJECT_REF }}"
+          supabase db push --include-all --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Verify post-push state
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          echo "▸ Migrations status after push:"
+          supabase migration list --linked 2>&1 | tail -10 || true
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Supabase migrations" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Project: \`${{ secrets.SUPABASE_PROJECT_REF }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
