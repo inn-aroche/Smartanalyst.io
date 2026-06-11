@@ -165,7 +165,46 @@ Exemples KO (le lint bloquera la PR) :
 
 ### "Drift" entre le code et la DB
 
-Si quelqu'un a modifié le schema directement via le dashboard Supabase, la prochaine apply peut plomber (un objet existe déjà alors qu'il n'est pas dans le fichier SQL).
+**État actuel (hotfix temporaire)** : le job `apply` du workflow est désactivé sur push main car les 17 migrations 001-017 ont été appliquées manuellement via le SQL Editor Supabase **avant** la mise en place du workflow. Chaque apply manuel crée une entrée dans `supabase_migrations.schema_migrations` avec un timestamp `YYYYMMDDHHMMSS` (ex: `20260528151015`) — pas avec le nom du fichier local (`001_init_base_schema.sql`). Le CLI Supabase voit donc 17 versions distantes qui ne correspondent à aucun fichier local → `supabase db push` plante.
+
+**Comment résoudre une fois pour toutes** (one-shot, ~10 min) :
+
+```bash
+# 1. Sur ton Mac
+brew install supabase/tap/supabase    # si pas installé
+
+# 2. Login + link
+supabase login                          # ouvre un browser
+supabase link --project-ref <PROJECT_REF>
+
+# 3. Marquer les 17 timestamps comme "applied" dans l'historique distant
+#    (= "ces migrations sont déjà en prod, ne les rejouez pas")
+supabase migration repair --status applied \
+  20260528151015 20260528151032 20260528151052 20260528151105 \
+  20260528151121 20260528151131 20260528151141 20260528151207 \
+  20260528151222 20260528151232 20260530105834 20260530105850 \
+  20260530144305 20260531135123 20260531165340 20260531204640 \
+  20260531205056
+
+# 4. Vérifier l'alignement
+supabase migration list --linked
+# → tous les distants en colonne "Remote" devraient être "applied"
+
+# 5. Optionnel : tester un push
+supabase db push --dry-run
+# → "All migrations are in sync"
+
+# 6. Re-activer l'apply auto dans .github/workflows/db-migrations.yml :
+#    Remplacer `if: github.event_name == 'workflow_dispatch'`
+#    par      `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`
+#    Commit + merge → l'apply auto reprend pour les nouvelles migrations.
+```
+
+**En attendant le repair** : appliquer les nouvelles migrations manuellement via le SQL Editor du dashboard Supabase. Le lint catch toujours les collisions de numéros (vu sur PR #44).
+
+### "Drift" si quelqu'un modifie le schema direct via dashboard
+
+Si quelqu'un a modifié le schema directement via le dashboard Supabase (hors fichier de migration), la prochaine apply peut plomber (un objet existe déjà alors qu'il n'est pas dans le fichier SQL).
 
 Pour aligner :
 1. `supabase db diff` (en local après `supabase link`) → voir le delta
