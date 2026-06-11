@@ -129,6 +129,9 @@ function createApp() {
   // Exposé via Nginx /admin/queues/* qui proxy vers cet endpoint API.
   app.use('/admin/queues', require('./routes/admin-queues.routes'))
 
+  // Admin waitlist — list/manage des inscriptions beta. Même auth (X-Admin-Token).
+  app.use('/admin/waitlist', require('./routes/admin-waitlist.routes'))
+
   // Placeholder root
   app.get('/', (req, res) => {
     res.json({ name: 'SmartAnalyst API', version: '0.1.0' })
@@ -140,6 +143,8 @@ function createApp() {
   app.use('/api/v1/onboarding', require('./routes/onboarding.routes'))
   app.use('/api/v1/metrics', require('./routes/metrics.routes'))
   app.use('/api/v1/chat', require('./routes/chat.routes'))
+  // Beta waitlist (publique, rate-limit strict — cf waitlist.routes.js)
+  app.use('/api/v1/waitlist', require('./routes/waitlist.routes'))
   // SmartTag ingestion (publique, CORS *, rate-limit dédié — cf track.routes.js)
   app.use('/api/v1/track', require('./routes/track.routes'))
   // SmartTag dashboard (authentifié — status install, à enrichir)
