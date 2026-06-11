@@ -51,9 +51,45 @@ jobs:
           echo "- Latest: \`$(ls -1 supabase/migrations/*.sql 2>/dev/null | sort | tail -1 | xargs -n1 basename)\`" >> $GITHUB_STEP_SUMMARY
 
   apply:
-    # Apply ONLY on push main + tag environment so on peut éventuellement
-    # ajouter une protection rule "required reviewers" sur le job.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # TEMPORAIRE — skip auto-apply tant que l'historique de migrations distant
+    # n'est pas aligné avec les fichiers locaux.
+    #
+    # Contexte du drift
+    # -----------------
+    # Avant la mise en place de ce workflow (PR #43), les migrations 001-016
+    # étaient appliquées manuellement via le SQL Editor du dashboard Supabase.
+    # Chaque apply manuel crée une entrée dans `supabase_migrations.schema_migrations`
+    # avec un timestamp YYYYMMDDHHMMSS (ex: 20260528151015) — pas avec le nom
+    # du fichier local (ex: 001_init_base_schema.sql).
+    #
+    # Résultat : le CLI Supabase voit 17 versions distantes (timestamps) qui ne
+    # correspondent à aucun fichier local (NNN_*.sql) → `supabase db push` plante
+    # avec "Remote migration versions not found in local migrations directory".
+    #
+    # Comment résoudre (one-shot, ~10 min)
+    # ------------------------------------
+    # Depuis ton Mac (avec Supabase CLI installé + linked au projet) :
+    #
+    #   supabase migration repair --status applied \\
+    #     20260528151015 20260528151032 20260528151052 20260528151105 \\
+    #     20260528151121 20260528151131 20260528151141 20260528151207 \\
+    #     20260528151222 20260528151232 20260530105834 20260530105850 \\
+    #     20260530144305 20260531135123 20260531165340 20260531204640 \\
+    #     20260531205056
+    #
+    #   # Vérifier
+    #   supabase migration list --linked
+    #   # → "Local | Remote | Time" avec tous les distants en "applied"
+    #
+    # Une fois aligné, remettre la condition à :
+    #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # et l'apply auto reprendra pour les nouvelles migrations.
+    #
+    # Voir aussi docs/05c_DB_MIGRATIONS_CI.md section "Drift entre le code et la DB".
+    #
+    # Tant que c'est pas réglé : appliquer les nouvelles migrations
+    # manuellement via le SQL Editor du dashboard Supabase.
+    if: github.event_name == 'workflow_dispatch'
     needs: lint
     runs-on: ubuntu-latest
     environment:
