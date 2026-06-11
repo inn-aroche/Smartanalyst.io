@@ -18,6 +18,9 @@ const en = {
   'nav.noWorkspace': 'No workspace',
   'nav.dashboard': 'Dashboard',
   'nav.live': 'Smart tag',
+  'nav.menu': 'Menu',
+  'nav.openMenu': 'Open menu',
+  'nav.closeMenu': 'Close menu',
   'nav.connectors': 'Connectors',
   'nav.chat': 'Chat',
 
@@ -389,6 +392,9 @@ const fr: Record<keyof typeof en, string> = {
   'nav.noWorkspace': 'Aucun espace',
   'nav.dashboard': 'Tableau de bord',
   'nav.live': 'Smart tag',
+  'nav.menu': 'Menu',
+  'nav.openMenu': 'Ouvrir le menu',
+  'nav.closeMenu': 'Fermer le menu',
   'nav.connectors': 'Connecteurs',
   'nav.chat': 'Chat',
 
