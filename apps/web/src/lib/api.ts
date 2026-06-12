@@ -13,10 +13,18 @@ export function setAuthToken(token: string | null) {
 export class ApiError extends Error {
   status: number
   body: unknown
+  code: string | null
   constructor(message: string, status: number, body: unknown) {
     super(message)
     this.status = status
     this.body = body
+    // Extract the error.code from the standard API error envelope so callers
+    // can switch on it (e.g. BETA_LOCKED → redirect to /beta-locked).
+    const err = (body as { error?: unknown })?.error
+    this.code =
+      typeof err === 'object' && err !== null && 'code' in err
+        ? String((err as { code: string }).code)
+        : null
   }
 }
 

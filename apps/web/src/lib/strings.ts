@@ -100,6 +100,15 @@ const en = {
   'callback.err.malformed': 'Malformed response.',
   'callback.err.generic': 'Google error: {{code}}',
 
+  // ━━━ Beta lockdown ━━━
+  'betaLocked.badge': 'Private beta',
+  'betaLocked.title': 'SmartAnalyst is in private beta.',
+  'betaLocked.body':
+    "We're finishing the app for a handful of carefully picked marketers. Join the waitlist and we'll reach out with access as soon as we're ready.",
+  'betaLocked.cta': 'Join the waitlist',
+  'betaLocked.alreadyInvited': 'Already invited?',
+  'betaLocked.backToLogin': 'Back to sign-in',
+
   // ━━━ Dashboard ━━━
   'dashboard.overview': 'Overview',
   'dashboard.greetingNamed': 'Hey {{name}}, here’s what changed.',
@@ -507,6 +516,15 @@ const fr: Record<keyof typeof en, string> = {
   'callback.err.incompleteResponse': 'Réponse incomplète. Réessaie.',
   'callback.err.malformed': 'Réponse mal formée.',
   'callback.err.generic': 'Erreur Google : {{code}}',
+
+  // ━━━ Beta lockdown ━━━
+  'betaLocked.badge': 'Beta privée',
+  'betaLocked.title': 'SmartAnalyst est en beta privée.',
+  'betaLocked.body':
+    "On finalise l'app pour quelques marketers triés sur le volet. Rejoins la waitlist et on te recontacte avec un accès dès qu'on est prêt.",
+  'betaLocked.cta': 'Rejoindre la waitlist',
+  'betaLocked.alreadyInvited': 'Déjà invité ?',
+  'betaLocked.backToLogin': 'Retour à la connexion',
 
   // ━━━ Dashboard ━━━
   'dashboard.overview': 'Vue d’ensemble',
