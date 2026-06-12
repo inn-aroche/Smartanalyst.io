@@ -1,0 +1,82 @@
+---
+// Bandeau "Beta privée" en haut du site marketing. Rappelle aux visiteurs
+// que la plateforme SaaS n'est pas encore ouverte au signup public,
+// et pointe vers la page /beta avec le formulaire waitlist.
+//
+// Affiché sur toutes les pages via DarkBase.astro.
+
+const { locale = 'en' } = Astro.props;
+const t = locale === 'fr'
+  ? { msg: 'Beta privée', link: 'Rejoindre la waitlist', href: '/fr/beta' }
+  : { msg: 'Private beta', link: 'Join the waitlist',    href: '/en/beta' };
+---
+<div class="beta-banner" data-beta-banner>
+  <span class="beta-banner-dot" aria-hidden="true"></span>
+  <span class="beta-banner-text">{t.msg}</span>
+  <span class="beta-banner-sep" aria-hidden="true">·</span>
+  <a href={t.href} class="beta-banner-link">{t.link} →</a>
+</div>
+
+<style is:global>
+  .beta-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: linear-gradient(
+      to right,
+      rgba(61, 130, 255, 0.10),
+      rgba(35, 213, 226, 0.10)
+    );
+    border-bottom: 1px solid rgba(61, 130, 255, 0.22);
+    color: var(--text-2);
+    font-size: 12.5px;
+    font-family: var(--ff-b);
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 100;
+  }
+  .beta-banner-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--cyan, #23d5e2);
+    box-shadow: 0 0 12px var(--cyan, #23d5e2);
+    animation: beta-banner-pulse 2.4s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes beta-banner-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+  .beta-banner-text {
+    font-family: var(--ff-m);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-1);
+    font-weight: 600;
+  }
+  .beta-banner-sep {
+    color: var(--text-3);
+    opacity: 0.5;
+  }
+  .beta-banner-link {
+    color: var(--blue, #3d82ff);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .beta-banner-link:hover {
+    color: var(--cyan, #23d5e2);
+  }
+  @media (max-width: 480px) {
+    .beta-banner {
+      font-size: 11.5px;
+      padding: 7px 12px;
+      gap: 8px;
+    }
+    .beta-banner-sep { display: none; }
+  }
+</style>

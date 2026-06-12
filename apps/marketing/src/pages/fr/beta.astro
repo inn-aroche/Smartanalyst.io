@@ -1,0 +1,269 @@
+---
+// Page /fr/beta — formulaire de waitlist privée.
+// Soumission AJAX vers https://api.smartanalyst.io/api/v1/waitlist
+// (POST sans auth, voir apps/api/src/routes/waitlist.routes.js).
+
+import DarkBase from '../../layouts/DarkBase.astro';
+
+const API_URL = 'https://api.smartanalyst.io/api/v1/waitlist';
+---
+<DarkBase
+  title="Rejoindre la beta"
+  description="Inscris-toi à la beta privée SmartAnalyst. On te recontacte avec un accès dès qu'on accueille les premiers utilisateurs."
+  locale="fr"
+>
+  <section class="beta-section">
+    <div class="beta-container">
+      <div class="beta-hero">
+        <div class="s-badge">Beta privée</div>
+        <h1 class="beta-title">
+          Rejoins la <span class="gradient-text">waitlist</span>.
+        </h1>
+        <p class="beta-lead">
+          SmartAnalyst est en beta privée. On finalise l'app pour quelques
+          marketers triés sur le volet — laisse-nous ton email et on te
+          recontacte avec un accès dès qu'on est prêt.
+        </p>
+      </div>
+
+      <form id="waitlist-form" class="beta-form" novalidate>
+        <div class="beta-field">
+          <label for="email">Email <span class="beta-req">*</span></label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="prenom@entreprise.fr"
+            aria-describedby="email-hint"
+          />
+        </div>
+
+        <div class="beta-field">
+          <label for="name">Prénom et nom</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            autocomplete="name"
+            placeholder="Alice Martin"
+            maxlength="100"
+          />
+        </div>
+
+        <div class="beta-field">
+          <label for="company">Entreprise</label>
+          <input
+            type="text"
+            id="company"
+            name="company"
+            autocomplete="organization"
+            placeholder="Acme SAS"
+            maxlength="100"
+          />
+        </div>
+
+        <div class="beta-field">
+          <label for="useCase">Ton cas d'usage</label>
+          <textarea
+            id="useCase"
+            name="useCase"
+            rows="4"
+            placeholder="Quelles données tu veux brancher ? Quelles questions tu te poses chaque semaine ?"
+            maxlength="500"
+          ></textarea>
+          <div class="beta-hint">Optionnel — aide à prioriser ton accès</div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary beta-submit">
+          Rejoindre la waitlist →
+        </button>
+
+        <div id="form-message" class="beta-message" role="status" hidden></div>
+      </form>
+
+      <p class="beta-fineprint">
+        On te répond depuis <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a> —
+        zero spam, juste un email quand ton accès est prêt.
+      </p>
+    </div>
+  </section>
+
+  <script is:inline define:vars={{ API_URL }}>
+    const form = document.getElementById('waitlist-form');
+    const btn = document.getElementById('submit-btn');
+    const msg = document.getElementById('form-message');
+    const originalBtn = btn.textContent;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = new FormData(form);
+      const body = {
+        email: (data.get('email') || '').trim(),
+        name: (data.get('name') || '').trim() || undefined,
+        company: (data.get('company') || '').trim() || undefined,
+        useCase: (data.get('useCase') || '').trim() || undefined,
+        source: 'marketing_site',
+      };
+
+      btn.disabled = true;
+      btn.textContent = 'Envoi…';
+      msg.hidden = true;
+      msg.className = 'beta-message';
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json().catch(() => null);
+        if (res.ok) {
+          msg.textContent =
+            json?.message ||
+            "Inscription confirmée. On t'envoie un email dès que ton accès est prêt.";
+          msg.className = 'beta-message beta-message-ok';
+          msg.hidden = false;
+          form.reset();
+        } else {
+          const errMsg =
+            json?.error?.message ||
+            `Erreur ${res.status}. Réessaie dans quelques instants.`;
+          msg.textContent = errMsg;
+          msg.className = 'beta-message beta-message-err';
+          msg.hidden = false;
+        }
+      } catch (err) {
+        msg.textContent = 'Connexion impossible. Vérifie ta connexion et réessaie.';
+        msg.className = 'beta-message beta-message-err';
+        msg.hidden = false;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalBtn;
+      }
+    });
+  </script>
+
+  <style is:global>
+    .beta-section {
+      padding: 120px 0 96px;
+      position: relative;
+    }
+    .beta-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(60% 50% at 50% 0%, rgba(61, 130, 255, 0.18), transparent 70%);
+      pointer-events: none;
+    }
+    .beta-container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .beta-hero {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .beta-title {
+      font-size: clamp(36px, 6.5vw, 56px);
+      line-height: 1.05;
+      margin: 18px 0 18px;
+      font-family: var(--ff-h);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-1);
+    }
+    .beta-lead {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text-2);
+      max-width: 540px;
+      margin: 0 auto;
+    }
+    .beta-form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+    .beta-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .beta-field label {
+      font-family: var(--ff-m);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+    .beta-req { color: var(--cyan); margin-left: 2px; }
+    .beta-field input,
+    .beta-field textarea {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text-1);
+      font-size: 15px;
+      font-family: var(--ff-b);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .beta-field input:focus,
+    .beta-field textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(61, 130, 255, 0.16);
+    }
+    .beta-field textarea {
+      resize: vertical;
+      min-height: 96px;
+      font-family: var(--ff-b);
+    }
+    .beta-hint {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .beta-submit {
+      width: 100%;
+      margin-top: 8px;
+      font-size: 15px;
+      padding: 14px;
+    }
+    .beta-submit:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .beta-message {
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+    .beta-message-ok {
+      background: rgba(40, 200, 64, 0.1);
+      border: 1px solid rgba(40, 200, 64, 0.3);
+      color: #5fed7f;
+    }
+    .beta-message-err {
+      background: rgba(255, 95, 87, 0.1);
+      border: 1px solid rgba(255, 95, 87, 0.3);
+      color: #ff8a83;
+    }
+    .beta-fineprint {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-3);
+    }
+    .beta-fineprint a { color: var(--blue); }
+  </style>
+</DarkBase>
