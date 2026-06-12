@@ -1,0 +1,146 @@
+---
+// Page /en/beta — private beta waitlist signup form.
+// AJAX submission to https://api.smartanalyst.io/api/v1/waitlist
+// (POST without auth, see apps/api/src/routes/waitlist.routes.js).
+
+import DarkBase from '../../layouts/DarkBase.astro';
+
+const API_URL = 'https://api.smartanalyst.io/api/v1/waitlist';
+---
+<DarkBase
+  title="Join the beta"
+  description="Sign up to the SmartAnalyst private beta. We'll reach out with access as soon as we onboard the first users."
+  locale="en"
+>
+  <section class="beta-section">
+    <div class="beta-container">
+      <div class="beta-hero">
+        <div class="s-badge">Private beta</div>
+        <h1 class="beta-title">
+          Join the <span class="gradient-text">waitlist</span>.
+        </h1>
+        <p class="beta-lead">
+          SmartAnalyst is in private beta. We're finishing the app for a
+          handful of carefully picked marketers — drop your email and we'll
+          reach out with access as soon as we're ready.
+        </p>
+      </div>
+
+      <form id="waitlist-form" class="beta-form" novalidate>
+        <div class="beta-field">
+          <label for="email">Email <span class="beta-req">*</span></label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="first@company.com"
+          />
+        </div>
+
+        <div class="beta-field">
+          <label for="name">Full name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            autocomplete="name"
+            placeholder="Alice Martin"
+            maxlength="100"
+          />
+        </div>
+
+        <div class="beta-field">
+          <label for="company">Company</label>
+          <input
+            type="text"
+            id="company"
+            name="company"
+            autocomplete="organization"
+            placeholder="Acme Inc."
+            maxlength="100"
+          />
+        </div>
+
+        <div class="beta-field">
+          <label for="useCase">Your use case</label>
+          <textarea
+            id="useCase"
+            name="useCase"
+            rows="4"
+            placeholder="Which data sources would you connect? What questions do you ask yourself weekly?"
+            maxlength="500"
+          ></textarea>
+          <div class="beta-hint">Optional — helps us prioritize your access</div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary beta-submit">
+          Join the waitlist →
+        </button>
+
+        <div id="form-message" class="beta-message" role="status" hidden></div>
+      </form>
+
+      <p class="beta-fineprint">
+        Replies come from <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a> —
+        no spam, just one email when your access is ready.
+      </p>
+    </div>
+  </section>
+
+  <script is:inline define:vars={{ API_URL }}>
+    const form = document.getElementById('waitlist-form');
+    const btn = document.getElementById('submit-btn');
+    const msg = document.getElementById('form-message');
+    const originalBtn = btn.textContent;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = new FormData(form);
+      const body = {
+        email: (data.get('email') || '').trim(),
+        name: (data.get('name') || '').trim() || undefined,
+        company: (data.get('company') || '').trim() || undefined,
+        useCase: (data.get('useCase') || '').trim() || undefined,
+        source: 'marketing_site',
+      };
+
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      msg.hidden = true;
+      msg.className = 'beta-message';
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json().catch(() => null);
+        if (res.ok) {
+          msg.textContent =
+            json?.message ||
+            "You're on the waitlist. We'll email you the moment your access is ready.";
+          msg.className = 'beta-message beta-message-ok';
+          msg.hidden = false;
+          form.reset();
+        } else {
+          const errMsg =
+            json?.error?.message ||
+            `Error ${res.status}. Please try again in a moment.`;
+          msg.textContent = errMsg;
+          msg.className = 'beta-message beta-message-err';
+          msg.hidden = false;
+        }
+      } catch (err) {
+        msg.textContent = 'Connection failed. Check your network and try again.';
+        msg.className = 'beta-message beta-message-err';
+        msg.hidden = false;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalBtn;
+      }
+    });
+  </script>
+</DarkBase>
