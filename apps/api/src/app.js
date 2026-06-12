@@ -142,6 +142,9 @@ function createApp() {
   app.use('/api/v1/connectors', require('./routes/connectors.routes'))
   app.use('/api/v1/onboarding', require('./routes/onboarding.routes'))
   app.use('/api/v1/metrics', require('./routes/metrics.routes'))
+  // Alias de /metrics/* avec un naming neutre côté adblockers
+  // (uBlock matche agressivement les paths /metrics/*). Voir dashboard.routes.js.
+  app.use('/api/v1/dashboard', require('./routes/dashboard.routes'))
   app.use('/api/v1/chat', require('./routes/chat.routes'))
   // Beta waitlist (publique, rate-limit strict — cf waitlist.routes.js)
   app.use('/api/v1/waitlist', require('./routes/waitlist.routes'))
