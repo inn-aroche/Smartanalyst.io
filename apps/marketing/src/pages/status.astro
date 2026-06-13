@@ -1,0 +1,369 @@
+---
+// Status page publique — affiche l'état temps réel des composants SmartAnalyst.
+//
+// Source des données : GET https://api.smartanalyst.io/health/ready
+// (readiness probe créé par PR #37 — checks Redis + DB Supabase).
+//
+// Stockage : historique des checks en localStorage (60 dernières mesures).
+// Polling : toutes les 30s côté client.
+//
+// Pas de localized (/fr/status, /en/status) — c'est une page technique,
+// le contenu est i18n inline simple (lang en fonction de la locale du
+// navigateur).
+//
+// Lien depuis le footer marketing (cf Footer.astro section Company).
+
+import DarkBase from '../layouts/DarkBase.astro';
+
+const HEALTH_ENDPOINT = 'https://api.smartanalyst.io/health/ready';
+---
+<DarkBase
+  title="System status"
+  description="Real-time status of the SmartAnalyst platform — API, database, cache."
+  locale="en"
+>
+  <section class="status-section">
+    <div class="status-container">
+      <header class="status-header">
+        <div class="s-badge">Status</div>
+        <h1 id="status-title" class="status-title">Loading…</h1>
+        <p id="status-updated" class="status-updated">Checking…</p>
+      </header>
+
+      <div class="status-grid">
+        <div class="status-card" data-component="api">
+          <div class="status-card-head">
+            <span class="status-dot" data-dot></span>
+            <h2 class="status-name">API</h2>
+            <span class="status-state" data-state>—</span>
+          </div>
+          <p class="status-desc">REST API on api.smartanalyst.io</p>
+          <div class="status-history" data-history aria-label="Last 60 checks"></div>
+          <p class="status-meta" data-meta>—</p>
+        </div>
+
+        <div class="status-card" data-component="db">
+          <div class="status-card-head">
+            <span class="status-dot" data-dot></span>
+            <h2 class="status-name">Database</h2>
+            <span class="status-state" data-state>—</span>
+          </div>
+          <p class="status-desc">Supabase Postgres + Auth</p>
+          <div class="status-history" data-history aria-label="Last 60 checks"></div>
+          <p class="status-meta" data-meta>—</p>
+        </div>
+
+        <div class="status-card" data-component="redis">
+          <div class="status-card-head">
+            <span class="status-dot" data-dot></span>
+            <h2 class="status-name">Cache &amp; Queues</h2>
+            <span class="status-state" data-state>—</span>
+          </div>
+          <p class="status-desc">Redis (cache + BullMQ jobs)</p>
+          <div class="status-history" data-history aria-label="Last 60 checks"></div>
+          <p class="status-meta" data-meta>—</p>
+        </div>
+      </div>
+
+      <p class="status-fineprint">
+        Auto-refresh every 30s. Data sourced live from <code>/health/ready</code>.<br />
+        Last 60 checks shown — history is kept in your browser only.
+      </p>
+    </div>
+  </section>
+
+  <script is:inline define:vars={{ HEALTH_ENDPOINT }}>
+    const STORAGE_KEY = 'smartanalyst.status.history.v1';
+    const MAX_HISTORY = 60;
+    const POLL_MS = 30000;
+
+    const COMPONENTS = ['api', 'db', 'redis'];
+
+    function loadHistory() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { api: [], db: [], redis: [] };
+        const parsed = JSON.parse(raw);
+        return {
+          api: Array.isArray(parsed.api) ? parsed.api.slice(-MAX_HISTORY) : [],
+          db: Array.isArray(parsed.db) ? parsed.db.slice(-MAX_HISTORY) : [],
+          redis: Array.isArray(parsed.redis) ? parsed.redis.slice(-MAX_HISTORY) : [],
+        };
+      } catch {
+        return { api: [], db: [], redis: [] };
+      }
+    }
+
+    function saveHistory(history) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      } catch {
+        // localStorage full ou disabled — pas grave, c'est un nice-to-have
+      }
+    }
+
+    const history = loadHistory();
+
+    function renderCard(component) {
+      const card = document.querySelector(`[data-component="${component}"]`);
+      if (!card) return;
+      const entries = history[component] || [];
+      const last = entries[entries.length - 1];
+
+      const dot = card.querySelector('[data-dot]');
+      const state = card.querySelector('[data-state]');
+      const histEl = card.querySelector('[data-history]');
+      const meta = card.querySelector('[data-meta]');
+
+      if (!last) {
+        dot.className = 'status-dot status-dot-unknown';
+        state.textContent = 'Unknown';
+        state.className = 'status-state status-state-unknown';
+        meta.textContent = '—';
+      } else if (last.ok) {
+        dot.className = 'status-dot status-dot-ok';
+        state.textContent = 'Operational';
+        state.className = 'status-state status-state-ok';
+        meta.textContent = `${last.durationMs}ms · ${timeAgo(last.ts)}`;
+      } else {
+        dot.className = 'status-dot status-dot-down';
+        state.textContent = 'Degraded';
+        state.className = 'status-state status-state-down';
+        meta.textContent = `${last.error || 'Failed check'} · ${timeAgo(last.ts)}`;
+      }
+
+      // Render history bars (oldest left, newest right)
+      histEl.innerHTML = '';
+      const padded = new Array(MAX_HISTORY - entries.length).fill(null).concat(entries);
+      for (const entry of padded) {
+        const bar = document.createElement('span');
+        bar.className = 'status-bar';
+        if (!entry) bar.classList.add('status-bar-empty');
+        else if (entry.ok) bar.classList.add('status-bar-ok');
+        else bar.classList.add('status-bar-down');
+        histEl.appendChild(bar);
+      }
+    }
+
+    function renderGlobal() {
+      const title = document.getElementById('status-title');
+      const updated = document.getElementById('status-updated');
+      const lastApi = (history.api[history.api.length - 1] || {});
+      const lastDb = (history.db[history.db.length - 1] || {});
+      const lastRedis = (history.redis[history.redis.length - 1] || {});
+      const lastTs = Math.max(
+        lastApi.ts || 0,
+        lastDb.ts || 0,
+        lastRedis.ts || 0,
+      );
+
+      const anyDown = !lastApi.ok || !lastDb.ok || !lastRedis.ok;
+      const anyUnknown = !lastApi.ts && !lastDb.ts && !lastRedis.ts;
+
+      if (anyUnknown) {
+        title.textContent = 'Checking system status…';
+        title.className = 'status-title';
+      } else if (anyDown) {
+        title.textContent = 'Some services are degraded.';
+        title.className = 'status-title status-title-down';
+      } else {
+        title.textContent = 'All systems operational.';
+        title.className = 'status-title status-title-ok';
+      }
+      updated.textContent = lastTs ? `Last checked ${timeAgo(lastTs)}` : 'Checking…';
+    }
+
+    function timeAgo(ts) {
+      const diff = Math.max(0, Date.now() - ts);
+      const s = Math.floor(diff / 1000);
+      if (s < 60) return `${s}s ago`;
+      const m = Math.floor(s / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      return `${h}h ago`;
+    }
+
+    async function checkOnce() {
+      const ts = Date.now();
+      let apiOk = false, apiMs = 0, apiErr = null;
+      let dbOk = false, dbMs = 0, dbErr = null;
+      let redisOk = false, redisMs = 0, redisErr = null;
+
+      try {
+        const startedAt = Date.now();
+        const res = await fetch(HEALTH_ENDPOINT, { cache: 'no-store' });
+        apiMs = Date.now() - startedAt;
+        const json = await res.json();
+        // API responding at all = ok. Status 503 = degraded but reachable.
+        apiOk = res.status === 200 || res.status === 503;
+        if (res.status === 503) {
+          apiErr = json.status === 'not_ready' ? 'Service not ready' : `HTTP ${res.status}`;
+        }
+        if (res.ok || res.status === 503) {
+          dbOk = json?.checks?.db?.ok === true;
+          dbMs = json?.checks?.db?.durationMs ?? 0;
+          dbErr = json?.checks?.db?.error || null;
+          redisOk = json?.checks?.redis?.ok === true;
+          redisMs = json?.checks?.redis?.durationMs ?? 0;
+          redisErr = json?.checks?.redis?.error || null;
+        }
+      } catch (e) {
+        apiErr = e.message || 'Network error';
+      }
+
+      history.api.push({ ts, ok: apiOk, durationMs: apiMs, error: apiErr });
+      history.db.push({ ts, ok: dbOk, durationMs: dbMs, error: dbErr });
+      history.redis.push({ ts, ok: redisOk, durationMs: redisMs, error: redisErr });
+
+      for (const k of COMPONENTS) {
+        if (history[k].length > MAX_HISTORY) history[k] = history[k].slice(-MAX_HISTORY);
+      }
+
+      saveHistory(history);
+      for (const c of COMPONENTS) renderCard(c);
+      renderGlobal();
+    }
+
+    // Initial render then start polling
+    for (const c of COMPONENTS) renderCard(c);
+    renderGlobal();
+    checkOnce();
+    setInterval(checkOnce, POLL_MS);
+  </script>
+
+  <style is:global>
+    .status-section {
+      padding: 96px 0 80px;
+      position: relative;
+    }
+    .status-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    .status-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .status-title {
+      font-size: clamp(28px, 4.5vw, 40px);
+      line-height: 1.1;
+      margin: 16px 0 12px;
+      font-family: var(--ff-h);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-1);
+    }
+    .status-title-ok { color: var(--text-1); }
+    .status-title-ok::before {
+      content: '● ';
+      color: #28c840;
+      font-size: 0.7em;
+      vertical-align: middle;
+      text-shadow: 0 0 12px #28c840;
+    }
+    .status-title-down::before {
+      content: '● ';
+      color: #ff5f57;
+      font-size: 0.7em;
+      vertical-align: middle;
+      text-shadow: 0 0 12px #ff5f57;
+    }
+    .status-updated {
+      font-family: var(--ff-m);
+      font-size: 12px;
+      color: var(--text-3);
+      letter-spacing: 0.04em;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    @media (min-width: 720px) {
+      .status-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .status-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .status-card-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--text-3);
+    }
+    .status-dot-ok { background: #28c840; box-shadow: 0 0 10px #28c840; }
+    .status-dot-down { background: #ff5f57; box-shadow: 0 0 10px #ff5f57; }
+    .status-dot-unknown { background: var(--text-3); opacity: 0.5; }
+    .status-name {
+      font-family: var(--ff-h);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin: 0;
+      flex: 1;
+    }
+    .status-state {
+      font-family: var(--ff-m);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .status-state-ok { color: #5fed7f; }
+    .status-state-down { color: #ff8a83; }
+    .status-state-unknown { color: var(--text-3); }
+    .status-desc {
+      font-size: 12px;
+      color: var(--text-3);
+      margin: 0;
+    }
+    .status-history {
+      display: flex;
+      gap: 1px;
+      height: 24px;
+      align-items: stretch;
+      margin: 4px 0 2px;
+    }
+    .status-bar {
+      flex: 1;
+      border-radius: 1px;
+      min-width: 0;
+    }
+    .status-bar-ok { background: rgba(40, 200, 64, 0.7); }
+    .status-bar-down { background: rgba(255, 95, 87, 0.7); }
+    .status-bar-empty { background: rgba(255, 255, 255, 0.04); }
+    .status-meta {
+      font-family: var(--ff-m);
+      font-size: 11px;
+      color: var(--text-3);
+      margin: 0;
+    }
+    .status-fineprint {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-3);
+      line-height: 1.6;
+    }
+    .status-fineprint code {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-family: var(--ff-m);
+    }
+  </style>
+</DarkBase>
