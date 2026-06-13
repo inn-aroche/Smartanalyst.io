@@ -373,6 +373,8 @@
 }
 .conn-badge.on { background: var(--cbg); border: 1px solid var(--cbd); color: var(--c); }
 .conn-badge.off { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); color: var(--text-3); }
+.conn-badge.has-logo { background: #fff; border-color: rgba(255, 255, 255, 0.12); padding: 5px; }
+.conn-badge.has-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .conn-name { font-size: 11px; margin-bottom: 4px; line-height: 1.3; }
 .conn-name.on { color: var(--text-1); }
 .conn-name.off { color: var(--text-3); }
