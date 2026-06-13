@@ -12,8 +12,8 @@ const SCHEDULES = [
   {
     queueName: QUEUE_NAMES.DATA_SYNC,
     jobName: JOB_NAMES.DATA_SYNC_SCAN,
-    pattern: '0 3 * * *', // 3h UTC quotidien
-    description: 'Daily data sync — fan-out across all workspaces',
+    pattern: '0 */4 * * *', // toutes les 4h UTC — bon ratio quota providers / fraîcheur
+    description: 'Data sync — fan-out across all workspaces every 4h',
   },
   {
     queueName: QUEUE_NAMES.REPORTS,
