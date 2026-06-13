@@ -10,7 +10,7 @@ import { type StringKey, useFormatters, useT } from '@/lib/i18n'
 type SummaryTile = {
   key: string
   label: string
-  format: 'integer' | 'currency'
+  format: 'integer' | 'currency' | 'ratio'
   value: number
   previous_value: number
   delta_pct: number | null
@@ -19,6 +19,7 @@ type SummaryTile = {
 
 type SummaryResponse = {
   window: { days: number; start_date: string; end_date: string }
+  active_sources?: string[]
   tiles: SummaryTile[]
 }
 
@@ -38,9 +39,28 @@ const WINDOW_OPTIONS: { days: number; key: StringKey }[] = [
 // user's language even though the API streams a fixed English string.
 const TILE_LABEL_KEY: Record<string, StringKey> = {
   sessions_all: 'dashboard.tile.sessions',
-  conversions_all: 'dashboard.tile.conversions',
-  revenue_total: 'dashboard.tile.revenue',
-  spend_paid_total: 'dashboard.tile.adSpend',
+  conversions_total: 'dashboard.tile.conversions',
+  revenue_recurring_monthly: 'dashboard.tile.mrr',
+  customers_active: 'dashboard.tile.activeCustomers',
+  customers_new: 'dashboard.tile.newCustomers',
+  failed_payments_month: 'dashboard.tile.failedPayments',
+  users_active: 'dashboard.tile.activeUsers',
+  bounce_rate_all: 'dashboard.tile.bounceRate',
+  spend_paid_social: 'dashboard.tile.metaSpend',
+  spend_paid_search: 'dashboard.tile.googleAdsSpend',
+  clicks_paid_social: 'dashboard.tile.metaClicks',
+  clicks_paid_search: 'dashboard.tile.googleAdsClicks',
+  conversions_paid_social: 'dashboard.tile.metaConversions',
+  conversions_paid_search: 'dashboard.tile.googleAdsConversions',
+  return_on_investment_paid: 'dashboard.tile.metaRoas',
+  click_through_rate_paid: 'dashboard.tile.googleAdsCtr',
+  revenue_ecommerce: 'dashboard.tile.shopifyRevenue',
+  orders_count: 'dashboard.tile.orders',
+  order_value_average: 'dashboard.tile.aov',
+  clicks_organic_search: 'dashboard.tile.organicClicks',
+  impressions_organic_search: 'dashboard.tile.organicImpressions',
+  click_through_rate_organic: 'dashboard.tile.organicCtr',
+  average_position_organic: 'dashboard.tile.avgPosition',
 }
 
 export default function Dashboard() {
@@ -214,11 +234,7 @@ function Tile({
         {label}
       </div>
       <div className="mt-2 font-head text-3xl font-bold text-text-1">
-        {tile.has_data
-          ? tile.format === 'currency'
-            ? format.currency(tile.value)
-            : format.integer(tile.value)
-          : '—'}
+        {tile.has_data ? formatValue(tile, format) : '—'}
       </div>
       <div className="mt-1.5 font-mono text-[11px]">
         {tile.has_data ? (
@@ -231,6 +247,22 @@ function Tile({
       </div>
     </div>
   )
+}
+
+// `ratio` couvre 2 cas selon la valeur :
+//   - 0 < v ≤ 1   → un pourcentage (ex: 0.43 = 43% bounce rate)
+//   - v > 1       → un facteur (ex: 3.2x ROAS, 5.4 position moyenne)
+// On heuristic-detect plutôt que d'ajouter un champ "subFormat" côté API.
+function formatValue(
+  tile: SummaryTile,
+  format: ReturnType<typeof useFormatters>,
+): string {
+  if (tile.format === 'currency') return format.currency(tile.value)
+  if (tile.format === 'ratio') {
+    if (tile.value <= 1) return `${(tile.value * 100).toFixed(1)}%`
+    return `${tile.value.toFixed(1)}${tile.value < 10 ? 'x' : ''}`
+  }
+  return format.integer(tile.value)
 }
 
 function DeltaBadge({ pct }: { pct: number | null }) {
