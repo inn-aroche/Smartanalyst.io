@@ -11,8 +11,7 @@
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
-    "@smartanalyst/shared": "*",
-    "simple-icons": "^16.21.0"
+    "@smartanalyst/shared": "*"
   },
   "devDependencies": {
     "astro": "^5.0.0"

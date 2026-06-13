@@ -336,9 +336,21 @@ function ConnectorCard({
   return (
     <div className="sa-card flex flex-col">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-2 font-mono text-xs font-bold text-text-1">
-          {initials}
-        </div>
+        {def.icon_url ? (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-white p-1.5">
+            <img
+              src={def.icon_url}
+              alt={def.name}
+              className="h-full w-full object-contain"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+        ) : (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-2 font-mono text-xs font-bold text-text-1">
+            {initials}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate font-head text-base font-semibold text-text-1">
