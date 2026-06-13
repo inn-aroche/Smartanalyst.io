@@ -162,6 +162,25 @@ test('fetchData hits GA4 Data API with correct URL and POST body', async () => {
   }
 })
 
+test('fetchData accepte account_id préfixé "properties/<id>" sans double préfixe', async () => {
+  const originalFetch = global.fetch
+  let capturedUrl
+  global.fetch = async (url) => {
+    capturedUrl = url
+    return { ok: true, json: async () => FAKE_GA4_RESPONSE }
+  }
+  try {
+    const c = newConnector({ account_id: 'properties/355390842', access_token: 'token-abc' })
+    await c.fetchData({ startDate: '2025-05-01', endDate: '2025-05-31' })
+    assert.equal(
+      capturedUrl,
+      'https://analyticsdata.googleapis.com/v1beta/properties/355390842:runReport',
+    )
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
 test('fetchData throws with code INVALID_CREDENTIALS on 401', async () => {
   const originalFetch = global.fetch
   global.fetch = async () => ({

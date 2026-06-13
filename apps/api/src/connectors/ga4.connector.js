@@ -51,7 +51,13 @@ class GA4Connector extends BaseConnector {
       throw err
     }
 
-    const url = `${GA4_API_BASE}/properties/${propertyId}:runReport`
+    // Le resolver stocke `properties/<id>` (full resource name renvoyé par
+    // l'Admin API) mais d'anciens flows pouvaient écrire juste `<id>` —
+    // on tolère les deux pour éviter un double préfixe.
+    const propertyPath = propertyId.startsWith('properties/')
+      ? propertyId
+      : `properties/${propertyId}`
+    const url = `${GA4_API_BASE}/${propertyPath}:runReport`
     const body = {
       dateRanges: [{ startDate, endDate }],
       metrics: GA4_METRICS.map((name) => ({ name })),
