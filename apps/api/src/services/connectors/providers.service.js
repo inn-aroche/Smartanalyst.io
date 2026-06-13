@@ -44,12 +44,24 @@ function sanitize(row) {
   if (!row) return row
   const clone = { ...row }
   for (const c of SENSITIVE_COLS) delete clone[c]
-  // Indique au frontend si l'app OAuth a été configurée chez le provider.
-  // (Évite que l'utilisateur clique "Connect" sur un provider dont on n'a
-  // pas encore renseigné les Client ID/Secret.)
-  clone.credentials_configured = Boolean(
-    row.client_id_encrypted && row.client_secret_encrypted,
-  )
+  // Indique au frontend si le provider est connectable.
+  //
+  // - oauth2 : nécessite Client ID + Client Secret côté SmartAnalyst
+  //   (créés chez Google, Meta, Shopify, etc. puis stockés via Vault).
+  //   credentials_configured = true UNIQUEMENT si les deux sont remplis,
+  //   sinon le bouton "Connect" est désactivé.
+  //
+  // - apikey : pas de Client ID/Secret côté plateforme. L'utilisateur
+  //   colle SA propre clé API restreinte (Stripe, Brevo, etc.).
+  //   credentials_configured = true par défaut — y a rien à configurer
+  //   côté nous, c'est juste un form clé à coller.
+  if (row.auth_kind === 'apikey') {
+    clone.credentials_configured = true
+  } else {
+    clone.credentials_configured = Boolean(
+      row.client_id_encrypted && row.client_secret_encrypted,
+    )
+  }
   return clone
 }
 
