@@ -419,7 +419,10 @@ const RESOURCE_LINKS = [
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 4px;
-    width: 560px;
+    /* 680px (anciennement 560) pour laisser respirer les taglines FR longs
+       du menu Produit ("Connecteurs, métriques, rapports par client, bascule
+       en 1 clic." etc.) sans qu'ils soient cropés par le line-clamp. */
+    width: 680px;
     max-width: calc(100vw - 32px);
     background: #0a0a13;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -488,11 +491,12 @@ const RESOURCE_LINKS = [
     line-height: 1.4;
     overflow-wrap: break-word;
     word-break: normal;
-    /* Hard cap at 2 lines, ellipsis the rest. Prevents any tagline from
-       pushing the column taller than the others or wrapping awkwardly. */
+    /* 3 lignes max (anciennement 2). Les taglines FR du menu Produit font
+       souvent 60-75 chars, ce qui prend 2-3 lignes à 320px de colonne. À 2,
+       les phrases étaient cropées au milieu d'un mot. */
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }

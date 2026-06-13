@@ -226,7 +226,10 @@ a {
 /* ─── Nav ─── */
 .nav {
   position: fixed;
-  top: 0;
+  /* Décalée vers le bas par la hauteur du BetaBanner.
+     `--beta-banner-h` est défini dans BetaBanner.astro (36px desktop / 34px mobile).
+     Fallback 0 si le banner est jamais affiché. */
+  top: var(--beta-banner-h, 0px);
   left: 0;
   right: 0;
   z-index: 200;
