@@ -369,17 +369,19 @@ const softwareApplication = {
         <div class="feat-ui">
           <div class="conn-grid">
             {[
-              { n:'Google Ads', k:'GADS', ok:true, col:'#4285F4' },
-              { n:'Meta Ads',   k:'META', ok:true, col:'#1877F2' },
-              { n:'GA4',        k:'GA4',  ok:true, col:'#F9AB00' },
-              { n:'Shopify',    k:'SHOP', ok:true, col:'#96BF48' },
+              { n:'Google Ads', k:'GADS', logo:'google_ads', ok:true, col:'#4285F4' },
+              { n:'Meta Ads',   k:'META', logo:'facebook',   ok:true, col:'#1877F2' },
+              { n:'GA4',        k:'GA4',  logo:'ga4',        ok:true, col:'#F9AB00' },
+              { n:'Shopify',    k:'SHOP', logo:'shopify',    ok:true, col:'#96BF48' },
               { n:'GTM',        k:'GTM',  ok:true, col:'#4285F4' },
               { n:'CRM',        k:'CRM',  ok:false, col:'#666' },
               { n:'Consent CMP',k:'CMP',  ok:false, col:'#666' },
               { n:'Server-side',k:'SST',  ok:false, col:'#666' },
             ].map(c => (
               <div class="sa-conn">
-                <div class={`conn-badge ${c.ok ? 'on' : 'off'}`} style={`--c:${c.col};--cbg:${c.col}18;--cbd:${c.col}33`}>{c.k}</div>
+                <div class={`conn-badge ${c.ok ? 'on' : 'off'} ${c.logo ? 'has-logo' : ''}`} style={`--c:${c.col};--cbg:${c.col}18;--cbd:${c.col}33`}>
+                  {c.logo ? <img src={`/connectors/${c.logo}.png`} alt={c.n} loading="lazy" decoding="async" /> : c.k}
+                </div>
                 <div class={`conn-name ${c.ok ? 'on' : 'off'}`}>{c.n}</div>
                 <div class={`conn-status ${c.ok ? 'on' : 'off'}`}>{c.ok ? '● live' : '○ setup →'}</div>
               </div>
