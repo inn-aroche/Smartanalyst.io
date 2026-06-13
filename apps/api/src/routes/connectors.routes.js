@@ -18,6 +18,7 @@ const providersService = require('../services/connectors/providers.service')
 const accountResolver = require('../services/connectors/account-resolver.service')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
 const oauthState = require('../services/auth/oauth-state.service')
+const { getQueue, QUEUE_NAMES, JOB_NAMES } = require('../queue-jobs/queues')
 const { logger } = require('../lib/logger')
 
 const router = express.Router()
@@ -102,6 +103,33 @@ router.get('/oauth/callback', async (req, res) => {
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
     })
+
+    // Trigger un sync immédiat sur 30j — sinon le user voit un dashboard
+    // vide jusqu'au prochain cron quotidien (3h UTC). Fire-and-forget :
+    // si l'enqueue échoue, on log mais on ne casse pas le redirect.
+    try {
+      const today = new Date()
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const fmt = (d) => d.toISOString().slice(0, 10)
+      const dataSyncQueue = getQueue(QUEUE_NAMES.DATA_SYNC)
+      // jobId stable = idempotence si l'user re-clique sur le même OAuth flow
+      // (double callback peut arriver si refresh navigateur). Granularité minute.
+      const jobId = `sync-workspace:${workspaceId}:post-oauth:${Date.now().toString().slice(0, -3)}`
+      await dataSyncQueue.add(
+        JOB_NAMES.DATA_SYNC_WORKSPACE,
+        { workspaceId, startDate: fmt(monthAgo), endDate: fmt(today) },
+        { jobId },
+      )
+      logger.info(
+        { event: 'post_oauth_sync_enqueued', workspaceId, source, jobId },
+        'Post-OAuth sync job enqueued',
+      )
+    } catch (enqueueErr) {
+      logger.warn(
+        { event: 'post_oauth_sync_enqueue_failed', workspaceId, source, error: enqueueErr.message },
+        'Failed to enqueue post-OAuth sync (next cron will catch up)',
+      )
+    }
 
     return res.redirect(`${frontendUrl}/connectors?status=connected&source=${source}`)
   } catch (err) {
