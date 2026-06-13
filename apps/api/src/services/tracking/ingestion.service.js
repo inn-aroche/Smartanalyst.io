@@ -8,6 +8,7 @@
 // premium écrira en plus dans une table Postgres+TimescaleDB.
 
 const { getRedis } = require('../../lib/redis')
+const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 
 const CHANNEL_PREFIX = 'track:'
@@ -26,6 +27,44 @@ const STATUS_TTL_S = 30 * 24 * 3600
 
 function channelFor(workspaceId) {
   return `${CHANNEL_PREFIX}${workspaceId}`
+}
+
+/**
+ * Persiste l'événement dans l'agrégat journalier Postgres (smarttag_daily)
+ * via la RPC d'incrément atomique. Fire-and-forget : ne bloque jamais la
+ * réponse 204 du endpoint public /track.
+ *
+ * Grain : (workspace, date UTC, type, nom). event_name = '' sauf pour les
+ * events 'custom' (où on garde le nom, ex: 'lead_submit') — c'est ce qui
+ * permettra à l'insight engine de comparer "SmartTag a vu N conversions"
+ * vs GA4/Meta.
+ *
+ * Note scale : à volume élevé, remplacer ce write-per-event par un flush
+ * batché (Redis daily counters → upsert périodique). OK en l'état au volume
+ * beta.
+ */
+function persistDaily(workspaceId, event) {
+  const date = new Date(Number.isFinite(event.ts) ? event.ts : Date.now())
+    .toISOString()
+    .slice(0, 10)
+  const eventName = event.type === 'custom' ? (event.name || '').slice(0, 60) : ''
+
+  getServiceRoleClient()
+    .rpc('increment_smarttag_daily', {
+      p_workspace_id: workspaceId,
+      p_date: date,
+      p_event_type: event.type,
+      p_event_name: eventName,
+      p_delta: 1,
+    })
+    .then(({ error }) => {
+      if (error) {
+        logger.warn(
+          { event: 'smarttag_persist_failed', workspaceId, type: event.type, error: error.message },
+          'SmartTag daily persist failed',
+        )
+      }
+    })
 }
 
 /**
@@ -63,6 +102,10 @@ async function publish(workspaceId, event, meta = {}) {
       'Tracking event publish failed',
     )
   }
+
+  // Persistance journalière (fire-and-forget, hors du await ci-dessus pour
+  // ne pas ajouter de latence au pub/sub temps-réel).
+  persistDaily(workspaceId, event)
 }
 
 /**
@@ -90,4 +133,35 @@ async function getStatus(workspaceId) {
   }
 }
 
-module.exports = { publish, channelFor, getStatus }
+/**
+ * Récupère les agrégats journaliers SmartTag persistés pour une période.
+ * Utilisé par le tracking-health et l'insight engine pour comparer les
+ * volumes observés terrain vs les connecteurs (GA4/Meta/Stripe).
+ *
+ * @param {string} workspaceId
+ * @param {Object} params
+ * @param {string} params.startDate - 'YYYY-MM-DD' inclus
+ * @param {string} params.endDate   - 'YYYY-MM-DD' inclus
+ * @returns {Promise<Array<{ date, event_type, event_name, event_count }>>}
+ */
+async function getDailyAggregates(workspaceId, { startDate, endDate }) {
+  const supabase = getServiceRoleClient()
+  let q = supabase
+    .from('smarttag_daily')
+    .select('date, event_type, event_name, event_count')
+    .eq('workspace_id', workspaceId)
+    .order('date', { ascending: false })
+  if (startDate) q = q.gte('date', startDate)
+  if (endDate) q = q.lte('date', endDate)
+  const { data, error } = await q
+  if (error) {
+    logger.warn(
+      { event: 'smarttag_aggregates_query_failed', workspaceId, error: error.message },
+      'SmartTag daily aggregates query failed',
+    )
+    return []
+  }
+  return data || []
+}
+
+module.exports = { publish, channelFor, getStatus, getDailyAggregates, persistDaily }
