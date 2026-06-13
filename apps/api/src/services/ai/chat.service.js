@@ -14,6 +14,12 @@ Format de réponse :
 - 2-3 points clés en bullets si pertinent
 - Suggestion d'action concrète à la fin si la question le permet
 
+CITATIONS — TRÈS IMPORTANT :
+Chaque ligne de la section "Métriques du workspace" est préfixée par un marqueur [N] (ex: [1], [2], [3]).
+Quand tu cites un chiffre issu de ces métriques, AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture supplémentaire.
+Exemple : "Ton MRR atteint 12 500 € [1], en hausse de 8% vs le mois précédent."
+Ne fabrique JAMAIS un marqueur qui ne correspond pas à une métrique de la liste.
+
 Si la question demande des chiffres spécifiques (CTR, MRR, CAC…) et que tu n'as pas accès aux données du user, dis-le clairement et propose-lui de connecter les sources concernées (GA4, Meta Ads, Google Ads, Stripe, Search Console).
 
 Reste honnête : si tu n'as pas l'info, dis-le. Ne fabrique pas de chiffres.`
@@ -24,6 +30,12 @@ Response format:
 - One-sentence TL;DR at the top
 - 2-3 key bullets if relevant
 - A concrete next-action suggestion at the end if the question allows for one
+
+CITATIONS — VERY IMPORTANT:
+Each line of the "User's workspace metrics" section is prefixed with a marker [N] (e.g. [1], [2], [3]).
+When you cite a number from these metrics, APPEND the corresponding [N] marker right after the number.
+Example: "Your MRR is at €12,500 [1], up 8% from last month."
+Never fabricate a marker that doesn't correspond to a metric in the list.
 
 If the question asks for specific numbers (CTR, MRR, CAC…) and you don't have access to the user's data, say so clearly and suggest they connect the relevant sources (GA4, Meta Ads, Google Ads, Stripe, Search Console).
 
@@ -88,6 +100,10 @@ function formatValue(value, unit, locale) {
 /**
  * Reduce per-day rows to one line per metric: snapshot metrics use the most
  * recent value, flow metrics (sessions, spend…) get summed over the window.
+ *
+ * Retourne aussi un tableau `sources[]` parallèle aux lignes : index N-1 dans
+ * sources correspond au marqueur [N] dans la ligne. Ces sources sont renvoyées
+ * au frontend pour afficher les citations cliquables sous la réponse.
  */
 function summarize(rows, locale) {
   const byKey = new Map()
@@ -97,35 +113,63 @@ function summarize(rows, locale) {
   }
 
   const lines = []
+  const sources = []
+  let citationId = 0
   for (const [key, entries] of byKey) {
     entries.sort((a, b) => (a.date < b.date ? 1 : -1)) // desc
     const label = METRIC_LABELS[key] ?? { fr: key, en: key, unit: 'count' }
     const localized = locale === 'en' ? label.en : label.fr
-    const sources = Array.from(new Set(entries.map((e) => e.source))).join(', ')
+    const providerSources = Array.from(new Set(entries.map((e) => e.source)))
+    const sourcesStr = providerSources.join(', ')
 
-    let value, suffix
+    let value
+    let suffix
+    let kind
+    let dateRef
     if (SNAPSHOT_METRICS.has(key)) {
+      kind = 'snapshot'
       value = Number(entries[0].metric_value)
+      dateRef = entries[0].date
       suffix = locale === 'en'
-        ? `(snapshot ${entries[0].date}, ${sources})`
-        : `(snapshot ${entries[0].date}, ${sources})`
+        ? `(snapshot ${dateRef}, ${sourcesStr})`
+        : `(snapshot ${dateRef}, ${sourcesStr})`
     } else {
+      kind = 'sum'
       value = entries.reduce((s, e) => s + Number(e.metric_value), 0)
+      dateRef = `${entries[entries.length - 1].date}→${entries[0].date}`
       const span = entries.length === 1 ? '1d' : `${entries.length}d`
       suffix = locale === 'en'
-        ? `(sum last ${span}, ${sources})`
-        : `(somme ${span} glissants, ${sources})`
+        ? `(sum last ${span}, ${sourcesStr})`
+        : `(somme ${span} glissants, ${sourcesStr})`
     }
 
-    lines.push(`- ${localized}: ${formatValue(value, label.unit, locale)} ${suffix}`)
+    citationId++
+    const formattedValue = formatValue(value, label.unit, locale)
+    lines.push(`[${citationId}] ${localized}: ${formattedValue} ${suffix}`)
+    sources.push({
+      id: citationId,
+      metricKey: key,
+      label: localized,
+      providers: providerSources,
+      value,
+      formattedValue,
+      unit: label.unit,
+      kind,
+      dateRef,
+      rowCount: entries.length,
+    })
   }
-  return lines
+  return { lines, sources }
 }
 
 /**
  * Build a "here is the user's data" block for the prompt. Returns null when
  * the workspace has no metrics yet — the caller then leaves the prompt clean
  * and the model defers to its existing "connect a source" guidance.
+ *
+ * Retourne { contextStr, sources } : sources est la liste structurée des
+ * métriques utilisées (mêmes IDs [N] que dans contextStr), passée au
+ * frontend pour render les citations cliquables.
  */
 async function buildMetricsContext(workspaceId, locale) {
   if (!workspaceId) return null
@@ -151,17 +195,20 @@ async function buildMetricsContext(workspaceId, locale) {
 
   if (rows.length === 0) return null
 
-  const lines = summarize(rows, locale)
+  const { lines, sources } = summarize(rows, locale)
   const header =
     locale === 'en'
-      ? `User's workspace metrics (last 30 days). Base your answer on these numbers when relevant.`
-      : `Métriques du workspace de l'utilisateur (30 derniers jours). Quand pertinent, base ta réponse sur ces chiffres.`
+      ? `User's workspace metrics (last 30 days). Base your answer on these numbers when relevant. Each line is prefixed with a citation marker [N] — when you cite a number, append the matching [N] right after it.`
+      : `Métriques du workspace de l'utilisateur (30 derniers jours). Quand pertinent, base ta réponse sur ces chiffres. Chaque ligne est préfixée par un marqueur de citation [N] — quand tu cites un chiffre, ajoute le [N] correspondant juste après.`
   const footer =
     locale === 'en'
       ? `If the question mentions a metric not listed above, say it isn't connected yet and suggest which source to connect.`
       : `Si la question porte sur une métrique non listée ci-dessus, dis qu'elle n'est pas encore connectée et suggère la source à brancher.`
 
-  return `${header}\n${lines.join('\n')}\n${footer}`
+  return {
+    contextStr: `${header}\n${lines.join('\n')}\n${footer}`,
+    sources,
+  }
 }
 
 /**
@@ -178,7 +225,7 @@ async function ask({ userId, workspaceId, message, locale = 'fr' }) {
   const basePrompt = pickSystemPrompt(locale)
   const metricsContext = await buildMetricsContext(workspaceId, locale)
   const systemPrompt = metricsContext
-    ? `${basePrompt}\n\n${metricsContext}`
+    ? `${basePrompt}\n\n${metricsContext.contextStr}`
     : basePrompt
 
   const t0 = Date.now()
@@ -189,6 +236,21 @@ async function ask({ userId, workspaceId, message, locale = 'fr' }) {
   })
   const durationMs = Date.now() - t0
 
+  // Filtre les sources réellement citées dans la réponse — pas la peine
+  // d'afficher en pied de message les 30 métriques du contexte si le modèle
+  // n'en a référencé que 2. Pattern [N] strict (lettre/chiffre derrière le
+  // crochet exclu pour éviter de matcher des [N] dans du code).
+  const fullSources = metricsContext?.sources || []
+  const citedIds = new Set()
+  if (typeof text === 'string') {
+    const re = /\[(\d+)\](?!\w)/g
+    let m
+    while ((m = re.exec(text)) !== null) {
+      citedIds.add(Number(m[1]))
+    }
+  }
+  const usedSources = fullSources.filter((s) => citedIds.has(s.id))
+
   logger.info(
     {
       event: 'chat_answered',
@@ -198,6 +260,8 @@ async function ask({ userId, workspaceId, message, locale = 'fr' }) {
       durationMs,
       msgLen: message.length,
       hasMetricsContext: Boolean(metricsContext),
+      sourcesAvailable: fullSources.length,
+      sourcesCited: usedSources.length,
     },
     'Chat answered',
   )
@@ -216,7 +280,7 @@ async function ask({ userId, workspaceId, message, locale = 'fr' }) {
       if (error) logger.warn({ event: 'chat_audit_failed', error: error.message })
     })
 
-  return { answer: text, model: modelName }
+  return { answer: text, model: modelName, sources: usedSources }
 }
 
 module.exports = { ask }

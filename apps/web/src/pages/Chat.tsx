@@ -5,12 +5,25 @@ import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { type StringKey, useLocale, useT } from '@/lib/i18n'
 
+type Source = {
+  id: number
+  metricKey: string
+  label: string
+  providers: string[]
+  value: number
+  formattedValue: string
+  unit: string
+  kind: 'snapshot' | 'sum'
+  dateRef: string
+  rowCount: number
+}
+
 type Message =
   | { id: string; role: 'user'; text: string }
-  | { id: string; role: 'assistant'; text: string }
+  | { id: string; role: 'assistant'; text: string; sources?: Source[] }
   | { id: string; role: 'assistant'; pending: true }
 
-type AskResponse = { answer: string; model: string }
+type AskResponse = { answer: string; model: string; sources?: Source[] }
 
 const SUGGESTION_KEYS: StringKey[] = [
   'chat.suggestion1',
@@ -60,7 +73,7 @@ export default function ChatPage() {
       setMessages((m) =>
         m.map((msg) =>
           msg.id === pendingMsg.id
-            ? { id: msg.id, role: 'assistant', text: res.answer }
+            ? { id: msg.id, role: 'assistant', text: res.answer, sources: res.sources }
             : msg,
         ),
       )
@@ -190,15 +203,106 @@ function MessageBubble({ message }: { message: Message }) {
       </div>
     )
   }
+  const text = 'text' in message ? message.text : ''
+  const sources = 'sources' in message ? message.sources || [] : []
+  const byId = new Map(sources.map((s) => [s.id, s]))
+
   return (
     <div className="flex flex-col gap-1.5">
       <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
         {t('chat.assistant')}
       </div>
       <div className="self-start whitespace-pre-wrap rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm leading-relaxed text-text-1">
-        {'text' in message ? message.text : ''}
+        {renderWithCitations(text, byId)}
       </div>
+      {sources.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1.5 self-start">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+            {t('chat.sources')}
+          </span>
+          {sources.map((s) => (
+            <SourceChip key={s.id} source={s} />
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+/**
+ * Découpe le texte autour des marqueurs [N] et remplace chaque marqueur par
+ * un span superscript cliquable qui scroll vers la pilule source en dessous.
+ * Si l'ID est inconnu (modèle a fabriqué un marqueur), on laisse en clair.
+ */
+function renderWithCitations(text: string, byId: Map<number, Source>) {
+  const parts: Array<string | { id: number; key: string }> = []
+  const re = /\[(\d+)\](?!\w)/g
+  let lastIndex = 0
+  let m
+  let k = 0
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index))
+    const id = Number(m[1])
+    parts.push({ id, key: `cite-${k++}-${m.index}` })
+    lastIndex = m.index + m[0].length
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (typeof p === 'string') return <span key={i}>{p}</span>
+        const src = byId.get(p.id)
+        if (!src) {
+          // ID fabriqué → on garde le marqueur tel quel (signale au user que ce n'est pas une vraie source)
+          return (
+            <span key={p.key} className="text-text-3">
+              [{p.id}]
+            </span>
+          )
+        }
+        return (
+          <button
+            key={p.key}
+            type="button"
+            onClick={() => {
+              const el = document.getElementById(`source-${p.id}`)
+              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+              el?.animate(
+                [
+                  { boxShadow: '0 0 0 2px var(--brand-cyan)' },
+                  { boxShadow: '0 0 0 0 transparent' },
+                ],
+                { duration: 1200 },
+              )
+            }}
+            className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-brand-cyan/40 bg-brand-cyan/10 px-1 align-super font-mono text-[9px] font-semibold text-brand-cyan transition hover:bg-brand-cyan/20"
+            title={`${src.label}: ${src.formattedValue} (${src.providers.join(', ')})`}
+          >
+            {p.id}
+          </button>
+        )
+      })}
+    </>
+  )
+}
+
+function SourceChip({ source }: { source: Source }) {
+  return (
+    <span
+      id={`source-${source.id}`}
+      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-2 px-2 py-1 text-[11px] text-text-2"
+      title={`${source.kind === 'snapshot' ? 'Snapshot' : 'Sum'} ${source.dateRef}`}
+    >
+      <span className="inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand-cyan/15 px-1 font-mono text-[9px] font-semibold text-brand-cyan">
+        {source.id}
+      </span>
+      <span className="font-mono text-[10px] uppercase tracking-wider text-text-3">
+        {source.providers.join(', ')}
+      </span>
+      <span className="text-text-1">{source.label}</span>
+      <span className="font-mono text-text-2">{source.formattedValue}</span>
+    </span>
   )
 }
 
