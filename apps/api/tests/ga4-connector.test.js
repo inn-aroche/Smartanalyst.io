@@ -16,7 +16,7 @@ const FAKE_GA4_RESPONSE = {
     { name: 'activeUsers' },
     { name: 'newUsers' },
     { name: 'conversions' },
-    { name: 'conversionValue' },
+    { name: 'totalRevenue' },
     { name: 'bounceRate' },
     { name: 'averageSessionDuration' },
     { name: 'screenPageViewsPerSession' },
@@ -78,7 +78,7 @@ test('normalizeData: sessions → sessions_all with correct value', async () => 
   assert.equal(sessionsRow.confidenceScore, 100)
 })
 
-test('normalizeData: conversionValue → revenue_from_conversions (float preserved)', async () => {
+test('normalizeData: totalRevenue → revenue_from_conversions (float preserved)', async () => {
   const c = newConnector()
   const { metrics } = await c.normalizeData(FAKE_GA4_RESPONSE)
   const revRow = metrics.find(

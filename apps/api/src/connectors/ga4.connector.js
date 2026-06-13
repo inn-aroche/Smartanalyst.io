@@ -17,12 +17,17 @@ const GA4_API_BASE = 'https://analyticsdata.googleapis.com/v1beta'
 
 // Métriques GA4 récupérées par défaut.
 // Chaque entrée doit avoir un mapping dans canonical-metrics-mapping.js (sinon ignorée).
+// Source des noms : https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema
+// Attention : `conversionValue` n'existe pas en GA4 (renvoie 400), on utilise
+// `totalRevenue` à la place — la métrique pour le revenu de tous les events
+// monétisés (purchase, in_app_purchase, …). Si la property n'a pas d'e-commerce
+// tracking, ça renvoie 0 — pas grave.
 const GA4_METRICS = [
   'sessions',
   'activeUsers',
   'newUsers',
   'conversions',
-  'conversionValue',
+  'totalRevenue',
   'bounceRate',
   'averageSessionDuration',
   'screenPageViewsPerSession',
