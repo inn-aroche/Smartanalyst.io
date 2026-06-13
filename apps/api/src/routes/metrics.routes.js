@@ -1,5 +1,10 @@
 // Metrics routes — surface the canonical metrics layer to the SaaS frontend.
 // All endpoints scoped to the caller's active workspace.
+//
+// IMPORTANT : ces routes sont conservées pour backward-compat (SDK externes
+// éventuels, tokens d'intégration). Le frontend SaaS utilise désormais
+// /api/v1/dashboard/* (cf dashboard.routes.js) — naming neutre côté
+// adblockers, qui matchent agressivement les paths /metrics/*.
 
 const express = require('express')
 const { query: queryMetrics } = require('../services/metrics/canonical-metrics.service')
@@ -22,7 +27,7 @@ const SUMMARY_METRICS = [
   { key: 'spend_paid_total', label: 'Ad spend', kind: 'sum', format: 'currency' },
 ]
 
-router.get('/summary', async (req, res, next) => {
+async function summary(req, res, next) {
   try {
     const days = clampInt(req.query.days, 7, 1, 90)
     const today = new Date()
@@ -68,9 +73,9 @@ router.get('/summary', async (req, res, next) => {
   } catch (err) {
     next(err)
   }
-})
+}
 
-router.get('/timeseries', async (req, res, next) => {
+async function timeseries(req, res, next) {
   try {
     const metricKey = String(req.query.metric || '').trim()
     if (!metricKey) {
@@ -96,7 +101,10 @@ router.get('/timeseries', async (req, res, next) => {
   } catch (err) {
     next(err)
   }
-})
+}
+
+router.get('/summary', summary)
+router.get('/timeseries', timeseries)
 
 function sum(rows) {
   if (!rows || rows.length === 0) return 0
@@ -124,4 +132,7 @@ function addDays(d, n) {
   return next
 }
 
+// Exporte les handlers pour que dashboard.routes.js puisse les réutiliser
+// (mêmes routes sous un naming non-trackable).
 module.exports = router
+module.exports.handlers = { summary, timeseries }

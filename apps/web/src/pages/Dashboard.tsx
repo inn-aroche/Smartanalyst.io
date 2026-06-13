@@ -51,11 +51,11 @@ export default function Dashboard() {
   const workspaceId = state.workspaces[0]?.id ?? ''
 
   const summary = useQuery({
-    queryKey: ['metrics', 'summary', workspaceId, windowDays],
+    queryKey: ['dashboard', 'overview', workspaceId, windowDays],
     enabled: Boolean(workspaceId),
     queryFn: () =>
       apiFetch<SummaryResponse>(
-        `/api/v1/metrics/summary?workspaceId=${workspaceId}&days=${windowDays}`,
+        `/api/v1/dashboard/overview?workspaceId=${workspaceId}&days=${windowDays}`,
       ),
   })
 
