@@ -14,6 +14,7 @@ const syncHandler = require('./handlers/sync.handler')
 const insightsHandler = require('./handlers/insights.handler')
 const reportsHandler = require('./handlers/reports.handler')
 const alertsHandler = require('./handlers/alerts.handler')
+const oauthRefreshHandler = require('./handlers/oauth-refresh.handler')
 
 const workerInstances = []
 
@@ -131,6 +132,20 @@ function start() {
       return alertsHandler.checkWorkspace(job)
     }
     throw new Error(`Unknown job in alerts queue: ${job.name}`)
+  })
+
+  // ━━━ oauth-refresh ━━━
+  // Scan proactif des connectors OAuth dont le token expire bientôt + refresh.
+  // Voir handlers/oauth-refresh.handler.js pour le rationale.
+  wireWorker(QUEUE_NAMES.OAUTH_REFRESH, async (job) => {
+    if (job.name === JOB_NAMES.OAUTH_REFRESH_SCAN) {
+      const refreshQueue = getQueue(QUEUE_NAMES.OAUTH_REFRESH)
+      return oauthRefreshHandler.scanExpiringConnectors({ refreshQueue })
+    }
+    if (job.name === JOB_NAMES.OAUTH_REFRESH_ONE) {
+      return oauthRefreshHandler.refreshOne(job)
+    }
+    throw new Error(`Unknown job in oauth-refresh queue: ${job.name}`)
   })
 
   logger.info({ event: 'workers_started', count: workerInstances.length }, 'Workers ready')

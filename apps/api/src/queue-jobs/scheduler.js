@@ -27,6 +27,12 @@ const SCHEDULES = [
     pattern: '0 */4 * * *', // toutes les 4h UTC
     description: 'Anomaly + threshold check across all workspaces',
   },
+  {
+    queueName: QUEUE_NAMES.OAUTH_REFRESH,
+    jobName: JOB_NAMES.OAUTH_REFRESH_SCAN,
+    pattern: '15 */4 * * *', // toutes les 4h UTC, décalé de 15min pour étaler la charge
+    description: 'OAuth token refresh — scan connectors expiring soon',
+  },
 ]
 
 async function start() {

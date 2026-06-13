@@ -16,6 +16,7 @@ const QUEUE_NAMES = {
   INSIGHTS: 'insights-generation',
   REPORTS: 'monthly-reports',
   ALERTS: 'alert-check',
+  OAUTH_REFRESH: 'oauth-refresh',
 }
 
 // Noms de jobs (canoniques)
@@ -31,6 +32,9 @@ const JOB_NAMES = {
   // alerts
   ALERTS_SCAN: 'scan-all-workspaces',
   ALERTS_WORKSPACE: 'check-workspace',
+  // oauth-refresh
+  OAUTH_REFRESH_SCAN: 'scan-expiring',
+  OAUTH_REFRESH_ONE: 'refresh-token',
 }
 
 // Defaults appliqués à TOUS les jobs (idempotent par job grâce à jobId stable)
