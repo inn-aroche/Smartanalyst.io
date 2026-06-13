@@ -233,7 +233,9 @@ const HEALTH_ENDPOINT = 'https://api.smartanalyst.io/health/ready';
 
   <style is:global>
     .status-section {
-      padding: 96px 0 80px;
+      /* 130px = banner (36px) + nav (64px) + air. Sans ça le titre passe
+         partiellement sous la nav fixed. */
+      padding: 130px 0 80px;
       position: relative;
     }
     .status-container {

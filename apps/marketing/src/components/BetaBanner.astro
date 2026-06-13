@@ -18,7 +18,18 @@ const t = locale === 'fr'
 </div>
 
 <style is:global>
+  :root {
+    /* Hauteur du banner — utilisée pour décaler la nav (top: var(--beta-banner-h))
+       et tout autre élément qui doit se placer en dessous. Si on désactive le
+       banner un jour, mettre cette var à 0 suffit. */
+    --beta-banner-h: 36px;
+  }
   .beta-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 250; /* > .nav (200) — pour rester par-dessus le scroll bar */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -26,16 +37,18 @@ const t = locale === 'fr'
     padding: 8px 16px;
     background: linear-gradient(
       to right,
-      rgba(61, 130, 255, 0.10),
-      rgba(35, 213, 226, 0.10)
+      rgba(61, 130, 255, 0.16),
+      rgba(35, 213, 226, 0.14)
     );
-    border-bottom: 1px solid rgba(61, 130, 255, 0.22);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(61, 130, 255, 0.28);
     color: var(--text-2);
     font-size: 12.5px;
     font-family: var(--ff-b);
     flex-wrap: wrap;
-    position: relative;
-    z-index: 100;
+    min-height: var(--beta-banner-h);
+    box-sizing: border-box;
   }
   .beta-banner-dot {
     width: 7px;
@@ -72,6 +85,7 @@ const t = locale === 'fr'
     color: var(--cyan, #23d5e2);
   }
   @media (max-width: 480px) {
+    :root { --beta-banner-h: 34px; }
     .beta-banner {
       font-size: 11.5px;
       padding: 7px 12px;
