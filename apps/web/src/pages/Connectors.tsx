@@ -243,6 +243,7 @@ function ConnectorCard({
 
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const [syncedMsg, setSyncedMsg] = useState<string | null>(null)
   const [apiKeyOpen, setApiKeyOpen] = useState(false)
   const [apiKeyValue, setApiKeyValue] = useState('')
   const [subdomainOpen, setSubdomainOpen] = useState(false)
@@ -318,6 +319,31 @@ function ConnectorCard({
       setError(err instanceof Error ? err.message : t('connectors.err.disconnect')),
   })
 
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      if (!connected) return { metricsCount: 0 }
+      const today = new Date()
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const fmt = (d: Date) => d.toISOString().slice(0, 10)
+      return (await apiFetch(`/api/v1/connectors/${connected.id}/sync`, {
+        method: 'POST',
+        body: { workspaceId, startDate: fmt(monthAgo), endDate: fmt(today) },
+      })) as { metricsCount?: number }
+    },
+    onSuccess: (result) => {
+      setError(null)
+      setSyncedMsg(
+        t('connectors.sync.success', { count: String(result.metricsCount ?? 0) }),
+      )
+      void queryClient.invalidateQueries({ queryKey: ['connectors'] })
+      onListChanged()
+    },
+    onError: (err) => {
+      setSyncedMsg(null)
+      setError(err instanceof Error ? err.message : t('connectors.err.sync'))
+    },
+  })
+
   // Calcule l'action déclenchée par le bouton "Connect" selon le type d'auth
   // et les pré-requis du provider (Shopify a besoin d'un shop subdomain).
   function handleConnect() {
@@ -386,6 +412,12 @@ function ConnectorCard({
         </div>
       )}
 
+      {syncedMsg && (
+        <div className="mt-3 rounded-lg border border-brand-green/30 bg-brand-green/10 px-3 py-2 text-xs text-brand-green">
+          {syncedMsg}
+        </div>
+      )}
+
       {isMisconfigured && !isConnected && (
         <div className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-xs text-text-3">
           {t('connectors.badge.notConfigured')}
@@ -401,20 +433,36 @@ function ConnectorCard({
             {t('connectors.action.notifyMe')}
           </button>
         ) : isConnected ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (!confirm(t('connectors.confirmDisconnect', { name: def.name }))) return
-              setError(null)
-              disconnectMutation.mutate()
-            }}
-            disabled={disconnectMutation.isPending}
-            className="sa-btn !py-1.5 !text-xs"
-          >
-            {disconnectMutation.isPending
-              ? t('connectors.action.disconnecting')
-              : t('connectors.action.disconnect')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setError(null)
+                setSyncedMsg(null)
+                syncMutation.mutate()
+              }}
+              disabled={syncMutation.isPending}
+              className="sa-btn !py-1.5 !text-xs"
+            >
+              {syncMutation.isPending
+                ? t('connectors.action.syncing')
+                : t('connectors.action.sync')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirm(t('connectors.confirmDisconnect', { name: def.name }))) return
+                setError(null)
+                disconnectMutation.mutate()
+              }}
+              disabled={disconnectMutation.isPending || syncMutation.isPending}
+              className="sa-btn !py-1.5 !text-xs"
+            >
+              {disconnectMutation.isPending
+                ? t('connectors.action.disconnecting')
+                : t('connectors.action.disconnect')}
+            </button>
+          </div>
         ) : (
           <button
             type="button"
