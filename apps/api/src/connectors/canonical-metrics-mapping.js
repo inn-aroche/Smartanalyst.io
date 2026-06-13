@@ -27,7 +27,7 @@ const CANONICAL_METRICS_MAPPING = {
     activeUsers: { canonicalKey: 'users_active', confidenceDefault: 100, unit: 'count' },
     newUsers: { canonicalKey: 'users_new', confidenceDefault: 100, unit: 'count' },
     conversions: { canonicalKey: 'conversions_total', confidenceDefault: 100, unit: 'count' },
-    conversionValue: { canonicalKey: 'revenue_from_conversions', confidenceDefault: 95, unit: 'eur' },
+    totalRevenue: { canonicalKey: 'revenue_from_conversions', confidenceDefault: 95, unit: 'eur' },
     bounceRate: { canonicalKey: 'bounce_rate_all', confidenceDefault: 100, unit: 'ratio' },
     averageSessionDuration: {
       canonicalKey: 'engagement_session_duration',
