@@ -10,6 +10,7 @@ const express = require('express')
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope } = require('../middleware/workspace-scope.middleware')
 const ingestion = require('../services/tracking/ingestion.service')
+const trackingHealth = require('../services/tracking/tracking-health.service')
 
 const router = express.Router()
 
@@ -25,6 +26,18 @@ router.get('/status', async (req, res, next) => {
   try {
     const status = await ingestion.getStatus(req.workspaceId)
     res.json(status)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /smarttag/health
+// Synthèse "Santé du tracking" pour la Home : tag actif, dernier event,
+// volumes 7j/30j par type, sources connectées, niveau de confiance.
+router.get('/health', async (req, res, next) => {
+  try {
+    const health = await trackingHealth.getHealth(req.workspaceId)
+    res.json(health)
   } catch (err) {
     next(err)
   }
