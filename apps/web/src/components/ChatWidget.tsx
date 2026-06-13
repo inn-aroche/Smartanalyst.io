@@ -82,9 +82,13 @@ export default function ChatWidget() {
         method: 'POST',
         body: { message: trimmed, workspaceId, locale },
       })
+      // Strip les marqueurs de citation [N] dans le widget compact — pas la
+      // place d'afficher les pilules sources ici. Le user peut ouvrir la
+      // page Chat pleine pour voir les citations en clair.
+      const cleanAnswer = res.answer.replace(/\s?\[\d+\](?!\w)/g, '')
       setMessages((m) =>
         m.map((msg) =>
-          msg.id === pendingMsg.id ? { id: msg.id, role: 'assistant', text: res.answer } : msg,
+          msg.id === pendingMsg.id ? { id: msg.id, role: 'assistant', text: cleanAnswer } : msg,
         ),
       )
     } catch (err) {
