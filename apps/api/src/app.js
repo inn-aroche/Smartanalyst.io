@@ -146,6 +146,8 @@ function createApp() {
   // (uBlock matche agressivement les paths /metrics/*). Voir dashboard.routes.js.
   app.use('/api/v1/dashboard', require('./routes/dashboard.routes'))
   app.use('/api/v1/chat', require('./routes/chat.routes'))
+  // Insight Engine : brief du jour (insights + action_cards)
+  app.use('/api/v1/insights', require('./routes/insights.routes'))
   // Beta waitlist (publique, rate-limit strict — cf waitlist.routes.js)
   app.use('/api/v1/waitlist', require('./routes/waitlist.routes'))
   // SmartTag ingestion (publique, CORS *, rate-limit dédié — cf track.routes.js)
