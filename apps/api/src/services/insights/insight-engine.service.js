@@ -1,0 +1,194 @@
+// Insight Engine — orchestration.
+//
+// Pipeline (déclenché post-sync par insights.handler) :
+//   1. buildContext()  → agrège canonical_metrics + smarttag_daily (courant vs précédent)
+//   2. prompt strict   → Gemini en Structured Output (JSON forcé)
+//   3. validate        → garde les insights bien formés, jette les autres
+//   4. store           → insert idempotent (dedup_key) insights + action_cards
+//
+// Garde-fous :
+//   - Gemini non configuré → on log et on sort proprement (ne casse pas le sync).
+//   - 0 insight valide → no-op silencieux.
+//   - Insert : ON CONFLICT dedup_key → on saute (pas de doublon, pas de delete).
+
+const { getServiceRoleClient } = require('../../lib/supabase')
+const { logger } = require('../../lib/logger')
+const { generateStructured } = require('../ai/gemini.service')
+const aggregator = require('./aggregator.service')
+const { validateInsightsPayload, SCHEMA_DESCRIPTION_FOR_PROMPT } = require('./insight-schema')
+
+const SYSTEM_PROMPT = `Tu es Smart Analyst, un analyste marketing IA spécialisé dans l'analyse de performance.
+
+Tu analyses UNIQUEMENT les données fournies dans le contexte. Tu ne dois JAMAIS inventer une donnée ni un chiffre.
+Tu ne dois jamais affirmer une causalité certaine si les données ne la prouvent pas : parle de cause probable, d'hypothèse ou de signal explicatif.
+
+Ta mission :
+- détecter les signaux importants (variations fortes, anomalies, écarts entre sources) ;
+- identifier les problèmes de tracking / qualité de données ;
+- expliquer pourquoi un signal compte, en t'appuyant sur des preuves chiffrées issues du contexte ;
+- recommander des actions concrètes et priorisées (impact / effort).
+
+Chaque insight DOIT contenir : un titre clair, un résumé pour non-technicien, une catégorie, une sévérité, un niveau de confiance, AU MOINS une preuve chiffrée, AU MOINS une action recommandée, et les limites de l'analyse.
+
+Si les données sont insuffisantes ou si le SmartTag montre un écart avec les connecteurs, préfère un insight de catégorie data_quality ou tracking plutôt qu'un diagnostic inventé.
+
+${SCHEMA_DESCRIPTION_FOR_PROMPT}`
+
+function slugify(s) {
+  return String(s)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+}
+
+function buildUserMessage(context) {
+  return `Voici l'état du workspace à analyser (période courante vs période de comparaison équivalente).
+Tous les chiffres ci-dessous sont fiables et sourcés — base-toi UNIQUEMENT dessus.
+
+${JSON.stringify(context, null, 2)}
+
+Génère jusqu'à 3 insights pertinents. Si rien de notable, renvoie moins d'insights (ou un seul insight de data_quality).`
+}
+
+/**
+ * Persiste un insight + ses actions. Idempotent via dedup_key : si l'insight
+ * existe déjà (même catégorie + titre), on saute (pas de doublon, on préserve
+ * le statut éventuellement modifié par l'user).
+ *
+ * @returns {Promise<{ created: boolean, insightId?: string, actionsCreated?: number }>}
+ */
+async function storeInsight(workspaceId, insight, rawModelOutput) {
+  const supabase = getServiceRoleClient()
+  const dedupKey = `${insight.category}:${slugify(insight.title)}`
+
+  const { data: inserted, error } = await supabase
+    .from('insights')
+    .insert({
+      workspace_id: workspaceId,
+      title: insight.title,
+      summary: insight.summary,
+      category: insight.category,
+      severity: insight.severity,
+      confidence: insight.confidence,
+      period_start: insight.period.start,
+      period_end: insight.period.end,
+      comparison_start: insight.period.comparison_start,
+      comparison_end: insight.period.comparison_end,
+      primary_source: insight.primary_source,
+      evidence: insight.evidence,
+      chart_spec: insight.chart_spec,
+      limitations: insight.limitations,
+      raw_model_output: rawModelOutput ?? null,
+      dedup_key: dedupKey,
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    // 23505 = conflit unique (dedup) → insight déjà présent, on saute.
+    if (error.code === '23505') return { created: false }
+    throw error
+  }
+
+  const insightId = inserted.id
+  const actionRows = insight.recommended_actions.map((a) => ({
+    workspace_id: workspaceId,
+    insight_id: insightId,
+    title: a.title,
+    description: a.description,
+    priority: a.priority,
+    impact: a.impact,
+    effort: a.effort,
+    confidence: a.confidence,
+    expected_impact: a.expected_impact,
+    follow_up_check: a.follow_up_check,
+  }))
+  if (actionRows.length > 0) {
+    const { error: aErr } = await supabase.from('action_cards').insert(actionRows)
+    if (aErr) {
+      logger.warn(
+        { event: 'action_cards_insert_failed', workspaceId, insightId, error: aErr.message },
+        'Action cards insert failed (insight kept)',
+      )
+    }
+  }
+  return { created: true, insightId, actionsCreated: actionRows.length }
+}
+
+/**
+ * Génère les insights pour un workspace. Point d'entrée appelé post-sync.
+ * @returns {Promise<{ generated: number, dropped: number, skipped: boolean }>}
+ */
+async function generateForWorkspace(workspaceId) {
+  const context = await aggregator.buildContext(workspaceId)
+  if (!context) {
+    logger.info(
+      { event: 'insight_engine_no_data', workspaceId },
+      'Insight engine: no data to analyse, skipping',
+    )
+    return { generated: 0, dropped: 0, skipped: true }
+  }
+
+  let result
+  try {
+    result = await generateStructured({
+      systemPrompt: SYSTEM_PROMPT,
+      userMessage: buildUserMessage(context),
+      temperature: 0.3,
+      maxOutputTokens: 4096,
+    })
+  } catch (err) {
+    if (err.code === 'GEMINI_NOT_CONFIGURED') {
+      logger.warn(
+        { event: 'insight_engine_ai_unconfigured', workspaceId },
+        'Insight engine: Gemini not configured, skipping',
+      )
+      return { generated: 0, dropped: 0, skipped: true }
+    }
+    logger.error(
+      { event: 'insight_engine_generation_failed', workspaceId, error: err.message, code: err.code },
+      'Insight engine generation failed',
+    )
+    throw err
+  }
+
+  const { insights, droppedCount } = validateInsightsPayload(result.json)
+  if (insights.length === 0) {
+    logger.info(
+      { event: 'insight_engine_empty', workspaceId, dropped: droppedCount },
+      'Insight engine produced no valid insights',
+    )
+    return { generated: 0, dropped: droppedCount, skipped: false }
+  }
+
+  let created = 0
+  for (const insight of insights) {
+    try {
+      const r = await storeInsight(workspaceId, insight, result.json)
+      if (r.created) created++
+    } catch (err) {
+      logger.warn(
+        { event: 'insight_store_failed', workspaceId, error: err.message },
+        'Failed to store one insight (continuing)',
+      )
+    }
+  }
+
+  logger.info(
+    {
+      event: 'insight_engine_completed',
+      workspaceId,
+      model: result.modelName,
+      validInsights: insights.length,
+      created,
+      dropped: droppedCount,
+    },
+    'Insight engine completed',
+  )
+  return { generated: created, dropped: droppedCount, skipped: false }
+}
+
+module.exports = { generateForWorkspace, storeInsight, slugify }
