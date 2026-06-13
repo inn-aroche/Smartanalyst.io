@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { usePageViewTracker } from './lib/gtm'
 import Audit from './pages/Audit'
 import AuthCallback from './pages/AuthCallback'
+import BetaLocked from './pages/BetaLocked'
 import Chat from './pages/Chat'
 import Connectors from './pages/Connectors'
 import Dashboard from './pages/Dashboard'
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/beta-locked" element={<BetaLocked />} />
       <Route
         path="/"
         element={

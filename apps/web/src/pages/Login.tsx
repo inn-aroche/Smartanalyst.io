@@ -4,6 +4,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import Brand from '@/components/Brand'
 import GoogleSignInButton, { OrSeparator } from '@/components/GoogleSignInButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
+import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
 
@@ -33,6 +34,13 @@ export default function Login() {
       await login(email, password)
       navigate(redirectTo, { replace: true })
     } catch (err) {
+      // Beta lockdown : si l'API rejette l'email pour cause de whitelist
+      // restreinte (PR #45), on envoie le user vers une page dédiée qui
+      // propose la waitlist plutôt que de coller le raw message inline.
+      if (err instanceof ApiError && err.code === 'BETA_LOCKED') {
+        navigate('/beta-locked', { replace: true })
+        return
+      }
       setError(err instanceof Error ? err.message : t('login.somethingWentWrong'))
     } finally {
       setSubmitting(false)

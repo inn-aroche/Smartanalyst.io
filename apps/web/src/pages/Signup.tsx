@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import Brand from '@/components/Brand'
 import GoogleSignInButton, { OrSeparator } from '@/components/GoogleSignInButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
+import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
 
@@ -30,6 +31,11 @@ export default function Signup() {
       await signup({ email, password, organizationName })
       navigate('/', { replace: true })
     } catch (err) {
+      // Beta lockdown — voir Login.tsx pour le rationale.
+      if (err instanceof ApiError && err.code === 'BETA_LOCKED') {
+        navigate('/beta-locked', { replace: true })
+        return
+      }
       setError(err instanceof Error ? err.message : t('login.somethingWentWrong'))
     } finally {
       setSubmitting(false)

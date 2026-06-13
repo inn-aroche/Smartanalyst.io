@@ -39,6 +39,15 @@ export default function AuthCallback() {
     const params = new URLSearchParams(raw)
     const errCode = params.get('error')
     if (errCode) {
+      // Beta lockdown — voir BetaLocked.tsx. Le callback Google catch
+      // l'erreur BETA_LOCKED thrown par assertBetaAccess côté backend
+      // (cf apps/api/src/services/auth/google-signin.service.js) et la
+      // propage via le fragment URL #error=BETA_LOCKED. On redirige
+      // vers la page dédiée plutôt que d'afficher le code brut.
+      if (errCode === 'BETA_LOCKED') {
+        navigate('/beta-locked', { replace: true })
+        return
+      }
       const key = ERROR_KEY[errCode]
       setError(key ? t(key) : t('callback.err.generic', { code: errCode }))
       return
