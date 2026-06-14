@@ -164,6 +164,39 @@ const en = {
   'dashboard.tile.organicCtr': 'Organic CTR',
   'dashboard.tile.avgPosition': 'Avg position',
 
+  // ━━━ Home: Tracking Health ━━━
+  'home.health.kicker': 'Tracking health',
+  'home.health.tagActive': 'SmartTag is live',
+  'home.health.tagInactive': 'SmartTag not installed',
+  'home.health.activeBody':
+    'Last event {{ago}} ago · {{events7}} events in the past 7 days.',
+  'home.health.inactiveBody':
+    'Install the SmartTag to compare your own ground truth with what GA4 / Meta / Stripe report.',
+  'home.health.installCta': 'Install SmartTag',
+  'home.health.events7d': 'Events 7d',
+  'home.health.events30d': 'Events 30d',
+  'home.health.sources': 'Connected sources',
+  'home.health.confidence.high': 'High confidence',
+  'home.health.confidence.medium': 'Medium confidence',
+  'home.health.confidence.low': 'Low confidence',
+
+  // ━━━ Home: Brief du jour (Insights + Actions) ━━━
+  'home.brief.kicker': 'Today\'s brief',
+  'home.brief.title': 'What needs your attention.',
+  'home.brief.count': '{{count}} open',
+  'home.brief.empty.body':
+    'No insights yet. Connect your data sources and SmartAnalyst will start surfacing what matters.',
+  'home.brief.empty.cta': 'Open connectors',
+  'home.brief.evidence': 'More evidence',
+  'home.brief.actions': 'Recommended actions',
+  'home.brief.limitations': 'Limitations',
+  'home.brief.markResolved': 'Mark resolved',
+  'home.brief.snooze': 'Snooze',
+  'home.brief.dismiss': 'Dismiss',
+  'home.brief.impact': 'Impact',
+  'home.brief.effort': 'Effort',
+  'home.brief.priority': 'Priority',
+
   // ━━━ Connectors ━━━
   'connectors.kicker': 'Integrations',
   'connectors.title': 'Connect your data sources.',
@@ -608,6 +641,39 @@ const fr: Record<keyof typeof en, string> = {
   'dashboard.tile.organicImpressions': 'Impressions organiques',
   'dashboard.tile.organicCtr': 'CTR organique',
   'dashboard.tile.avgPosition': 'Position moyenne',
+
+  // ━━━ Home: Tracking Health ━━━
+  'home.health.kicker': 'Santé du tracking',
+  'home.health.tagActive': 'SmartTag actif',
+  'home.health.tagInactive': 'SmartTag pas installé',
+  'home.health.activeBody':
+    'Dernier événement il y a {{ago}} · {{events7}} événements sur les 7 derniers jours.',
+  'home.health.inactiveBody':
+    'Installe le SmartTag pour comparer ce que tu observes vs ce que GA4 / Meta / Stripe te disent.',
+  'home.health.installCta': 'Installer SmartTag',
+  'home.health.events7d': 'Events 7j',
+  'home.health.events30d': 'Events 30j',
+  'home.health.sources': 'Sources connectées',
+  'home.health.confidence.high': 'Confiance élevée',
+  'home.health.confidence.medium': 'Confiance moyenne',
+  'home.health.confidence.low': 'Confiance faible',
+
+  // ━━━ Home: Brief du jour (Insights + Actions) ━━━
+  'home.brief.kicker': 'Brief du jour',
+  'home.brief.title': 'Ce qui mérite ton attention.',
+  'home.brief.count': '{{count}} ouverts',
+  'home.brief.empty.body':
+    'Pas encore d\'insights. Connecte tes sources et Smart Analyst remontera ce qui compte vraiment.',
+  'home.brief.empty.cta': 'Ouvrir les connecteurs',
+  'home.brief.evidence': 'Autres preuves',
+  'home.brief.actions': 'Actions recommandées',
+  'home.brief.limitations': 'Limites',
+  'home.brief.markResolved': 'Marquer résolu',
+  'home.brief.snooze': 'Reporter',
+  'home.brief.dismiss': 'Ignorer',
+  'home.brief.impact': 'Impact',
+  'home.brief.effort': 'Effort',
+  'home.brief.priority': 'Priorité',
 
   // ━━━ Connectors ━━━
   'connectors.kicker': 'Intégrations',

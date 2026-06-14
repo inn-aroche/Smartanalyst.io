@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import AppLayout from '@/components/AppLayout'
+import BriefDuJourBlock from '@/components/home/BriefDuJourBlock'
+import TrackingHealthBlock from '@/components/home/TrackingHealthBlock'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { type StringKey, useFormatters, useT } from '@/lib/i18n'
@@ -136,6 +138,13 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        {workspaceId && (
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            <TrackingHealthBlock workspaceId={workspaceId} />
+            <BriefDuJourBlock workspaceId={workspaceId} />
+          </div>
+        )}
 
         {!hasConnectors && (
           <div className="sa-card mt-8 border-brand-cyan/30 bg-brand-cyan/5">
