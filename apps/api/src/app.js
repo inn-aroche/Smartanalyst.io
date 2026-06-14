@@ -168,6 +168,8 @@ function createApp() {
   app.use('/api/v1/me', require('./routes/me.routes'))
   // Librairie de fichiers (brief V2 §3.7B)
   app.use('/api/v1/files', require('./routes/files.routes'))
+  // Réglages notifications par workspace (brief V2 §3.9)
+  app.use('/api/v1/notification-settings', require('./routes/notification-settings.routes'))
   // TODO: reports
   // app.use('/api/v1/reports', require('./routes/reports.routes'))
 

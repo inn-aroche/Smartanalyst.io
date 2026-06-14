@@ -7,6 +7,7 @@ const { sendEmail } = require('../email/resend.service')
 const { logger } = require('../../lib/logger')
 const insightsService = require('../insights/insights.service')
 const { getWorkspaceRecipient } = require('./recipient')
+const settingsService = require('./settings.service')
 
 const SEVERITY_ICON = { critical: '🔴', high: '🔴', medium: '🟡', low: '🔵' }
 
@@ -91,6 +92,9 @@ function composeCriticalAlert(insight, { orgName } = {}) {
  * @returns {Promise<{ sent: boolean, reason?: string }>}
  */
 async function sendWeeklyDigest(workspaceId) {
+  const settings = await settingsService.getSettings(workspaceId)
+  if (!settings.weekly_digest) return { sent: false, reason: 'disabled' }
+
   const recipient = await getWorkspaceRecipient(workspaceId)
   if (!recipient) return { sent: false, reason: 'no_recipient' }
 
@@ -115,6 +119,9 @@ async function sendWeeklyDigest(workspaceId) {
  * quand un insight critical est nouvellement créé. Best-effort.
  */
 async function sendCriticalAlert(workspaceId, insight) {
+  const settings = await settingsService.getSettings(workspaceId)
+  if (!settings.critical_alerts) return { sent: false, reason: 'disabled' }
+
   const recipient = await getWorkspaceRecipient(workspaceId)
   if (!recipient) return { sent: false, reason: 'no_recipient' }
   const composed = composeCriticalAlert(insight, { orgName: recipient.orgName })

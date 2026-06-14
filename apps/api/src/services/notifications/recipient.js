@@ -12,13 +12,23 @@ const { getServiceRoleClient } = require('../../lib/supabase')
  */
 async function getWorkspaceRecipient(workspaceId) {
   const supabase = getServiceRoleClient()
-  const { data, error } = await supabase
-    .from('workspaces')
-    .select('name, organizations!inner(email, name)')
-    .eq('id', workspaceId)
-    .maybeSingle()
-  if (error || !data || !data.organizations?.email) return null
-  return { email: data.organizations.email, orgName: data.organizations.name || data.name || null }
+  const [{ data: ws }, { data: settings }] = await Promise.all([
+    supabase
+      .from('workspaces')
+      .select('name, organizations!inner(email, name)')
+      .eq('id', workspaceId)
+      .maybeSingle(),
+    supabase
+      .from('notification_settings')
+      .select('email_override')
+      .eq('workspace_id', workspaceId)
+      .maybeSingle(),
+  ])
+  const fallbackEmail = ws?.organizations?.email
+  const email = settings?.email_override || fallbackEmail
+  if (!email) return null
+  const orgName = ws?.organizations?.name || ws?.name || null
+  return { email, orgName }
 }
 
 module.exports = { getWorkspaceRecipient }
