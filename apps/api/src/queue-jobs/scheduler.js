@@ -39,6 +39,12 @@ const SCHEDULES = [
     pattern: '0 8 * * 1', // lundi 8h UTC (brief V2 §3.3 "résumé du lundi matin")
     description: 'Weekly digest email — fan-out across all workspaces',
   },
+  {
+    queueName: QUEUE_NAMES.ALERTS,
+    jobName: JOB_NAMES.WATCHES_EVAL_SCAN,
+    pattern: '0 * * * *', // toutes les heures (brief V2 §3.3 — alertes custom user)
+    description: 'Custom watches evaluation across all workspaces',
+  },
 ]
 
 async function start() {

@@ -16,6 +16,7 @@ const reportsHandler = require('./handlers/reports.handler')
 const alertsHandler = require('./handlers/alerts.handler')
 const oauthRefreshHandler = require('./handlers/oauth-refresh.handler')
 const digestHandler = require('./handlers/digest.handler')
+const watchesHandler = require('./handlers/watches.handler')
 
 const workerInstances = []
 
@@ -124,6 +125,9 @@ function start() {
   })
 
   // ━━━ alert-check ━━━
+  // Coexistence des 2 jobs sur la même queue : `alerts-scan` = anomalies IA
+  // historique (cron 4h) · `watches-eval-scan` = alertes custom utilisateur
+  // (cron horaire, brief V2 §3.3).
   wireWorker(QUEUE_NAMES.ALERTS, async (job) => {
     if (job.name === JOB_NAMES.ALERTS_SCAN) {
       const alertsQueue = getQueue(QUEUE_NAMES.ALERTS)
@@ -131,6 +135,9 @@ function start() {
     }
     if (job.name === JOB_NAMES.ALERTS_WORKSPACE) {
       return alertsHandler.checkWorkspace(job)
+    }
+    if (job.name === JOB_NAMES.WATCHES_EVAL_SCAN) {
+      return watchesHandler.watchesScanAll(job)
     }
     throw new Error(`Unknown job in alerts queue: ${job.name}`)
   })
