@@ -1,0 +1,128 @@
+---
+// Legal notice (EN). FR is the authoritative version for French law.
+import DarkBase from '../../../layouts/DarkBase.astro';
+
+const LEGAL_DRAFT = true;
+---
+<DarkBase
+  title="Legal notice — SmartAnalyst"
+  description="Legal notice for SmartAnalyst.io: publisher, hosting, contact, mediation."
+  locale="en"
+>
+  <section class="page-hero">
+    <div class="glow" style="width:600px;height:400px;top:-80px;left:50%;transform:translateX(-50%);opacity:0.4"></div>
+    <div class="container" style="position:relative;z-index:1">
+      {LEGAL_DRAFT && (
+        <div class="legal-draft-banner" role="alert">
+          ⚠️ <strong>Draft — pending legal review.</strong>
+          The French version (<a href="/fr/legal/legal-notice">/fr/legal/legal-notice</a>) is the authoritative version under French law. This translation will be finalised after legal review.
+        </div>
+      )}
+      <div class="eyebrow">Legal</div>
+      <h1>Legal <span class="gradient-text">notice.</span></h1>
+      <p class="lead">Who runs this site, who hosts it, how to reach us.</p>
+      <p class="meta">Last updated: <strong>June 14, 2026</strong></p>
+    </div>
+  </section>
+
+  <section class="page-section legal">
+    <div class="container">
+      <article>
+        <h2>1. Publisher</h2>
+        <ul>
+          <li><strong>Legal name</strong>: Aurélien Roche EI (Sole proprietorship under French law)</li>
+          <li><strong>Registered office</strong>: 174 Rue du Temple, 75003 Paris, France</li>
+          <li><strong>SIRET</strong> (French business registration): 908 185 564 00014</li>
+          <li><strong>Publishing director</strong>: Aurélien Roche</li>
+          <li><strong>Email</strong>: <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a></li>
+        </ul>
+      </article>
+
+      <article>
+        <h2>2. Hosting</h2>
+        <p>
+          The marketing site <code>smartanalyst.io</code> is hosted by <strong>Cloudflare, Inc.</strong> (101 Townsend Street, San Francisco, CA 94107, USA) via Cloudflare Pages.
+        </p>
+        <p>
+          The application <code>app.smartanalyst.io</code> is also hosted on Cloudflare Pages. The API and worker services run on a VPS provided by <strong>Hostinger International Ltd.</strong> (61 Lordou Vironos, 6023 Larnaca, Cyprus).
+        </p>
+        <p>
+          The database and authentication service are provided by <strong>Supabase Inc.</strong> (970 Toa Payoh North #07-04, Singapore 318992), with servers located in the <strong>European Union (Frankfurt)</strong>.
+        </p>
+      </article>
+
+      <article>
+        <h2>3. Intellectual property</h2>
+        <p>
+          The entire site (text, graphics, logos, icons, sounds, software) is the exclusive property of SmartAnalyst, except for trademarks, logos or content belonging to other partner companies or authors.
+        </p>
+        <p>
+          Any reproduction, representation, modification, publication, total or partial adaptation of the site's elements, by any means or process, is prohibited without prior written authorisation.
+        </p>
+      </article>
+
+      <article>
+        <h2>4. Personal data</h2>
+        <p>
+          For everything related to the collection and processing of personal data, see our <a href="/en/legal/privacy">privacy policy</a>.
+        </p>
+        <p>
+          Data Protection Officer (DPO) / GDPR contact: <a href="mailto:privacy@smartanalyst.io">privacy@smartanalyst.io</a>.
+        </p>
+      </article>
+
+      <article>
+        <h2>5. Consumer mediation</h2>
+        <p>
+          Under article L.612-1 of the French Consumer Code, in the event of a dispute that remains unresolved after a written complaint, the consumer may contact a French consumer mediation service free of charge. The service is to be specified in the final version.
+        </p>
+        <p>
+          Consumers may also use the European online dispute resolution platform (<a href="https://ec.europa.eu/consumers/odr" rel="nofollow noopener" target="_blank">ec.europa.eu/consumers/odr</a>).
+        </p>
+      </article>
+
+      <article>
+        <h2>6. Governing law</h2>
+        <p>
+          This site and these legal notices are governed by French law. In the event of a dispute, and after attempting to reach an amicable solution, the French courts will have exclusive jurisdiction.
+        </p>
+      </article>
+
+      <article>
+        <h2>7. Contact</h2>
+        <p>
+          For any question regarding this legal notice, contact us at <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a>.
+        </p>
+      </article>
+    </div>
+  </section>
+</DarkBase>
+
+<style>
+  .page-hero h1 { font-size: 56px; line-height: 1.05; }
+  .page-hero .eyebrow {
+    font-family: var(--ff-m); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 18px;
+  }
+  .page-hero .lead { font-size: 17px; max-width: 620px; margin: 18px auto 16px; color: var(--text-2); }
+  .page-hero .meta { font-family: var(--ff-m); font-size: 12px; color: var(--text-3); }
+  .legal-draft-banner {
+    background: rgba(255,200,0,0.08); border: 1px solid rgba(255,200,0,0.3);
+    border-radius: 8px; padding: 12px 16px; margin: 0 auto 28px; max-width: 680px;
+    color: var(--text-2); font-size: 13px; line-height: 1.6;
+  }
+  .page-section.legal { padding: 60px 0 120px; }
+  .page-section.legal .container { max-width: 760px; }
+  .page-section.legal article { margin-bottom: 48px; }
+  .page-section.legal h2 {
+    font-family: var(--ff-h); font-size: 22px; font-weight: 700; margin: 0 0 16px; color: var(--text-1);
+  }
+  .page-section.legal p { font-size: 15px; line-height: 1.7; color: var(--text-2); margin: 0 0 14px; }
+  .page-section.legal ul { list-style: disc; padding-left: 22px; margin: 0 0 14px; }
+  .page-section.legal li { font-size: 15px; line-height: 1.7; color: var(--text-2); margin-bottom: 6px; }
+  .page-section.legal a { color: var(--cyan); text-decoration: underline; text-underline-offset: 2px; }
+  .page-section.legal code {
+    font-family: var(--ff-m); font-size: 13px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--text-1);
+  }
+</style>
