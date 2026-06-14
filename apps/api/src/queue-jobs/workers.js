@@ -15,6 +15,7 @@ const insightsHandler = require('./handlers/insights.handler')
 const reportsHandler = require('./handlers/reports.handler')
 const alertsHandler = require('./handlers/alerts.handler')
 const oauthRefreshHandler = require('./handlers/oauth-refresh.handler')
+const digestHandler = require('./handlers/digest.handler')
 
 const workerInstances = []
 
@@ -146,6 +147,14 @@ function start() {
       return oauthRefreshHandler.refreshOne(job)
     }
     throw new Error(`Unknown job in oauth-refresh queue: ${job.name}`)
+  })
+
+  // ━━━ notifications (brief V2 §3.3) — résumé hebdomadaire ━━━
+  wireWorker(QUEUE_NAMES.NOTIFICATIONS, async (job) => {
+    if (job.name === JOB_NAMES.WEEKLY_DIGEST_SCAN) {
+      return digestHandler.weeklyDigestScan()
+    }
+    throw new Error(`Unknown job in notifications queue: ${job.name}`)
   })
 
   logger.info({ event: 'workers_started', count: workerInstances.length }, 'Workers ready')

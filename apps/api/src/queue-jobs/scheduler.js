@@ -33,15 +33,25 @@ const SCHEDULES = [
     pattern: '15 */4 * * *', // toutes les 4h UTC, décalé de 15min pour étaler la charge
     description: 'OAuth token refresh — scan connectors expiring soon',
   },
+  {
+    queueName: QUEUE_NAMES.NOTIFICATIONS,
+    jobName: JOB_NAMES.WEEKLY_DIGEST_SCAN,
+    pattern: '0 8 * * 1', // lundi 8h UTC (brief V2 §3.3 "résumé du lundi matin")
+    description: 'Weekly digest email — fan-out across all workspaces',
+  },
 ]
 
 async function start() {
   for (const sched of SCHEDULES) {
     const queue = getQueue(sched.queueName)
-    await queue.add(sched.jobName, {}, {
-      repeat: { pattern: sched.pattern, tz: 'UTC' },
-      jobId: `repeat:${sched.queueName}:${sched.jobName}`, // déduplique entre redémarrages
-    })
+    await queue.add(
+      sched.jobName,
+      {},
+      {
+        repeat: { pattern: sched.pattern, tz: 'UTC' },
+        jobId: `repeat:${sched.queueName}:${sched.jobName}`, // déduplique entre redémarrages
+      },
+    )
     logger.info(
       {
         event: 'scheduler_registered',
