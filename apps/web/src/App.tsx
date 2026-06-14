@@ -8,7 +8,6 @@ import BetaLocked from './pages/BetaLocked'
 import BriefHome from './pages/BriefHome'
 import Chat from './pages/Chat'
 import Connectors from './pages/Connectors'
-import Dashboard from './pages/Dashboard'
 import Live from './pages/Live'
 import Login from './pages/Login'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
@@ -38,14 +37,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route
         path="/connectors"
         element={
