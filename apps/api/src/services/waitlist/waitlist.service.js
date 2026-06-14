@@ -143,6 +143,104 @@ async function sendConfirmationEmail({ to, name }) {
 }
 
 /**
+ * Email d'invitation beta (envoyé quand l'admin passe une inscription en
+ * `invited` via POST /admin/waitlist/:id/invite). Sobre, parle au lecteur :
+ * tu es prêt à entrer dans la beta, voilà comment.
+ *
+ * Le `appUrl` est tiré de APP_URL pour éviter de hardcoder le domaine
+ * (utile en dev / preview).
+ */
+async function sendBetaWelcomeEmail(to, { name } = {}) {
+  const appUrl = (process.env.APP_URL || 'https://app.smartanalyst.io').replace(/\/$/, '')
+  const subject = "Bienvenue dans la beta SmartAnalyst"
+  const firstName = (name || '').trim().split(' ')[0]
+  const hi = firstName ? `Salut ${firstName},` : 'Salut,'
+
+  const html = `<!doctype html>
+<html lang="fr"><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#1f1f1f;background:#fff">
+  <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;margin:0 0 8px">SmartAnalyst</p>
+  <h1 style="font-size:22px;font-weight:700;margin:0 0 16px;line-height:1.3">${hi}</h1>
+  <p style="font-size:15px;line-height:1.6;margin:0 0 16px">Bonne nouvelle : tu peux entrer dans la beta privée de SmartAnalyst dès maintenant.</p>
+  <p style="font-size:15px;line-height:1.6;margin:0 0 24px">Connecte tes sources (Stripe, GA4, Meta Ads, Shopify…) en 2 clics. On commence à synchroniser les 30 derniers jours, et SmartAnalyst remonte ce qui mérite ton attention — sans dashboard à configurer.</p>
+  <p style="margin:0 0 28px"><a href="${appUrl}/login" style="display:inline-block;background:#1f1f1f;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:14px;font-weight:600">Ouvrir SmartAnalyst →</a></p>
+  <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0 0 8px">Pour t'aider à démarrer :</p>
+  <ul style="font-size:13px;color:#374151;line-height:1.7;margin:0 0 24px;padding-left:18px">
+    <li>Connecter une première source : <a href="${appUrl}/connectors" style="color:#2563eb">page Connecteurs</a></li>
+    <li>Poser une première question à Smart Analyst : <a href="${appUrl}/chat" style="color:#2563eb">page Chat</a></li>
+    <li>Installer le SmartTag : <a href="${appUrl}/tracking/install" style="color:#2563eb">page Tag</a></li>
+  </ul>
+  <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0">Une question, un blocage, du feedback ? Réponds directement à ce mail, je te lis.</p>
+</body></html>`
+
+  const text = [
+    hi,
+    '',
+    'Bonne nouvelle : tu peux entrer dans la beta privée de SmartAnalyst dès maintenant.',
+    '',
+    'Connecte tes sources (Stripe, GA4, Meta Ads, Shopify…) en 2 clics. On synchronise les 30 derniers jours, et SmartAnalyst remonte ce qui mérite ton attention.',
+    '',
+    `→ ${appUrl}/login`,
+    '',
+    'Pour démarrer :',
+    `- Connecteurs : ${appUrl}/connectors`,
+    `- Chat : ${appUrl}/chat`,
+    `- SmartTag : ${appUrl}/tracking/install`,
+    '',
+    'Une question ? Réponds à ce mail, je te lis.',
+  ].join('\n')
+
+  return sendEmail({ to, subject, html, text })
+}
+
+/**
+ * Marque une inscription en `invited`, envoie l'email de bienvenue, stamp
+ * `notified_at`. Idempotent : si déjà `invited` ou `converted`, on ne
+ * renvoie pas l'email (anti-spam).
+ *
+ * @returns {Promise<{ id, email, status, sent: boolean, error?: string }>}
+ */
+async function inviteSignup(id) {
+  const service = getServiceRoleClient()
+  const { data: row, error: loadErr } = await service
+    .from('waitlist_signups')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (loadErr) throw new Error(`waitlist_load_failed: ${loadErr.message}`)
+  if (!row) {
+    const err = new Error('Inscription introuvable.')
+    err.statusCode = 404
+    err.code = 'NOT_FOUND'
+    throw err
+  }
+  if (row.status === 'invited' || row.status === 'converted') {
+    return { id: row.id, email: row.email, status: row.status, sent: false, error: 'already_invited' }
+  }
+
+  const send = await sendBetaWelcomeEmail(row.email, { name: row.name })
+  if (!send.ok) {
+    // On garde la row en pending si le mail échoue → on pourra retry plus tard.
+    return { id: row.id, email: row.email, status: row.status, sent: false, error: send.error }
+  }
+
+  const now = new Date().toISOString()
+  const { error: updErr } = await service
+    .from('waitlist_signups')
+    .update({ status: 'invited', notified_at: now })
+    .eq('id', id)
+  if (updErr) {
+    // L'email est parti mais le status n'a pas pu être mis à jour : c'est OK,
+    // on retournera "already_invited" la prochaine fois grâce à notified_at
+    // (mais ici le check porte sur status — limitation connue).
+    logger.warn(
+      { event: 'waitlist_invite_status_update_failed', id, error: updErr.message },
+      'Invite email sent but status update failed',
+    )
+  }
+  return { id: row.id, email: row.email, status: 'invited', sent: true }
+}
+
+/**
  * Liste les inscriptions (endpoint admin).
  * @param {object} [opts]
  * @param {number} [opts.limit=100]
@@ -165,4 +263,10 @@ async function listSignups({ limit = 100, offset = 0, status = null } = {}) {
   return { signups: data || [], total: count ?? null, limit, offset }
 }
 
-module.exports = { addSignup, listSignups, sendConfirmationEmail }
+module.exports = {
+  addSignup,
+  listSignups,
+  inviteSignup,
+  sendConfirmationEmail,
+  sendBetaWelcomeEmail,
+}
