@@ -38,6 +38,8 @@ const JOB_NAMES = {
   OAUTH_REFRESH_ONE: 'refresh-token',
   // notifications (brief V2 §3.3)
   WEEKLY_DIGEST_SCAN: 'weekly-digest-scan',
+  // watches custom (brief V2 §3.3 — évaluation horaire)
+  WATCHES_EVAL_SCAN: 'watches-eval-scan',
 }
 
 // Defaults appliqués à TOUS les jobs (idempotent par job grâce à jobId stable)
