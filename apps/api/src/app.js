@@ -75,7 +75,9 @@ function createApp() {
     'https://app.smartanalyst.io',
   ]
   const configuredOrigins = process.env.CORS_ALLOWED_ORIGINS
-    ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+    ? process.env.CORS_ALLOWED_ORIGINS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : process.env.APP_URL
       ? [process.env.APP_URL]
       : null
@@ -84,7 +86,9 @@ function createApp() {
       ? isProduction
         ? KNOWN_PRODUCTION_ORIGINS
         : null
-      : Array.from(new Set([...configuredOrigins, ...(isProduction ? KNOWN_PRODUCTION_ORIGINS : [])]))
+      : Array.from(
+          new Set([...configuredOrigins, ...(isProduction ? KNOWN_PRODUCTION_ORIGINS : [])]),
+        )
   app.use(
     cors({
       origin: corsOrigins ?? true,
@@ -146,6 +150,8 @@ function createApp() {
   // (uBlock matche agressivement les paths /metrics/*). Voir dashboard.routes.js.
   app.use('/api/v1/dashboard', require('./routes/dashboard.routes'))
   app.use('/api/v1/chat', require('./routes/chat.routes'))
+  // Score de santé 0-100 (brief V2 §3.1)
+  app.use('/api/v1/health-score', require('./routes/health-score.routes'))
   // Insight Engine : brief du jour (insights + action_cards)
   app.use('/api/v1/insights', require('./routes/insights.routes'))
   // Beta waitlist (publique, rate-limit strict — cf waitlist.routes.js)
