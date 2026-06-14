@@ -107,7 +107,7 @@ function SegBtn({
       type="button"
       onClick={onClick}
       className={[
-        'rounded-[8px] px-4.5 py-2 text-[13px] font-semibold transition-all',
+        'rounded-[8px] px-4 py-2 text-[13px] font-semibold transition-all',
         active ? 'bg-card text-text-1 shadow-card' : 'bg-transparent text-text-2 hover:text-text-1',
       ].join(' ')}
     >
@@ -136,6 +136,11 @@ function ConnectorsTab({ wsId }: { wsId: string }) {
 
   const mine = myQ.data?.connectors ?? []
   const catalog = catalogQ.data?.catalog ?? []
+
+  // Index source → icon_url pour pouvoir afficher les vrais logos sur les
+  // ConnectorCard (l'endpoint /connectors ne renvoie pas l'icône, seul le
+  // catalogue l'a).
+  const iconBySource = new Map(catalog.map((p) => [p.source, p.icon_url]))
 
   // Compteurs
   const active = mine.filter((c) => c.status === 'active').length
@@ -183,7 +188,7 @@ function ConnectorsTab({ wsId }: { wsId: string }) {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {mine.map((c) => (
-            <ConnectorCard key={c.id} c={c} />
+            <ConnectorCard key={c.id} c={c} iconUrl={iconBySource.get(c.source) ?? null} />
           ))}
         </div>
       )}
@@ -199,7 +204,7 @@ function ConnectorsTab({ wsId }: { wsId: string }) {
                 onClick={() => navigate('/connectors')}
                 className="flex items-center gap-3 rounded-[12px] border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-border-bright hover:shadow-card"
               >
-                <ConnectorLogo source={s.source} size={32} radius={9} />
+                <ConnectorLogo source={s.source} iconUrl={s.icon_url} size={32} radius={9} />
                 <span className="flex-1 truncate text-[13px] font-medium text-text-1">
                   {s.name}
                 </span>
@@ -213,7 +218,7 @@ function ConnectorsTab({ wsId }: { wsId: string }) {
   )
 }
 
-function ConnectorCard({ c }: { c: WorkspaceConnector }) {
+function ConnectorCard({ c, iconUrl }: { c: WorkspaceConnector; iconUrl: string | null }) {
   const t = useT()
   const { locale } = useLocale()
   const navigate = useNavigate()
@@ -230,7 +235,7 @@ function ConnectorCard({ c }: { c: WorkspaceConnector }) {
         expired ? 'border-brand-amber/40' : 'border-border',
       ].join(' ')}
     >
-      <ConnectorLogo source={c.source} size={44} />
+      <ConnectorLogo source={c.source} iconUrl={iconUrl} size={44} />
       <div className="min-w-0 flex-1">
         <div className="text-[14.5px] font-semibold text-text-1">{providerName}</div>
         <div className="mb-1.5 truncate text-[12px] text-text-3">{c.account_name ?? '—'}</div>
