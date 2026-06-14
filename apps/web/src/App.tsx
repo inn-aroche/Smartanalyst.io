@@ -13,6 +13,7 @@ import Login from './pages/Login'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import ResetPasswordRequest from './pages/ResetPasswordRequest'
 import Settings from './pages/Settings'
+import Tasks from './pages/Tasks'
 import Signup from './pages/Signup'
 import TrackingInstall from './pages/TrackingInstall'
 
@@ -63,6 +64,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Audit />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tasks"
+        element={
+          <ProtectedRoute>
+            <Tasks />
           </ProtectedRoute>
         }
       />

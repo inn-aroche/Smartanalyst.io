@@ -23,6 +23,7 @@ const en = {
   'nav.closeMenu': 'Close menu',
   'nav.connectors': 'Connectors',
   'nav.chat': 'Chat',
+  'nav.tasks': 'Tasks',
 
   // ━━━ Chat ━━━
   'chat.kicker': 'Ask SmartAnalyst',
@@ -216,6 +217,33 @@ const en = {
   'home.brief.priority': 'Priority',
   'home.brief.task.validate': 'Validate',
   'home.brief.task.archive': 'Archive',
+
+  // ━━━ Tasks page ━━━
+  'tasks.kicker': 'Tasks',
+  'tasks.title': 'What needs to be done.',
+  'tasks.subtitle': 'Curate what the AI suggests, work on what you committed to, archive the rest.',
+  'tasks.loadError': 'Could not load tasks.',
+  'tasks.col.inbox': 'Inbox (to curate)',
+  'tasks.col.today': 'Today',
+  'tasks.col.done': 'Done',
+  'tasks.empty.inbox': 'No new suggestions.',
+  'tasks.empty.today': 'Nothing on your list.',
+  'tasks.empty.done': 'Nothing done yet.',
+  'tasks.emptyAll.body': 'No tasks yet. The AI will surface them as it analyses your data.',
+  'tasks.emptyAll.cta': 'Connect a source',
+  'tasks.action.validate': 'Validate',
+  'tasks.action.archive': 'Archive',
+  'tasks.action.markDone': 'Mark done',
+  'tasks.action.reopen': 'Reopen',
+  'tasks.action.emailBrief': 'Email brief',
+  'tasks.emailModal.title': 'Send as brief',
+  'tasks.emailModal.recipient': 'Recipient email',
+  'tasks.emailModal.note': 'Personal note (optional)',
+  'tasks.emailModal.notePlaceholder': 'Anything you want to add for the recipient.',
+  'tasks.emailModal.cancel': 'Cancel',
+  'tasks.emailModal.send': 'Send',
+  'tasks.emailModal.sending': 'Sending…',
+  'tasks.emailModal.sent': 'Sent ✓',
 
   // ━━━ Onboarding checklist ━━━
   'onboarding.kicker': 'Getting started',
@@ -536,6 +564,7 @@ const fr: Record<keyof typeof en, string> = {
   'nav.closeMenu': 'Fermer le menu',
   'nav.connectors': 'Connecteurs',
   'nav.chat': 'Chat',
+  'nav.tasks': 'Tâches',
 
   // ━━━ Chat ━━━
   'chat.kicker': 'Demande à SmartAnalyst',
@@ -732,6 +761,33 @@ const fr: Record<keyof typeof en, string> = {
   'home.brief.priority': 'Priorité',
   'home.brief.task.validate': 'Valider',
   'home.brief.task.archive': 'Écarter',
+
+  // ━━━ Page Tâches ━━━
+  'tasks.kicker': 'Tâches',
+  'tasks.title': 'Ce qu’il y a à faire.',
+  'tasks.subtitle': 'Cure ce que l’IA propose, traite ce que tu as validé, archive le reste.',
+  'tasks.loadError': 'Impossible de charger les tâches.',
+  'tasks.col.inbox': 'À curer',
+  'tasks.col.today': 'Aujourd’hui',
+  'tasks.col.done': 'Faites',
+  'tasks.empty.inbox': 'Aucune nouvelle suggestion.',
+  'tasks.empty.today': 'Rien dans ta liste.',
+  'tasks.empty.done': 'Rien de fait pour l’instant.',
+  'tasks.emptyAll.body': 'Pas encore de tâches. L’IA les fera remonter en analysant tes données.',
+  'tasks.emptyAll.cta': 'Connecter une source',
+  'tasks.action.validate': 'Valider',
+  'tasks.action.archive': 'Archiver',
+  'tasks.action.markDone': 'Marquer faite',
+  'tasks.action.reopen': 'Rouvrir',
+  'tasks.action.emailBrief': 'Envoyer en brief',
+  'tasks.emailModal.title': 'Envoyer comme brief',
+  'tasks.emailModal.recipient': 'Email du destinataire',
+  'tasks.emailModal.note': 'Note perso (optionnel)',
+  'tasks.emailModal.notePlaceholder': 'Un mot pour le destinataire.',
+  'tasks.emailModal.cancel': 'Annuler',
+  'tasks.emailModal.send': 'Envoyer',
+  'tasks.emailModal.sending': 'Envoi…',
+  'tasks.emailModal.sent': 'Envoyé ✓',
 
   // ━━━ Onboarding checklist ━━━
   'onboarding.kicker': 'Premiers pas',
