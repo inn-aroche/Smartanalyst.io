@@ -6,6 +6,7 @@ const { generateOnce } = require('./gemini.service')
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
+const filesService = require('../files/files.service')
 
 const SYSTEM_PROMPT_FR = `Tu es SmartAnalyst, un analyste marketing IA pour PME et agences.
 Tu réponds en français, de manière structurée et concise.
@@ -130,17 +131,19 @@ function summarize(rows, locale) {
       kind = 'snapshot'
       value = Number(entries[0].metric_value)
       dateRef = entries[0].date
-      suffix = locale === 'en'
-        ? `(snapshot ${dateRef}, ${sourcesStr})`
-        : `(snapshot ${dateRef}, ${sourcesStr})`
+      suffix =
+        locale === 'en'
+          ? `(snapshot ${dateRef}, ${sourcesStr})`
+          : `(snapshot ${dateRef}, ${sourcesStr})`
     } else {
       kind = 'sum'
       value = entries.reduce((s, e) => s + Number(e.metric_value), 0)
       dateRef = `${entries[entries.length - 1].date}→${entries[0].date}`
       const span = entries.length === 1 ? '1d' : `${entries.length}d`
-      suffix = locale === 'en'
-        ? `(sum last ${span}, ${sourcesStr})`
-        : `(somme ${span} glissants, ${sourcesStr})`
+      suffix =
+        locale === 'en'
+          ? `(sum last ${span}, ${sourcesStr})`
+          : `(somme ${span} glissants, ${sourcesStr})`
     }
 
     citationId++
@@ -221,18 +224,45 @@ async function buildMetricsContext(workspaceId, locale) {
  * @param {string} [params.locale='fr']
  * @returns {Promise<{ answer: string, model: string }>}
  */
-async function ask({ userId, workspaceId, message, locale = 'fr' }) {
+async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }) {
   const basePrompt = pickSystemPrompt(locale)
+
+  // Multimodal (brief V2 §3.2) : résout les fichiers de la librairie référencés
+  // en pièces jointes inline pour Gemini. Best-effort : un fichier illisible
+  // est ignoré, pas bloquant.
+  const attachments = []
+  if (Array.isArray(fileIds) && fileIds.length > 0 && workspaceId) {
+    for (const fileId of fileIds.slice(0, 4)) {
+      try {
+        const content = await filesService.getFileContent(workspaceId, fileId)
+        attachments.push({ mimeType: content.mimeType, data: content.base64 })
+      } catch (err) {
+        logger.warn(
+          { event: 'chat_attachment_load_failed', workspaceId, fileId, error: err.message },
+          'Could not load chat attachment',
+        )
+      }
+    }
+  }
+
   const metricsContext = await buildMetricsContext(workspaceId, locale)
-  const systemPrompt = metricsContext
-    ? `${basePrompt}\n\n${metricsContext.contextStr}`
-    : basePrompt
+  let systemPrompt = metricsContext ? `${basePrompt}\n\n${metricsContext.contextStr}` : basePrompt
+
+  // Multimodal (brief V2 §3.2) : si des pièces jointes accompagnent le message,
+  // on indique au modèle qu'il doit aussi les analyser.
+  if (attachments.length > 0) {
+    systemPrompt +=
+      locale === 'en'
+        ? `\n\nThe user attached ${attachments.length} file(s). Analyse them alongside the connected data. Cite the file (e.g. "Source: your file") when you use it.`
+        : `\n\nL'utilisateur a joint ${attachments.length} fichier(s). Analyse-les en plus des données connectées. Cite le fichier (ex : « Source : ton fichier ») quand tu t'en sers.`
+  }
 
   const t0 = Date.now()
   const { text, modelName } = await generateOnce({
     systemPrompt,
     userMessage: message,
     temperature: 0.4,
+    attachments,
   })
   const durationMs = Date.now() - t0
 

@@ -39,6 +39,9 @@ router.post(
       .withMessage('Le message doit faire entre 1 et 2000 caractères.'),
     body('workspaceId').optional().isUUID().withMessage('workspaceId invalide.'),
     body('locale').optional().isIn(['fr', 'en']).withMessage('locale doit être fr ou en.'),
+    // Multimodal (brief V2 §3.2) : référence des fichiers de la librairie.
+    body('fileIds').optional().isArray({ max: 4 }).withMessage('fileIds: 4 max.'),
+    body('fileIds.*').optional().isUUID().withMessage('fileId invalide.'),
   ],
   runValidation,
   async (req, res, next) => {
@@ -48,6 +51,7 @@ router.post(
         workspaceId: req.body.workspaceId,
         message: req.body.message,
         locale: req.body.locale || 'fr',
+        fileIds: req.body.fileIds || [],
       })
       res.json(result)
     } catch (err) {

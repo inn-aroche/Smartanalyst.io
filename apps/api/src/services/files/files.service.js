@@ -144,6 +144,26 @@ async function createDownloadUrl(workspaceId, fileId) {
   return { filename: file.filename, mimeType: file.mime_type, signedUrl: data.signedUrl }
 }
 
+/**
+ * Télécharge le contenu d'un fichier et le renvoie en base64 (pour injection
+ * multimodale dans le chat). Limité aux types exploitables par le LLM.
+ * @returns {Promise<{ filename, mimeType, base64 }>}
+ */
+async function getFileContent(workspaceId, fileId) {
+  const file = await getFile(workspaceId, fileId)
+  const supabase = getServiceRoleClient()
+  const { data, error } = await supabase.storage.from(BUCKET).download(file.storage_path)
+  if (error || !data) {
+    throw new UserFacingError('Impossible de lire le fichier.', {
+      statusCode: 502,
+      code: 'FILE_DOWNLOAD_FAILED',
+    })
+  }
+  // data est un Blob (Node 20). On convertit en Buffer puis base64.
+  const buf = Buffer.from(await data.arrayBuffer())
+  return { filename: file.filename, mimeType: file.mime_type, base64: buf.toString('base64') }
+}
+
 async function deleteFile(workspaceId, fileId) {
   const file = await getFile(workspaceId, fileId)
   const supabase = getServiceRoleClient()
@@ -169,6 +189,7 @@ module.exports = {
   finalizeUpload,
   listFiles,
   getFile,
+  getFileContent,
   createDownloadUrl,
   deleteFile,
   sanitizeFilename,

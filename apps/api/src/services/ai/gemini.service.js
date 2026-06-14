@@ -45,12 +45,22 @@ function getModel(name) {
  * @param {number} [params.temperature=0.4]
  * @returns {Promise<{ text: string, modelName: string }>}
  */
-async function generateOnce({ systemPrompt, userMessage, temperature = 0.4 }) {
+async function generateOnce({ systemPrompt, userMessage, temperature = 0.4, attachments = [] }) {
   const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL
   const model = getModel(modelName)
+
+  // Multimodal (brief V2 §3.2) : les pièces jointes deviennent des `inlineData`
+  // parts (base64 + mimeType). Gemini 2.5 Flash accepte images + PDF nativement.
+  const parts = [{ text: userMessage }]
+  for (const att of attachments) {
+    if (att && att.data && att.mimeType) {
+      parts.push({ inlineData: { mimeType: att.mimeType, data: att.data } })
+    }
+  }
+
   const result = await model.generateContent({
     systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
-    contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    contents: [{ role: 'user', parts }],
     generationConfig: {
       temperature,
       maxOutputTokens: 1500,
