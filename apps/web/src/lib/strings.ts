@@ -337,6 +337,7 @@ const en = {
   'settings.section.security': 'Security',
   'settings.section.session': 'Session',
   'settings.section.language': 'Language',
+  'settings.section.data': 'Your data',
   'settings.section.dangerZone': 'Danger zone',
   'settings.field.fullName': 'Full name',
   'settings.field.userId': 'User ID',
@@ -349,10 +350,17 @@ const en = {
   'settings.password.button': 'Reset password',
   'settings.signOut.title': 'Sign out everywhere',
   'settings.signOut.body': 'End this session and invalidate the refresh token.',
-  'settings.delete.title': 'Delete workspace',
+  'settings.export.title': 'Download your data',
+  'settings.export.body':
+    'Get a JSON export of everything we have about you (workspaces, connectors, metrics, audit logs).',
+  'settings.export.button': 'Download',
+  'settings.export.busy': 'Preparing…',
+  'settings.delete.title': 'Delete my account',
   'settings.delete.body':
-    'Permanently remove this workspace and all its data. This can’t be undone.',
-  'settings.delete.button': 'Delete',
+    'Permanently remove your account and the workspaces you own alone. Audit logs are kept anonymized (legal retention). This can’t be undone.',
+  'settings.delete.confirmHint': 'Type DELETE MY ACCOUNT to enable the button.',
+  'settings.delete.button': 'Delete account',
+  'settings.delete.busy': 'Deleting…',
   'settings.language.body':
     'Change the language of the interface. Your choice is saved on this device.',
   'settings.section.tracking': 'Tracking — SmartTag',
@@ -838,6 +846,7 @@ const fr: Record<keyof typeof en, string> = {
   'settings.section.security': 'Sécurité',
   'settings.section.session': 'Session',
   'settings.section.language': 'Langue',
+  'settings.section.data': 'Tes données',
   'settings.section.dangerZone': 'Zone dangereuse',
   'settings.field.fullName': 'Nom complet',
   'settings.field.userId': 'ID utilisateur',
@@ -851,10 +860,17 @@ const fr: Record<keyof typeof en, string> = {
   'settings.signOut.title': 'Se déconnecter partout',
   'settings.signOut.body':
     'Termine cette session et invalide le refresh token.',
-  'settings.delete.title': 'Supprimer l’espace',
+  'settings.export.title': 'Télécharger tes données',
+  'settings.export.body':
+    'Récupère un export JSON de tout ce qu’on a sur toi (workspaces, connecteurs, métriques, audit logs).',
+  'settings.export.button': 'Télécharger',
+  'settings.export.busy': 'Préparation…',
+  'settings.delete.title': 'Supprimer mon compte',
   'settings.delete.body':
-    'Supprime définitivement cet espace et toutes ses données. Action irréversible.',
-  'settings.delete.button': 'Supprimer',
+    'Supprime définitivement ton compte et les workspaces dont tu es seul·e membre. Les audit logs sont conservés anonymisés (rétention légale). Action irréversible.',
+  'settings.delete.confirmHint': 'Saisis DELETE MY ACCOUNT pour activer le bouton.',
+  'settings.delete.button': 'Supprimer le compte',
+  'settings.delete.busy': 'Suppression…',
   'settings.language.body':
     'Change la langue de l’interface. Ton choix est gardé sur cet appareil.',
   'settings.section.tracking': 'Tracking — SmartTag',
