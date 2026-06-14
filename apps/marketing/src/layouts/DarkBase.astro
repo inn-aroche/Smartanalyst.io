@@ -6,7 +6,7 @@ import ConsentBanner from '../components/ConsentBanner.astro';
 import BetaBanner from '../components/BetaBanner.astro';
 import { STRINGS, switchLocalePath } from '../i18n/strings.js';
 
-const { title, description, locale = 'en', jsonLd = [] } = Astro.props;
+const { title, description, locale = 'en', jsonLd = [], ogImage: ogImageProp } = Astro.props;
 const siteName = 'SmartAnalyst';
 const fullTitle = title === 'home'
   ? (locale === 'fr'
@@ -19,7 +19,9 @@ const altPath = switchLocalePath(Astro.url.pathname, altLocale);
 const siteUrl = Astro.site || 'https://smartanalyst.io';
 const canonical = new URL(Astro.url.pathname, siteUrl).href;
 const altHref = new URL(altPath, siteUrl).href;
-const ogImage = new URL('/og-image.svg', siteUrl).href;
+// Open Graph image : ogImage prop par page > /og/<slug>.svg si présent > /og-image.svg
+// Les images per-page sont générées par scripts/generate-og-images.mjs.
+const ogImage = new URL(ogImageProp || '/og-image.svg', siteUrl).href;
 
 // Org + WebSite JSON-LD shipped on every page. SoftwareApplication, FAQPage
 // and any page-specific entries come through the `jsonLd` prop.

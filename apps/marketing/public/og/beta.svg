@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#07070F"/>
+      <stop offset="1" stop-color="#0D0C1B"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5C8FFF"/>
+      <stop offset="1" stop-color="#2DD9EE"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.25" r="0.6">
+      <stop offset="0" stop-color="#5C8FFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#5C8FFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <g stroke="rgba(255,255,255,0.022)" stroke-width="1">
+    <path d="M0 90 H1200 M0 180 H1200 M0 270 H1200 M0 360 H1200 M0 450 H1200 M0 540 H1200"/>
+    <path d="M120 0 V630 M240 0 V630 M360 0 V630 M480 0 V630 M600 0 V630 M720 0 V630 M840 0 V630 M960 0 V630 M1080 0 V630"/>
+  </g>
+
+  <g transform="translate(80,72)">
+    <g transform="scale(0.875)">
+      <rect x="8" y="40" width="11" height="16" rx="3" fill="#5C8FFF" opacity="0.45"/>
+      <rect x="22.5" y="26" width="11" height="30" rx="3" fill="url(#brand)" opacity="0.78"/>
+      <rect x="37" y="12" width="11" height="44" rx="3" fill="url(#brand)"/>
+      <circle cx="42.5" cy="8" r="5" fill="#2DD9EE"/>
+    </g>
+    <text x="76" y="40" font-family="Plus Jakarta Sans, DM Sans, system-ui, sans-serif" font-size="30" font-weight="700" letter-spacing="-0.6" fill="#EEEDF2">SmartAnalyst</text>
+  </g>
+
+  <text x="80" y="290" font-family="Plus Jakarta Sans, DM Sans, system-ui, sans-serif" font-size="76" font-weight="800" fill="#EEEDF2" letter-spacing="-2.6">
+    Private beta.
+  </text>
+  <text x="80" y="380" font-family="Plus Jakarta Sans, DM Sans, system-ui, sans-serif" font-size="76" font-weight="800" fill="url(#brand)" letter-spacing="-2.6">
+    Join the waitlist.
+  </text>
+
+  <text x="80" y="460" font-family="DM Sans, system-ui, sans-serif" font-size="26" fill="#8A8AAE">
+    A handful of marketers, carefully picked.
+  </text>
+  <text x="80" y="498" font-family="DM Sans, system-ui, sans-serif" font-size="26" fill="#8A8AAE">
+    We onboard you one by one.
+  </text>
+
+  <g transform="translate(80,560)">
+    <text x="0" y="22" font-family="DM Mono, ui-monospace, monospace" font-size="18" fill="#46465E">smartanalyst.io</text>
+  </g>
+</svg>
