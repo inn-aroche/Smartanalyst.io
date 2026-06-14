@@ -94,6 +94,9 @@ async function storeInsight(workspaceId, insight, rawModelOutput) {
   }
 
   const insightId = inserted.id
+  // Brief V2 §3.4 : les recommandations naissent en `proposed`. L'user les
+  // valide (→ todo) ou les archive. Évite la liste "à faire" qui se remplit
+  // toute seule en déversoir.
   const actionRows = insight.recommended_actions.map((a) => ({
     workspace_id: workspaceId,
     insight_id: insightId,
@@ -103,6 +106,7 @@ async function storeInsight(workspaceId, insight, rawModelOutput) {
     impact: a.impact,
     effort: a.effort,
     confidence: a.confidence,
+    status: 'proposed',
     expected_impact: a.expected_impact,
     follow_up_check: a.follow_up_check,
   }))
@@ -149,7 +153,12 @@ async function generateForWorkspace(workspaceId) {
       return { generated: 0, dropped: 0, skipped: true }
     }
     logger.error(
-      { event: 'insight_engine_generation_failed', workspaceId, error: err.message, code: err.code },
+      {
+        event: 'insight_engine_generation_failed',
+        workspaceId,
+        error: err.message,
+        code: err.code,
+      },
       'Insight engine generation failed',
     )
     throw err

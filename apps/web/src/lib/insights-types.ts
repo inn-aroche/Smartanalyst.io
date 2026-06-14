@@ -9,7 +9,10 @@ export type Confidence = 'low' | 'medium' | 'high'
 export type Impact = 'low' | 'medium' | 'high'
 export type Effort = 'low' | 'medium' | 'high'
 export type InsightStatus = 'open' | 'snoozed' | 'resolved' | 'dismissed'
-export type ActionStatus = 'todo' | 'in_progress' | 'done' | 'dismissed'
+// Cycle de vie tâches (brief V2 §3.4) :
+//   proposed (IA suggère) → todo (user valide) → done | archived
+//   proposed → archived direct (écartée sans validation)
+export type ActionStatus = 'proposed' | 'todo' | 'in_progress' | 'done' | 'archived'
 
 export type InsightEvidence = {
   label: string

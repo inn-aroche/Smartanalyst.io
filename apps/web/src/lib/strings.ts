@@ -214,6 +214,8 @@ const en = {
   'home.brief.impact': 'Impact',
   'home.brief.effort': 'Effort',
   'home.brief.priority': 'Priority',
+  'home.brief.task.validate': 'Validate',
+  'home.brief.task.archive': 'Archive',
 
   // ━━━ Onboarding checklist ━━━
   'onboarding.kicker': 'Getting started',
@@ -728,6 +730,8 @@ const fr: Record<keyof typeof en, string> = {
   'home.brief.impact': 'Impact',
   'home.brief.effort': 'Effort',
   'home.brief.priority': 'Priorité',
+  'home.brief.task.validate': 'Valider',
+  'home.brief.task.archive': 'Écarter',
 
   // ━━━ Onboarding checklist ━━━
   'onboarding.kicker': 'Premiers pas',

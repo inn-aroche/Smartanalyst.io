@@ -102,13 +102,14 @@ router.patch(
   },
 )
 
-// ━━━ PATCH /insights/actions/:id — change le statut d'une action ━━━
+// ━━━ PATCH /insights/actions/:id — change le statut d'une tâche ━━━
+// Cycle (brief V2 §3.4) : proposed → todo → done | archived
 router.patch(
   '/actions/:id',
   [
     param('id').isUUID().withMessage('id UUID requis.'),
     body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
-    body('status').isIn(['todo', 'in_progress', 'done', 'dismissed']),
+    body('status').isIn(['proposed', 'todo', 'in_progress', 'done', 'archived']),
   ],
   runValidation,
   workspaceScope,
@@ -120,6 +121,41 @@ router.patch(
         req.body.status,
       )
       res.json(updated)
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ━━━ POST /insights/actions/:id/email-brief ━━━
+// Brief V2 §3.4 : envoie la tâche comme brief par email à un destinataire.
+const taskEmailService = require('../services/insights/task-email.service')
+router.post(
+  '/actions/:id/email-brief',
+  [
+    param('id').isUUID().withMessage('id UUID requis.'),
+    body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+    body('recipient').isEmail().withMessage('Destinataire email invalide.').normalizeEmail(),
+    body('note').optional().isString().isLength({ max: 600 }),
+    body('senderName').optional().isString().isLength({ max: 120 }),
+  ],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const task = await insightsService.getActionById(req.workspaceId, req.params.id)
+      const result = await taskEmailService.sendTaskBrief({
+        workspaceId: req.workspaceId,
+        userId: req.user?.id,
+        task,
+        recipient: req.body.recipient,
+        note: req.body.note,
+        senderName: req.body.senderName,
+      })
+      if (!result.ok) {
+        return res.status(502).json({ error: { code: 'EMAIL_SEND_FAILED', message: result.error } })
+      }
+      res.json({ ok: true, messageId: result.id || null })
     } catch (err) {
       next(err)
     }
