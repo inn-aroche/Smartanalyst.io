@@ -26,8 +26,8 @@ export default function Bars({
   activeIndex,
   emptyLabel = '—',
 }: Props) {
-  const { bars, ymax } = useMemo(() => {
-    if (!data || data.length === 0) return { bars: [], ymax: 0 }
+  const { bars } = useMemo(() => {
+    if (!data || data.length === 0) return { bars: [] }
     const ymax = Math.max(...data.map((d) => d.value), 1)
     const activeIdx = typeof activeIndex === 'number' ? activeIndex : data.length - 1
     return {
@@ -36,7 +36,6 @@ export default function Bars({
         h: (d.value / ymax) * 100,
         active: i === activeIdx,
       })),
-      ymax,
     }
   }, [data, activeIndex])
 
