@@ -4,22 +4,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        // SaaS app — light theme. Source: SmartAnalyst Brand Guidelines,
-        // theming section ("the app may ship light"). Semantic tokens only;
-        // brand blue stays constant across themes.
+        // SaaS app — light theme aligné App v2 (handoff Claude Design).
+        // Source: README design_handoff_app_v2 §"Design Tokens".
         bg: {
-          0: '#f2f2f7', // page
-          1: '#ffffff', // card / panel
-          2: '#f7f7fb', // raised surface (topbar, inputs)
-          3: '#eeeef4', // highest surface
+          0: '#ECECF1', // page (neutre froid, légèrement plus froid que l'ancien #f2f2f7)
+          1: '#ffffff', // card
+          2: '#F5F5F9', // surf (surface secondaire — sidebar, inputs, zones)
+          3: '#E5E5EC', // surf2 (surface tertiaire — pistes, segmented bg)
         },
         card: {
           DEFAULT: '#ffffff',
           hover: '#fbfbfd',
         },
         border: {
-          DEFAULT: 'rgba(12, 12, 27, 0.09)',
-          bright: 'rgba(12, 12, 27, 0.16)',
+          DEFAULT: 'rgba(18, 18, 38, 0.09)',
+          bright: 'rgba(18, 18, 38, 0.15)',
         },
         text: {
           1: '#14142a',
@@ -27,15 +26,19 @@ export default {
           3: '#9c9cb4',
         },
         brand: {
-          blue: '#5c8fff',
-          'blue-deep': '#3d6be0', // primary actions on light
+          blue: '#5c8fff', // blueBright — graphiques, accents
+          'blue-deep': '#3d6be0', // blue — actions primaires
           'blue-dim': 'rgba(61, 107, 224, 0.10)',
-          cyan: '#2dd9ee',
-          // Semantic on light — darkened for AA contrast.
+          cyan: '#16a6be', // texte cyan
+          'cyan-bright': '#2dd9ee', // point signal, accents secondaires
           green: '#1fa873',
           red: '#e0495c',
-          orange: '#cf7d12',
+          amber: '#c2820e', // surveiller / warning
+          orange: '#cf7d12', // legacy — à terme remplacer par amber
         },
+      },
+      backgroundImage: {
+        'brand-grad': 'linear-gradient(135deg, #5c8fff 0%, #2dd9ee 100%)',
       },
       fontFamily: {
         head: ['"Plus Jakarta Sans"', 'sans-serif'],
@@ -44,13 +47,20 @@ export default {
       },
       maxWidth: {
         site: '1120px',
+        brief: '720px', // accueil narré BriefHome
       },
       boxShadow: {
-        card: '0 1px 2px rgba(12, 12, 27, 0.06), 0 4px 16px rgba(12, 12, 27, 0.07)',
-        float: '0 12px 40px rgba(12, 12, 27, 0.12)',
-        'brand-glow': '0 0 24px rgba(61, 107, 224, 0.18)',
+        // Élévations design system App v2.
+        card: '0 1px 2px rgba(18, 18, 38, 0.05), 0 4px 14px rgba(18, 18, 38, 0.06)',
+        float: '0 14px 44px rgba(18, 18, 38, 0.13)',
+        'brand-glow': '0 1px 2px rgba(18, 18, 38, 0.12), 0 6px 18px rgba(61, 107, 224, 0.22)',
+        'brand-glow-hover': '0 1px 2px rgba(18, 18, 38, 0.12), 0 6px 18px rgba(61, 107, 224, 0.32)',
+      },
+      borderRadius: {
+        brief: '16px', // T.radius pour le thème Brief
       },
     },
   },
   plugins: [],
 }
+

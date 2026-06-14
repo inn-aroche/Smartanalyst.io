@@ -13,7 +13,7 @@ const en = {
   'common.back': 'Back',
   'common.backToSite': 'Back to smartanalyst.io',
 
-  // ━━━ Nav / layout ━━━
+  // ━━━ Nav / layout (App v2 — direction "Le Brief") ━━━
   'nav.workspace': 'Workspace',
   'nav.noWorkspace': 'No workspace',
   'nav.dashboard': 'Dashboard',
@@ -24,6 +24,17 @@ const en = {
   'nav.connectors': 'Connectors',
   'nav.chat': 'Chat',
   'nav.tasks': 'Tasks',
+  'nav.home': 'My morning brief',
+  'nav.assistant': 'Assistant',
+  'nav.veille': 'Watch',
+  'nav.todo': 'To do',
+  'nav.sources': 'Sources',
+  'nav.mySpace': 'My space',
+  'nav.yourBusiness': 'Your business',
+  'nav.expand': 'Expand panel',
+  'nav.collapse': 'Collapse panel',
+  'nav.dataUpToDate': 'Up to date',
+  'nav.askQuestion': 'Question',
 
   // ━━━ Chat ━━━
   'chat.kicker': 'Ask SmartAnalyst',
@@ -567,7 +578,7 @@ const fr: Record<keyof typeof en, string> = {
   'common.back': 'Retour',
   'common.backToSite': 'Retour sur smartanalyst.io',
 
-  // ━━━ Nav / layout ━━━
+  // ━━━ Nav / layout (App v2 — direction « Le Brief ») ━━━
   'nav.workspace': 'Espace',
   'nav.noWorkspace': 'Aucun espace',
   'nav.dashboard': 'Tableau de bord',
@@ -578,6 +589,17 @@ const fr: Record<keyof typeof en, string> = {
   'nav.connectors': 'Connecteurs',
   'nav.chat': 'Chat',
   'nav.tasks': 'Tâches',
+  'nav.home': 'Mon point du jour',
+  'nav.assistant': 'Assistant',
+  'nav.veille': 'Veille',
+  'nav.todo': 'À faire',
+  'nav.sources': 'Sources',
+  'nav.mySpace': 'Mon espace',
+  'nav.yourBusiness': 'Ton business',
+  'nav.expand': 'Ouvrir le panneau',
+  'nav.collapse': 'Réduire le panneau',
+  'nav.dataUpToDate': 'Données à jour',
+  'nav.askQuestion': 'Question',
 
   // ━━━ Chat ━━━
   'chat.kicker': 'Demande à SmartAnalyst',
