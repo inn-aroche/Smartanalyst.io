@@ -18,6 +18,7 @@ import Sources from './pages/Sources'
 import Tasks from './pages/Tasks'
 import Signup from './pages/Signup'
 import TrackingInstall from './pages/TrackingInstall'
+import Veille from './pages/Veille'
 
 export default function App() {
   usePageViewTracker()
@@ -90,6 +91,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Tasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/veille"
+        element={
+          <ProtectedRoute>
+            <Veille />
           </ProtectedRoute>
         }
       />
