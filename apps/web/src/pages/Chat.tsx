@@ -1,9 +1,11 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import AppLayout from '@/components/AppLayout'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { type StringKey, useLocale, useT } from '@/lib/i18n'
+import { pickSuggestions } from '@/lib/chat-suggestions'
+import { useLocale, useT } from '@/lib/i18n'
 
 type Source = {
   id: number
@@ -25,11 +27,11 @@ type Message =
 
 type AskResponse = { answer: string; model: string; sources?: Source[] }
 
-const SUGGESTION_KEYS: StringKey[] = [
-  'chat.suggestion1',
-  'chat.suggestion2',
-  'chat.suggestion3',
-]
+type WorkspaceConnector = {
+  id: string
+  source: string
+  status: 'active' | 'expired' | 'error' | 'disconnected'
+}
 
 function nextId() {
   return Math.random().toString(36).slice(2, 10)
@@ -45,6 +47,28 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
   const workspaceId = state.workspaces[0]?.id
+
+  // Suggestions adaptées aux sources connectées (cache 5min, fallback silencieux).
+  const connectors = useQuery({
+    queryKey: ['connectors', 'list', workspaceId],
+    enabled: Boolean(workspaceId),
+    queryFn: () =>
+      apiFetch<{ connectors: WorkspaceConnector[] }>(
+        `/api/v1/connectors?workspaceId=${workspaceId}`,
+      ),
+    staleTime: 5 * 60_000,
+  })
+  const activeSources = useMemo(
+    () =>
+      (connectors.data?.connectors ?? [])
+        .filter((c) => c.status === 'active')
+        .map((c) => c.source),
+    [connectors.data],
+  )
+  const suggestions = useMemo(
+    () => pickSuggestions(activeSources, locale === 'fr' ? 'fr' : 'en'),
+    [activeSources, locale],
+  )
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -111,7 +135,7 @@ export default function ChatPage() {
           className="flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-card"
         >
           {messages.length === 0 ? (
-            <EmptyState onPick={(s) => void send(s)} />
+            <EmptyState onPick={(s) => void send(s)} suggestions={suggestions} />
           ) : (
             <div className="flex flex-col gap-5">
               {messages.map((m) => (
@@ -149,7 +173,13 @@ export default function ChatPage() {
   )
 }
 
-function EmptyState({ onPick }: { onPick: (s: string) => void }) {
+function EmptyState({
+  onPick,
+  suggestions,
+}: {
+  onPick: (s: string) => void
+  suggestions: string[]
+}) {
   const t = useT()
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
@@ -161,14 +191,14 @@ function EmptyState({ onPick }: { onPick: (s: string) => void }) {
           {t('chat.suggestions')}
         </div>
         <div className="flex flex-col items-center gap-2">
-          {SUGGESTION_KEYS.map((key) => (
+          {suggestions.map((s) => (
             <button
-              key={key}
+              key={s}
               type="button"
-              onClick={() => onPick(t(key))}
+              onClick={() => onPick(s)}
               className="rounded-full border border-border bg-bg-2 px-4 py-2 text-sm text-text-2 transition hover:border-brand-blue-deep hover:text-text-1"
             >
-              {t(key)}
+              {s}
             </button>
           ))}
         </div>
