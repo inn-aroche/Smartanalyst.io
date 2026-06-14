@@ -166,12 +166,12 @@ const softwareApplication = {
       </div>
       <div class="cap-grid">
         {[
-          { i:'◑', t:'Understand performance',   d:'Instant context on any metric, any timeframe or channel' },
-          { i:'⚡', t:'Identify anomalies',       d:'Detected automatically, with full root cause analysis' },
-          { i:'◎', t:'Explain variations',       d:'Why things changed, backed by cross-source evidence' },
-          { i:'→', t:'Prioritize actions',       d:'Ranked recommendations, scored by expected impact' },
-          { i:'◈', t:'Track impact',             d:'Before/after measurement on every change you make' },
-          { i:'◉', t:'Optimize your data stack', d:'GTM, consent mode, attribution, all continuously monitored' },
+          { i:'◑', t:'Your morning brief',       d:'Health score, 3 priorities and suggested actions, in 3 seconds' },
+          { i:'◎', t:'Proactive watch 24/7',     d:'Custom alerts in plain language — warned before things go off' },
+          { i:'✦', t:'Multimodal assistant',     d:'Ask out loud or with a file (CSV, PDF, image)' },
+          { i:'✓', t:'From insight to action',   d:'Proposed → to do → done. No "to-do list trash bin"' },
+          { i:'▤', t:'Auto monthly report',      d:'Ready-to-share summary — for you or your board' },
+          { i:'◉', t:'One source of truth',      d:'GA4, Meta, Stripe, Shopify, GTM — all reconciled' },
         ].map((c) => (
           <div class="sa-card">
             <div class="cap-icon">{c.i}</div>
@@ -358,8 +358,8 @@ const softwareApplication = {
           <p class="feat-desc">CPA spike, conversion drop, tracking failure, SmartAnalyst monitors your entire stack 24/7 and surfaces anomalies the moment they appear, with full context and severity ranking.</p>
           <ul class="feat-bullets">
             <li>CPA, CVR, ROAS and volume monitoring</li>
-            <li>Tracking integrity and consent alerts</li>
-            <li>Smart severity and impact scoring</li>
+            <li>Custom alerts in plain language ("tell me when my ROAS drops below 2")</li>
+            <li>In-app + email notification the moment the condition fires</li>
           </ul>
         </div>
       </div>
@@ -657,8 +657,8 @@ const softwareApplication = {
     const tabs = document.querySelectorAll('.snav');
     const titleEl = document.querySelector('.app-title');
     const labels = {
-      en: { dash:'Dashboard', ask:'Ask AI', alerts:'Anomalies', conn:'Connectors', health:'Data Health', actions:'Actions' },
-      fr: { dash:'Dashboard', ask:'Demander à l’IA', alerts:'Anomalies', conn:'Connecteurs', health:'Santé des données', actions:'Actions' },
+      en: { dash:'My morning brief', ask:'Assistant', alerts:'Watch', conn:'Sources', health:'Reports', actions:'To do' },
+      fr: { dash:'Mon point du jour', ask:'Assistant', alerts:'Veille', conn:'Sources', health:'Rapports', actions:'À faire' },
     };
     const lang = document.documentElement.lang === 'fr' ? 'fr' : 'en';
     tabs.forEach((t) => t.addEventListener('click', () => {
