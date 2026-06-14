@@ -126,13 +126,38 @@ function glyphFor(key: GlyphKey) {
 
 export default function ConnectorLogo({
   source,
+  iconUrl,
   size = 44,
   radius = 12,
 }: {
   source: string
+  /** URL de l'icône officielle (depuis integration_providers.icon_url). Si
+   *  fournie, on l'utilise en priorité — c'est le vrai logo de marque,
+   *  pas notre glyphe SVG approximatif. */
+  iconUrl?: string | null
   size?: number
   radius?: number
 }) {
+  // 1. Vrai logo officiel si dispo (préféré pour la fidélité de marque)
+  if (iconUrl) {
+    return (
+      <img
+        src={iconUrl}
+        alt={source}
+        width={size}
+        height={size}
+        style={{ borderRadius: radius, objectFit: 'contain' }}
+        className="block flex-shrink-0 bg-white p-1"
+        loading="lazy"
+        onError={(e) => {
+          // Si l'image 404, on cache silencieusement et le glyphe fallback
+          // prendra le relais au prochain render via key change.
+          ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+        }}
+      />
+    )
+  }
+  // 2. Fallback : glyphe SVG simplifié sur fond brand
   const key = SOURCE_TO_GLYPH[source.toLowerCase()] ?? null
   const bg = key ? BG_COLOR[key] : '#5C8FFF'
   return (
