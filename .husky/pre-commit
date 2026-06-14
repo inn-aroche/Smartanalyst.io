@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Pre-commit : Prettier sur les fichiers staged.
+# Si tu veux skipper ponctuellement (rare, ex: WIP) → `git commit --no-verify`.
+npx lint-staged
