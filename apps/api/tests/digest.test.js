@@ -6,6 +6,7 @@ const assert = require('node:assert/strict')
 const RESEND_PATH = require.resolve('../src/services/email/resend.service')
 const INSIGHTS_PATH = require.resolve('../src/services/insights/insights.service')
 const RECIPIENT_PATH = require.resolve('../src/services/notifications/recipient')
+const SETTINGS_PATH = require.resolve('../src/services/notifications/settings.service')
 const SERVICE_PATH = require.resolve('../src/services/notifications/digest.service')
 
 function load({ recipient = { email: 'me@acme.com', orgName: 'Acme' }, insights = [], emailResult = { ok: true, id: 'm1' } } = {}) {
@@ -21,6 +22,12 @@ function load({ recipient = { email: 'me@acme.com', orgName: 'Acme' }, insights 
   require.cache[RECIPIENT_PATH] = {
     id: RECIPIENT_PATH, filename: RECIPIENT_PATH, loaded: true,
     exports: { getWorkspaceRecipient: async () => recipient },
+  }
+  require.cache[SETTINGS_PATH] = {
+    id: SETTINGS_PATH, filename: SETTINGS_PATH, loaded: true,
+    exports: {
+      getSettings: async () => ({ weekly_digest: true, critical_alerts: true, email_override: null }),
+    },
   }
   delete require.cache[SERVICE_PATH]
   return { svc: require(SERVICE_PATH), sent }

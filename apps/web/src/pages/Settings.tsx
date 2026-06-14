@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
 import CopyButton from '@/components/CopyButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
+import NotificationSettings from '@/components/settings/NotificationSettings'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
@@ -71,9 +72,7 @@ export default function SettingsPage() {
           <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
             {t('settings.kicker')}
           </span>
-          <h1 className="mt-2 font-head text-3xl font-bold text-text-1">
-            {t('settings.title')}
-          </h1>
+          <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{t('settings.title')}</h1>
         </div>
 
         <Section title={t('settings.section.profile')}>
@@ -121,10 +120,7 @@ export default function SettingsPage() {
               </pre>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link
-                to="/tracking/install"
-                className="sa-btn sa-btn-primary !text-xs"
-              >
+              <Link to="/tracking/install" className="sa-btn sa-btn-primary !text-xs">
                 {t('tracking.cta.viewInstall')} →
               </Link>
               <Link to="/live" className="sa-btn !text-xs">
@@ -137,16 +133,18 @@ export default function SettingsPage() {
         <Section title={t('settings.section.language')}>
           <div className="sa-card flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-text-1">
-                {t('locale.label')}
-              </div>
-              <div className="mt-1 text-sm text-text-2">
-                {t('settings.language.body')}
-              </div>
+              <div className="text-sm font-semibold text-text-1">{t('locale.label')}</div>
+              <div className="mt-1 text-sm text-text-2">{t('settings.language.body')}</div>
             </div>
             <LocaleSwitcher variant="full" align="right" />
           </div>
         </Section>
+
+        {workspace?.id && (
+          <Section title={t('settings.section.notifications')}>
+            <NotificationSettings workspaceId={workspace.id} />
+          </Section>
+        )}
 
         <Section title={t('settings.section.security')}>
           <div className="sa-card flex items-center justify-between gap-4">
@@ -154,9 +152,7 @@ export default function SettingsPage() {
               <div className="text-sm font-semibold text-text-1">
                 {t('settings.password.title')}
               </div>
-              <div className="mt-1 text-sm text-text-2">
-                {t('settings.password.body')}
-              </div>
+              <div className="mt-1 text-sm text-text-2">{t('settings.password.body')}</div>
             </div>
             <button
               type="button"
@@ -172,12 +168,8 @@ export default function SettingsPage() {
         <Section title={t('settings.section.session')}>
           <div className="sa-card flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-text-1">
-                {t('settings.signOut.title')}
-              </div>
-              <div className="mt-1 text-sm text-text-2">
-                {t('settings.signOut.body')}
-              </div>
+              <div className="text-sm font-semibold text-text-1">{t('settings.signOut.title')}</div>
+              <div className="mt-1 text-sm text-text-2">{t('settings.signOut.body')}</div>
             </div>
             <button
               type="button"
@@ -192,9 +184,7 @@ export default function SettingsPage() {
         <Section title={t('settings.section.data')}>
           <div className="sa-card flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-text-1">
-                {t('settings.export.title')}
-              </div>
+              <div className="text-sm font-semibold text-text-1">{t('settings.export.title')}</div>
               <div className="mt-1 text-sm text-text-2">{t('settings.export.body')}</div>
               {exportError && (
                 <div className="mt-2 rounded-md border border-brand-red/30 bg-brand-red/10 px-2 py-1 text-xs text-brand-red">
@@ -216,9 +206,7 @@ export default function SettingsPage() {
         <Section title={t('settings.section.dangerZone')}>
           <div className="sa-card flex flex-col gap-3 border-brand-red/20">
             <div>
-              <div className="text-sm font-semibold text-text-1">
-                {t('settings.delete.title')}
-              </div>
+              <div className="text-sm font-semibold text-text-1">{t('settings.delete.title')}</div>
               <div className="mt-1 text-sm text-text-2">{t('settings.delete.body')}</div>
               <p className="mt-2 text-xs text-text-3">{t('settings.delete.confirmHint')}</p>
             </div>
@@ -272,14 +260,8 @@ function buildSettingsSnippet(writeKey: string): string {
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="sa-card flex flex-col gap-1">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-        {label}
-      </div>
-      <div
-        className={`${
-          mono ? 'font-mono text-xs' : 'text-sm'
-        } break-all text-text-1`}
-      >
+      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">{label}</div>
+      <div className={`${mono ? 'font-mono text-xs' : 'text-sm'} break-all text-text-1`}>
         {value}
       </div>
     </div>
