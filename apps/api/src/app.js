@@ -150,6 +150,8 @@ function createApp() {
   app.use('/api/v1/waitlist', require('./routes/waitlist.routes'))
   // SmartTag ingestion (publique, CORS *, rate-limit dédié — cf track.routes.js)
   app.use('/api/v1/track', require('./routes/track.routes'))
+  // Réception des erreurs JS du frontend → relayées vers Sentry server-side.
+  app.use('/api/v1/client-errors', require('./routes/client-errors.routes'))
   // SmartTag dashboard (authentifié — status install, à enrichir)
   app.use('/api/v1/smarttag', require('./routes/smarttag.routes'))
   // M4 Phase D — Audit SEO/GEO on-demand
