@@ -44,7 +44,12 @@ async function resolveAccount({ source, accessToken, subst = {} }) {
     throw err
   }
   logger.info(
-    { event: 'account_resolved', source, accountId: result.accountId, accountName: result.accountName },
+    {
+      event: 'account_resolved',
+      source,
+      accountId: result.accountId,
+      accountName: result.accountName,
+    },
     'Account resolved',
   )
   return result
@@ -56,6 +61,7 @@ const RESOLVERS = {
   ga4: resolveGA4,
   meta_ads: resolveMetaAds,
   shopify: resolveShopify,
+  search_console: resolveSearchConsole,
 }
 
 /**
@@ -113,6 +119,26 @@ async function resolveShopify({ accessToken, subst }) {
   return {
     accountId: shop, // 'xxx' ou 'xxx.myshopify.com' — laissé tel quel
     accountName: shop,
+  }
+}
+
+/**
+ * Search Console : liste les sites vérifiés par l'user. On filtre sur les
+ * permissions effectives (siteOwner/siteFullUser/siteRestrictedUser) et on
+ * prend le 1er. accountId = siteUrl (ex: "https://m2benergy.be/").
+ */
+async function resolveSearchConsole({ accessToken }) {
+  const url = 'https://searchconsole.googleapis.com/webmasters/v3/sites'
+  const data = await _fetchJson(url, { Authorization: `Bearer ${accessToken}` })
+  const sites = data?.siteEntry || []
+  const usable = sites.filter((s) =>
+    ['siteOwner', 'siteFullUser', 'siteRestrictedUser'].includes(s.permissionLevel),
+  )
+  const pick = usable[0] || sites[0]
+  if (!pick?.siteUrl) return null
+  return {
+    accountId: pick.siteUrl,
+    accountName: pick.siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''),
   }
 }
 
