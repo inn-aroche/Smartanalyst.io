@@ -21,7 +21,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', labelKey: 'nav.home', icon: '◐' },
   { to: '/chat', labelKey: 'nav.assistant', icon: '✦' },
-  { to: '/veille', labelKey: 'nav.veille', icon: '◎', soon: true, badgeKey: 'insights' },
+  { to: '/veille', labelKey: 'nav.veille', icon: '◎', badgeKey: 'insights' },
   { to: '/tasks', labelKey: 'nav.todo', icon: '✓', badgeKey: 'tasks' },
   { to: '/rapports', labelKey: 'nav.reports', icon: '▤', soon: true },
   { to: '/connectors', labelKey: 'nav.sources', icon: '◈' },
