@@ -7,7 +7,10 @@ const { NotFoundError, UserFacingError } = require('../../lib/error-handler')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
 
 const INSIGHT_STATUSES = new Set(['open', 'snoozed', 'resolved', 'dismissed'])
-const ACTION_STATUSES = new Set(['todo', 'in_progress', 'done', 'dismissed'])
+// Cycle de vie tâches (brief V2 §3.4) :
+//   proposed (IA suggère) → todo (user valide) → done | archived
+//   proposed → archived (écartée sans validation)
+const ACTION_STATUSES = new Set(['proposed', 'todo', 'in_progress', 'done', 'archived'])
 
 /**
  * Liste les insights d'un workspace (open par défaut) + leurs action_cards.
@@ -110,8 +113,17 @@ async function getInsightChart(workspaceId, insightId) {
   }
 }
 
-/** Liste les action_cards d'un workspace (utile pour un board d'actions). */
-async function listActions(workspaceId, { status, limit = 50 } = {}) {
+/**
+ * Liste les tâches d'un workspace.
+ *
+ * Brief V2 §3.4 :
+ *   - status='proposed' → "tâches suggérées par l'IA, à valider"
+ *   - status='todo' → "à faire aujourd'hui"
+ *   - bucket='active' (alias raccourci) → proposed + todo + in_progress
+ *   - bucket='inbox' → uniquement proposed (les tâches à curer)
+ *   - bucket='today' → uniquement todo (les vraies tâches actives)
+ */
+async function listActions(workspaceId, { status, bucket, limit = 50 } = {}) {
   const supabase = getServiceRoleClient()
   let q = supabase
     .from('action_cards')
@@ -120,10 +132,32 @@ async function listActions(workspaceId, { status, limit = 50 } = {}) {
     .order('priority', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit)
-  if (status && status !== 'all') q = q.eq('status', status)
+  if (status && status !== 'all') {
+    q = q.eq('status', status)
+  } else if (bucket === 'active') {
+    q = q.in('status', ['proposed', 'todo', 'in_progress'])
+  } else if (bucket === 'inbox') {
+    q = q.eq('status', 'proposed')
+  } else if (bucket === 'today') {
+    q = q.eq('status', 'todo')
+  }
   const { data, error } = await q
   if (error) throw error
   return data || []
+}
+
+/** Récupère une tâche par id (workspace-scoped). */
+async function getActionById(workspaceId, actionId) {
+  const supabase = getServiceRoleClient()
+  const { data, error } = await supabase
+    .from('action_cards')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('id', actionId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new NotFoundError('Tâche introuvable.')
+  return data
 }
 
 async function updateInsightStatus(workspaceId, insightId, status) {
@@ -169,6 +203,7 @@ async function updateActionStatus(workspaceId, actionId, status) {
 module.exports = {
   listInsights,
   listActions,
+  getActionById,
   getInsightChart,
   updateInsightStatus,
   updateActionStatus,

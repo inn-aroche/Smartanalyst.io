@@ -266,14 +266,26 @@ function ActionLine({
 }) {
   const t = useT()
   const isDone = action.status === 'done'
+  const isProposed = action.status === 'proposed'
+  // Brief V2 §3.4 : sur les tâches proposées, l'user CURE (Valider/Écarter).
+  // Sur les tâches validées (todo), il marque comme fait avec une checkbox.
   return (
     <li className="flex items-start gap-2 text-xs">
-      <input
-        type="checkbox"
-        checked={isDone}
-        onChange={() => onChange(action.id, isDone ? 'todo' : 'done')}
-        className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-brand-blue"
-      />
+      {isProposed ? (
+        <span
+          className="mt-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-brand-cyan/40 text-[8px] text-brand-cyan"
+          aria-hidden="true"
+        >
+          ?
+        </span>
+      ) : (
+        <input
+          type="checkbox"
+          checked={isDone}
+          onChange={() => onChange(action.id, isDone ? 'todo' : 'done')}
+          className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-brand-blue"
+        />
+      )}
       <div className="min-w-0 flex-1">
         <div className={isDone ? 'text-text-3 line-through' : 'text-text-1'}>{action.title}</div>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-text-3">
@@ -289,6 +301,24 @@ function ActionLine({
             {t('home.brief.priority')}: {action.priority}
           </span>
         </div>
+        {isProposed && (
+          <div className="mt-1.5 flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => onChange(action.id, 'todo')}
+              className="sa-btn sa-btn-primary !py-0.5 !text-[10px]"
+            >
+              {t('home.brief.task.validate')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(action.id, 'archived')}
+              className="sa-btn !py-0.5 !text-[10px] opacity-70"
+            >
+              {t('home.brief.task.archive')}
+            </button>
+          </div>
+        )}
       </div>
     </li>
   )

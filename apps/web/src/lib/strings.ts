@@ -30,7 +30,8 @@ const en = {
   'chat.placeholder': 'e.g. Why did Meta CVR drop yesterday?',
   'chat.send': 'Send',
   'chat.thinking': 'Thinking…',
-  'chat.emptyState': 'Ask anything about your marketing performance. The first connectors and metric integration are coming — for now SmartAnalyst answers from general marketing knowledge.',
+  'chat.emptyState':
+    'Ask anything about your marketing performance. The first connectors and metric integration are coming — for now SmartAnalyst answers from general marketing knowledge.',
   'chat.suggestions': 'Try',
   'chat.suggestion1': 'How do you compute a blended CAC?',
   'chat.suggestion2': 'What is a healthy LTV/CAC ratio for a SaaS?',
@@ -71,23 +72,22 @@ const en = {
   // ━━━ Password reset ━━━
   'reset.requestTitle': 'Reset your password.',
   'reset.requestSubtitle':
-    'Enter the email tied to your SmartAnalyst account. We\'ll send a reset link.',
+    "Enter the email tied to your SmartAnalyst account. We'll send a reset link.",
   'reset.requestSubmit': 'Send the reset link',
   'reset.requestSubmitting': 'Sending…',
   'reset.requestDoneTitle': 'Check your inbox.',
   'reset.requestDoneBody':
     'If an account exists for {{email}}, a reset link is on its way. It expires in 1 hour.',
   'reset.confirmTitle': 'Choose a new password.',
-  'reset.confirmSubtitle': 'Pick something memorable. You\'ll be signed in right after.',
+  'reset.confirmSubtitle': "Pick something memorable. You'll be signed in right after.",
   'reset.newPassword': 'New password',
   'reset.confirmPassword': 'Confirm new password',
   'reset.confirmSubmit': 'Update password',
   'reset.confirmSubmitting': 'Updating…',
   'reset.backToLogin': 'Back to sign-in',
-  'reset.mismatch': 'Passwords don\'t match.',
+  'reset.mismatch': "Passwords don't match.",
   'reset.tooShort': 'Password must be at least 12 characters.',
-  'reset.linkExpired':
-    'This reset link is invalid or expired. Request a new one.',
+  'reset.linkExpired': 'This reset link is invalid or expired. Request a new one.',
   'reset.error': 'Something went wrong. Try again.',
 
   // ━━━ Signup ━━━
@@ -110,13 +110,11 @@ const en = {
   'callback.failedTitle': 'Google sign-in failed',
   'callback.backToLogin': 'Back to sign-in',
   'callback.err.accessDenied': 'You denied access to Google.',
-  'callback.err.notConfigured':
-    'Google sign-in isn’t enabled on the server yet.',
+  'callback.err.notConfigured': 'Google sign-in isn’t enabled on the server yet.',
   'callback.err.codeExchange': 'Google rejected the authorization code. Try again.',
   'callback.err.supabase':
     'Supabase rejected the Google session. Check that the provider is enabled.',
-  'callback.err.stateInvalid':
-    'The link expired. Try again from the sign-in page.',
+  'callback.err.stateInvalid': 'The link expired. Try again from the sign-in page.',
   'callback.err.stateMissing': 'Invalid link. Try again.',
   'callback.err.missingCodeOrState': 'Invalid Google response. Try again.',
   'callback.err.missingResponse': 'Missing response.',
@@ -154,12 +152,10 @@ const en = {
     'The more data you connect, the sharper the AI’s cross-source insights become.',
   'dashboard.next.01.cta': 'Open connectors',
   'dashboard.next.02.title': 'Ask your first question',
-  'dashboard.next.02.body':
-    'Try “What changed this week?” or “Why did CVR drop yesterday?”.',
+  'dashboard.next.02.body': 'Try “What changed this week?” or “Why did CVR drop yesterday?”.',
   'dashboard.next.02.cta': 'Open chat',
   'dashboard.next.03.title': 'Schedule a weekly report',
-  'dashboard.next.03.body':
-    'Auto-generated PDF, sent every Monday with an exec summary.',
+  'dashboard.next.03.body': 'Auto-generated PDF, sent every Monday with an exec summary.',
   'dashboard.next.03.cta': 'Configure',
   'dashboard.tile.sessions': 'Sessions',
   'dashboard.tile.conversions': 'Conversions',
@@ -191,8 +187,7 @@ const en = {
   'home.health.kicker': 'Tracking health',
   'home.health.tagActive': 'SmartTag is live',
   'home.health.tagInactive': 'SmartTag not installed',
-  'home.health.activeBody':
-    'Last event {{ago}} ago · {{events7}} events in the past 7 days.',
+  'home.health.activeBody': 'Last event {{ago}} ago · {{events7}} events in the past 7 days.',
   'home.health.inactiveBody':
     'Install the SmartTag to compare your own ground truth with what GA4 / Meta / Stripe report.',
   'home.health.installCta': 'Install SmartTag',
@@ -204,7 +199,7 @@ const en = {
   'home.health.confidence.low': 'Low confidence',
 
   // ━━━ Home: Brief du jour (Insights + Actions) ━━━
-  'home.brief.kicker': 'Today\'s brief',
+  'home.brief.kicker': "Today's brief",
   'home.brief.title': 'What needs your attention.',
   'home.brief.count': '{{count}} open',
   'home.brief.empty.body':
@@ -219,12 +214,13 @@ const en = {
   'home.brief.impact': 'Impact',
   'home.brief.effort': 'Effort',
   'home.brief.priority': 'Priority',
+  'home.brief.task.validate': 'Validate',
+  'home.brief.task.archive': 'Archive',
 
   // ━━━ Connectors ━━━
   'connectors.kicker': 'Integrations',
   'connectors.title': 'Connect your data sources.',
-  'connectors.subtitle':
-    '{{available}} live · {{soon}} on the roadmap. Don’t see yours?',
+  'connectors.subtitle': '{{available}} live · {{soon}} on the roadmap. Don’t see yours?',
   'connectors.tellUs': 'Tell us',
   'connectors.searchPlaceholder': 'Search integrations…',
   'connectors.category.all': 'All',
@@ -269,8 +265,9 @@ const en = {
 
   // ━━━ Live (SmartTag real-time dashboard) ━━━
   'live.kicker': 'Smart tag',
-  'live.title': 'What\'s happening on your site, right now.',
-  'live.subtitle': 'Events streamed live from your SmartAnalyst tag. No storage in the free tier — refresh resets the view.',
+  'live.title': "What's happening on your site, right now.",
+  'live.subtitle':
+    'Events streamed live from your SmartAnalyst tag. No storage in the free tier — refresh resets the view.',
   'live.stat.activeSessions': 'Active sessions',
   'live.stat.pageviews': 'Pageviews',
   'live.stat.clicks': 'Clicks',
@@ -284,7 +281,7 @@ const en = {
   'live.conn.disconnected': 'Disconnected',
   'live.conn.error': 'Connection error',
   'live.conn.unauthorized': 'Unauthorized',
-  'live.err.unauthorized': 'Your session does not have access to this workspace\'s live stream.',
+  'live.err.unauthorized': "Your session does not have access to this workspace's live stream.",
   'live.eventType.pageview': 'view',
   'live.eventType.click': 'click',
   'live.eventType.error': 'error',
@@ -292,7 +289,7 @@ const en = {
   'live.eventType.custom': 'event',
   'live.install.title': 'Install your SmartTag',
   'live.install.subtitle':
-    'Paste this snippet in your site\'s <head> to start receiving events here.',
+    "Paste this snippet in your site's <head> to start receiving events here.",
   'live.install.cta.guide': 'Full install guide',
   'live.install.cta.scroll': 'See events ↓',
   'live.install.cta.audit': 'Audit my site',
@@ -313,13 +310,12 @@ const en = {
   'live.onboarding.why.privacy.body':
     'No cookie banner required. Session ID lives in sessionStorage — cleared at tab close. CNIL-compatible.',
   'live.onboarding.step1.title': 'Copy your snippet',
-  'live.onboarding.step1.body':
-    'It\'s pre-filled with your workspace write key. Just copy it.',
+  'live.onboarding.step1.body': "It's pre-filled with your workspace write key. Just copy it.",
   'live.onboarding.step2.title': 'Paste it in your <head>',
   'live.onboarding.step2.body':
     'On every page you want to track (or in your shared layout / template). WordPress, Shopify, Webflow, Ghost — see the full guide for step-by-step.',
   'live.onboarding.step2.cta': 'CMS-specific install guide',
-  'live.onboarding.step3.title': 'Verify it\'s working',
+  'live.onboarding.step3.title': "Verify it's working",
   'live.onboarding.step3.body':
     'Once installed, open your site in another tab and click around. Then come back here and hit "Test install" — we\'ll detect the first event live.',
   'live.onboarding.step3.button': 'Test install',
@@ -345,8 +341,7 @@ const en = {
   'settings.field.workspaceId': 'Workspace ID',
   'settings.field.yourRole': 'Your role',
   'settings.password.title': 'Password',
-  'settings.password.body':
-    'Reset your password via the email flow. We’ll send you a magic link.',
+  'settings.password.body': 'Reset your password via the email flow. We’ll send you a magic link.',
   'settings.password.button': 'Reset password',
   'settings.signOut.title': 'Sign out everywhere',
   'settings.signOut.body': 'End this session and invalidate the refresh token.',
@@ -393,8 +388,7 @@ const en = {
   'install.subtitle':
     'Takes 2 minutes. Works with any CMS — WordPress, Shopify, Webflow, Ghost, or plain HTML.',
   'install.step1.title': '1. Copy your snippet',
-  'install.step1.body':
-    "It's already filled with your workspace write key. Just copy it.",
+  'install.step1.body': "It's already filled with your workspace write key. Just copy it.",
   'install.step2.title': "2. Paste it in your site's <head>",
   'install.step2.body': 'Pick your platform for the exact instructions:',
   'install.step2.tab.html': 'Plain HTML',
@@ -480,11 +474,11 @@ const en = {
   'dash.audit.rerunning': 'Running…',
   'dash.audit.openFull': 'Open full report',
   'dash.audit.findings': 'Findings',
-  'dash.audit.sectionMissing': 'This section is not available in the last audit. Try re-running it.',
+  'dash.audit.sectionMissing':
+    'This section is not available in the last audit. Try re-running it.',
   'dash.audit.perfSkipped':
     'Performance analyzer needs a Google PageSpeed API key on the API server.',
-  'dash.audit.aiSkipped':
-    'AI readability analyzer needs an Anthropic API key on the API server.',
+  'dash.audit.aiSkipped': 'AI readability analyzer needs an Anthropic API key on the API server.',
   'dash.audit.empty.title': 'Run your first audit',
   'dash.audit.empty.body':
     'Get a 4-axis report (SEO, AI search, performance, citation-worthiness) on any URL in under 30 seconds.',
@@ -499,9 +493,9 @@ const en = {
   'audit.history.title': 'Recent audits',
   'audit.history.empty': 'No audit yet — run your first one above.',
   'audit.history.open': 'Open',
-  'audit.error.invalid_url': 'This URL doesn\'t look valid. Use https://example.com.',
+  'audit.error.invalid_url': "This URL doesn't look valid. Use https://example.com.",
   'audit.error.scrape_failed':
-    'We couldn\'t reach the site (timeout, DNS, or SSL error). Check the URL and try again.',
+    "We couldn't reach the site (timeout, DNS, or SSL error). Check the URL and try again.",
   'audit.error.generic': 'Something went wrong running the audit. Try again.',
   'audit.finalUrl': 'Final URL after redirects',
   'audit.httpStatus': 'HTTP status',
@@ -535,7 +529,8 @@ const fr: Record<keyof typeof en, string> = {
   'chat.placeholder': 'ex : Pourquoi le CVR Meta a chuté hier ?',
   'chat.send': 'Envoyer',
   'chat.thinking': 'Réflexion…',
-  'chat.emptyState': 'Pose n’importe quelle question sur ta performance marketing. Les premiers connecteurs + intégration métriques arrivent — pour l’instant SmartAnalyst répond à partir de ses connaissances marketing générales.',
+  'chat.emptyState':
+    'Pose n’importe quelle question sur ta performance marketing. Les premiers connecteurs + intégration métriques arrivent — pour l’instant SmartAnalyst répond à partir de ses connaissances marketing générales.',
   'chat.suggestions': 'Essaie',
   'chat.suggestion1': 'Comment on calcule un CAC blended ?',
   'chat.suggestion2': 'Quel ratio LTV/CAC sain pour un SaaS ?',
@@ -576,7 +571,7 @@ const fr: Record<keyof typeof en, string> = {
   // ━━━ Password reset ━━━
   'reset.requestTitle': 'Réinitialise ton mot de passe.',
   'reset.requestSubtitle':
-    'Saisis l\'email lié à ton compte SmartAnalyst. On t\'envoie un lien de réinitialisation.',
+    "Saisis l'email lié à ton compte SmartAnalyst. On t'envoie un lien de réinitialisation.",
   'reset.requestSubmit': 'Envoyer le lien',
   'reset.requestSubmitting': 'Envoi…',
   'reset.requestDoneTitle': 'Regarde tes mails.',
@@ -591,8 +586,7 @@ const fr: Record<keyof typeof en, string> = {
   'reset.backToLogin': 'Retour à la connexion',
   'reset.mismatch': 'Les mots de passe ne correspondent pas.',
   'reset.tooShort': 'Le mot de passe doit faire au moins 12 caractères.',
-  'reset.linkExpired':
-    'Ce lien est invalide ou a expiré. Demande-en un nouveau.',
+  'reset.linkExpired': 'Ce lien est invalide ou a expiré. Demande-en un nouveau.',
   'reset.error': 'Quelque chose a planté. Réessaie.',
 
   // ━━━ Signup ━━━
@@ -602,8 +596,7 @@ const fr: Record<keyof typeof en, string> = {
   'signup.organizationPlaceholder': 'Acme SAS',
   'signup.workEmail': 'Email pro',
   'signup.passwordPlaceholder': 'Au moins 12 caractères',
-  'signup.passwordHint':
-    '12 caractères minimum. Une passphrase facile à retenir, c’est parfait.',
+  'signup.passwordHint': '12 caractères minimum. Une passphrase facile à retenir, c’est parfait.',
   'signup.submit': 'Créer le compte',
   'signup.submitting': 'Création…',
   'signup.alreadyHaveAccount': 'Déjà un compte ?',
@@ -616,14 +609,11 @@ const fr: Record<keyof typeof en, string> = {
   'callback.failedTitle': 'Connexion Google échouée',
   'callback.backToLogin': 'Retour à la connexion',
   'callback.err.accessDenied': 'Tu as refusé l’accès Google.',
-  'callback.err.notConfigured':
-    'La connexion Google n’est pas encore activée côté serveur.',
-  'callback.err.codeExchange':
-    'Google a refusé le code d’autorisation. Réessaie.',
+  'callback.err.notConfigured': 'La connexion Google n’est pas encore activée côté serveur.',
+  'callback.err.codeExchange': 'Google a refusé le code d’autorisation. Réessaie.',
   'callback.err.supabase':
     'Supabase a refusé la session Google. Vérifie que le provider est activé.',
-  'callback.err.stateInvalid':
-    'Le lien a expiré. Réessaie depuis la page de connexion.',
+  'callback.err.stateInvalid': 'Le lien a expiré. Réessaie depuis la page de connexion.',
   'callback.err.stateMissing': 'Lien invalide. Réessaie.',
   'callback.err.missingCodeOrState': 'Réponse Google invalide. Réessaie.',
   'callback.err.missingResponse': 'Réponse manquante.',
@@ -642,8 +632,7 @@ const fr: Record<keyof typeof en, string> = {
 
   // ━━━ Dashboard ━━━
   'dashboard.overview': 'Vue d’ensemble',
-  'dashboard.greetingNamed':
-    'Hello {{name}}, voici ce qui a changé.',
+  'dashboard.greetingNamed': 'Hello {{name}}, voici ce qui a changé.',
   'dashboard.greeting': 'Hello, voici ce qui a changé.',
   'dashboard.window.7d': '7j',
   'dashboard.window.30d': '30j',
@@ -652,8 +641,7 @@ const fr: Record<keyof typeof en, string> = {
   'dashboard.emptyConnectorsBody':
     'Branche GA4, Meta Ads ou Stripe en 2 clics. On commence à synchroniser les 90 derniers jours pour remplir ton tableau de bord automatiquement.',
   'dashboard.addConnector': 'Ajouter un connecteur →',
-  'dashboard.couldNotLoad':
-    'Impossible de charger les métriques. {{message}}',
+  'dashboard.couldNotLoad': 'Impossible de charger les métriques. {{message}}',
   'dashboard.tile.syncing': 'Synchronisation…',
   'dashboard.tile.noData': 'Pas encore de données',
   'dashboard.tile.noBaseline': 'vs précédent : pas de base de comparaison',
@@ -717,7 +705,7 @@ const fr: Record<keyof typeof en, string> = {
   'home.brief.title': 'Ce qui mérite ton attention.',
   'home.brief.count': '{{count}} ouverts',
   'home.brief.empty.body':
-    'Pas encore d\'insights. Connecte tes sources et Smart Analyst remontera ce qui compte vraiment.',
+    "Pas encore d'insights. Connecte tes sources et Smart Analyst remontera ce qui compte vraiment.",
   'home.brief.empty.cta': 'Ouvrir les connecteurs',
   'home.brief.evidence': 'Autres preuves',
   'home.brief.actions': 'Actions recommandées',
@@ -728,6 +716,8 @@ const fr: Record<keyof typeof en, string> = {
   'home.brief.impact': 'Impact',
   'home.brief.effort': 'Effort',
   'home.brief.priority': 'Priorité',
+  'home.brief.task.validate': 'Valider',
+  'home.brief.task.archive': 'Écarter',
 
   // ━━━ Connectors ━━━
   'connectors.kicker': 'Intégrations',
@@ -779,7 +769,8 @@ const fr: Record<keyof typeof en, string> = {
   // ━━━ Live (SmartTag temps-réel) ━━━
   'live.kicker': 'Smart tag',
   'live.title': 'Ce qui se passe sur ton site, maintenant.',
-  'live.subtitle': 'Événements streamés en direct par ton tag SmartAnalyst. Pas de stockage en formule gratuite — un refresh remet à zéro.',
+  'live.subtitle':
+    'Événements streamés en direct par ton tag SmartAnalyst. Pas de stockage en formule gratuite — un refresh remet à zéro.',
   'live.stat.activeSessions': 'Sessions actives',
   'live.stat.pageviews': 'Pages vues',
   'live.stat.clicks': 'Clics',
@@ -793,7 +784,7 @@ const fr: Record<keyof typeof en, string> = {
   'live.conn.disconnected': 'Déconnecté',
   'live.conn.error': 'Erreur de connexion',
   'live.conn.unauthorized': 'Non autorisé',
-  'live.err.unauthorized': 'Ta session n\'a pas accès au flux temps-réel de cet espace.',
+  'live.err.unauthorized': "Ta session n'a pas accès au flux temps-réel de cet espace.",
   'live.eventType.pageview': 'vue',
   'live.eventType.click': 'clic',
   'live.eventType.error': 'erreur',
@@ -854,12 +845,10 @@ const fr: Record<keyof typeof en, string> = {
   'settings.field.workspaceId': 'ID de l’espace',
   'settings.field.yourRole': 'Ton rôle',
   'settings.password.title': 'Mot de passe',
-  'settings.password.body':
-    'Réinitialise ton mot de passe par email. On t’envoie un lien magique.',
+  'settings.password.body': 'Réinitialise ton mot de passe par email. On t’envoie un lien magique.',
   'settings.password.button': 'Réinitialiser le mot de passe',
   'settings.signOut.title': 'Se déconnecter partout',
-  'settings.signOut.body':
-    'Termine cette session et invalide le refresh token.',
+  'settings.signOut.body': 'Termine cette session et invalide le refresh token.',
   'settings.export.title': 'Télécharger tes données',
   'settings.export.body':
     'Récupère un export JSON de tout ce qu’on a sur toi (workspaces, connecteurs, métriques, audit logs).',
@@ -990,11 +979,10 @@ const fr: Record<keyof typeof en, string> = {
   'dash.audit.rerunning': 'En cours…',
   'dash.audit.openFull': 'Voir le rapport complet',
   'dash.audit.findings': 'Findings',
-  'dash.audit.sectionMissing': 'Cette section n’est pas disponible dans le dernier audit. Relance pour la générer.',
-  'dash.audit.perfSkipped':
-    'L’analyzer Performance nécessite une clé Google PageSpeed côté API.',
-  'dash.audit.aiSkipped':
-    'L’analyzer Lecture IA nécessite une clé Anthropic côté API.',
+  'dash.audit.sectionMissing':
+    'Cette section n’est pas disponible dans le dernier audit. Relance pour la générer.',
+  'dash.audit.perfSkipped': 'L’analyzer Performance nécessite une clé Google PageSpeed côté API.',
+  'dash.audit.aiSkipped': 'L’analyzer Lecture IA nécessite une clé Anthropic côté API.',
   'dash.audit.empty.title': 'Lance ton premier audit',
   'dash.audit.empty.body':
     'Rapport sur 4 axes (SEO, recherche IA, performance, citabilité) sur n’importe quelle URL en moins de 30 secondes.',
