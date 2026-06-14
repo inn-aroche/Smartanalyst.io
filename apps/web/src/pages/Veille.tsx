@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar } from '@/components/AppLayout'
 import InsightCard from '@/components/insights/InsightCard'
+import WatchModal from '@/components/insights/WatchModal'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
@@ -32,6 +33,7 @@ export default function VeillePage() {
   const workspace = state.workspaces[0]
   const wsId = workspace?.id
   const [filter, setFilter] = useState<FilterId>('all')
+  const [watchModalOpen, setWatchModalOpen] = useState(false)
 
   // 2 queries : insights open + insights résolus (pour l'onglet "Traités").
   // L'API filtre par status, on n'a donc qu'à demander les 2 buckets une fois.
@@ -105,9 +107,8 @@ export default function VeillePage() {
             </div>
             <button
               type="button"
-              disabled
-              title={t('nav.soon')}
-              className="sa-btn sa-btn-primary flex-shrink-0 !text-[13px] opacity-60 disabled:cursor-not-allowed"
+              onClick={() => setWatchModalOpen(true)}
+              className="sa-btn sa-btn-primary flex-shrink-0 !text-[13px]"
             >
               + {t('veille.createAlert')}
             </button>
@@ -171,6 +172,7 @@ export default function VeillePage() {
           )}
         </div>
       </div>
+      {watchModalOpen && <WatchModal onClose={() => setWatchModalOpen(false)} />}
     </AppLayout>
   )
 }
