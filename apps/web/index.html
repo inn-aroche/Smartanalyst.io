@@ -13,6 +13,38 @@
     />
     <title>SmartAnalyst</title>
 
+    <!-- Google Consent Mode v2 — default deny, must run BEFORE GTM.
+         Le banner (composant React ConsentBanner) appellera gtag('consent','update', …)
+         après le choix utilisateur. Lit le choix stocké pour pré-appliquer si dispo. -->
+    <script>
+      (function () {
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { window.dataLayer.push(arguments); }
+        window.gtag = gtag;
+        var stored = null;
+        try {
+          var raw = localStorage.getItem('sa-app-consent-v1');
+          if (raw) {
+            var c = JSON.parse(raw);
+            var maxAge = 13 * 30 * 24 * 3600 * 1000;
+            if (c && c.ts && Date.now() - new Date(c.ts).getTime() < maxAge) stored = c;
+          }
+        } catch (_) {}
+        var analytics = stored ? !!stored.analytics : false;
+        var ads = stored ? !!stored.ads : false;
+        gtag('consent', 'default', {
+          ad_storage: ads ? 'granted' : 'denied',
+          ad_user_data: ads ? 'granted' : 'denied',
+          ad_personalization: ads ? 'granted' : 'denied',
+          analytics_storage: analytics ? 'granted' : 'denied',
+          functionality_storage: 'granted',
+          security_storage: 'granted',
+          wait_for_update: 500,
+        });
+      })();
+    </script>
+    <!-- End Consent Mode v2 default -->
+
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],

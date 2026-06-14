@@ -7,6 +7,7 @@ import LocaleSwitcher from '@/components/LocaleSwitcher'
 import NotificationSettings from '@/components/settings/NotificationSettings'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { openConsentPreferences } from '@/lib/consent'
 import { useT } from '@/lib/i18n'
 
 export default function SettingsPage() {
@@ -137,6 +138,22 @@ export default function SettingsPage() {
               <div className="mt-1 text-sm text-text-2">{t('settings.language.body')}</div>
             </div>
             <LocaleSwitcher variant="full" align="right" />
+          </div>
+        </Section>
+
+        <Section title={t('settings.section.privacy')}>
+          <div className="sa-card flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-semibold text-text-1">{t('settings.privacy.title')}</div>
+              <div className="mt-1 text-sm text-text-2">{t('settings.privacy.body')}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openConsentPreferences()}
+              className="sa-btn shrink-0 !text-xs"
+            >
+              {t('settings.privacy.button')}
+            </button>
           </div>
         </Section>
 
