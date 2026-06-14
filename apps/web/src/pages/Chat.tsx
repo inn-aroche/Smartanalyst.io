@@ -98,14 +98,27 @@ export default function ChatPage() {
       ),
     staleTime: 5 * 60_000,
   })
+  // Insights actifs : 1-2 questions ciblées prependent les suggestions
+  // génériques — beaucoup plus pertinent que "Quel est ton MRR ?" quand
+  // l'user a déjà un insight "ROAS Meta -28%" qui attend.
+  const insightsQ = useQuery({
+    queryKey: ['insights', 'list', workspaceId, 'open'],
+    enabled: Boolean(workspaceId),
+    queryFn: () =>
+      apiFetch<{ insights: Array<{ title: string }> }>(
+        `/api/v1/insights?workspaceId=${workspaceId}&status=open`,
+      ),
+    staleTime: 5 * 60_000,
+  })
   const activeSources = useMemo(
     () =>
       (connectors.data?.connectors ?? []).filter((c) => c.status === 'active').map((c) => c.source),
     [connectors.data],
   )
   const suggestions = useMemo(
-    () => pickSuggestions(activeSources, locale === 'fr' ? 'fr' : 'en'),
-    [activeSources, locale],
+    () =>
+      pickSuggestions(activeSources, locale === 'fr' ? 'fr' : 'en', insightsQ.data?.insights ?? []),
+    [activeSources, locale, insightsQ.data],
   )
 
   useEffect(() => {
