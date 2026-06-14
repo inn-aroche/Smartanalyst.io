@@ -66,6 +66,29 @@ const en = {
   'login.googleButton': 'Continue with Google',
   'login.googleRedirecting': 'Redirecting…',
   'login.googleStartError': 'Could not start Google sign-in',
+  'login.forgotPassword': 'Forgot password?',
+
+  // ━━━ Password reset ━━━
+  'reset.requestTitle': 'Reset your password.',
+  'reset.requestSubtitle':
+    'Enter the email tied to your SmartAnalyst account. We\'ll send a reset link.',
+  'reset.requestSubmit': 'Send the reset link',
+  'reset.requestSubmitting': 'Sending…',
+  'reset.requestDoneTitle': 'Check your inbox.',
+  'reset.requestDoneBody':
+    'If an account exists for {{email}}, a reset link is on its way. It expires in 1 hour.',
+  'reset.confirmTitle': 'Choose a new password.',
+  'reset.confirmSubtitle': 'Pick something memorable. You\'ll be signed in right after.',
+  'reset.newPassword': 'New password',
+  'reset.confirmPassword': 'Confirm new password',
+  'reset.confirmSubmit': 'Update password',
+  'reset.confirmSubmitting': 'Updating…',
+  'reset.backToLogin': 'Back to sign-in',
+  'reset.mismatch': 'Passwords don\'t match.',
+  'reset.tooShort': 'Password must be at least 12 characters.',
+  'reset.linkExpired':
+    'This reset link is invalid or expired. Request a new one.',
+  'reset.error': 'Something went wrong. Try again.',
 
   // ━━━ Signup ━━━
   'signup.title': 'Create your workspace.',
@@ -540,6 +563,29 @@ const fr: Record<keyof typeof en, string> = {
   'login.googleButton': 'Continuer avec Google',
   'login.googleRedirecting': 'Redirection…',
   'login.googleStartError': 'Impossible de démarrer la connexion Google',
+  'login.forgotPassword': 'Mot de passe oublié ?',
+
+  // ━━━ Password reset ━━━
+  'reset.requestTitle': 'Réinitialise ton mot de passe.',
+  'reset.requestSubtitle':
+    'Saisis l\'email lié à ton compte SmartAnalyst. On t\'envoie un lien de réinitialisation.',
+  'reset.requestSubmit': 'Envoyer le lien',
+  'reset.requestSubmitting': 'Envoi…',
+  'reset.requestDoneTitle': 'Regarde tes mails.',
+  'reset.requestDoneBody':
+    'Si un compte existe pour {{email}}, un lien est en route. Il expire dans 1 heure.',
+  'reset.confirmTitle': 'Choisis un nouveau mot de passe.',
+  'reset.confirmSubtitle': 'Choisis quelque chose de mémorable. Tu seras connecté juste après.',
+  'reset.newPassword': 'Nouveau mot de passe',
+  'reset.confirmPassword': 'Confirme le nouveau mot de passe',
+  'reset.confirmSubmit': 'Mettre à jour',
+  'reset.confirmSubmitting': 'Mise à jour…',
+  'reset.backToLogin': 'Retour à la connexion',
+  'reset.mismatch': 'Les mots de passe ne correspondent pas.',
+  'reset.tooShort': 'Le mot de passe doit faire au moins 12 caractères.',
+  'reset.linkExpired':
+    'Ce lien est invalide ou a expiré. Demande-en un nouveau.',
+  'reset.error': 'Quelque chose a planté. Réessaie.',
 
   // ━━━ Signup ━━━
   'signup.title': 'Crée ton espace de travail.',
