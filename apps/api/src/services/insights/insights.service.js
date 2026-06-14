@@ -4,6 +4,7 @@
 
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { NotFoundError, UserFacingError } = require('../../lib/error-handler')
+const canonicalMetrics = require('../metrics/canonical-metrics.service')
 
 const INSIGHT_STATUSES = new Set(['open', 'snoozed', 'resolved', 'dismissed'])
 const ACTION_STATUSES = new Set(['todo', 'in_progress', 'done', 'dismissed'])
@@ -38,6 +39,75 @@ async function listInsights(workspaceId, { status = 'open', limit = 20 } = {}) {
     byInsight.get(a.insight_id).push(a)
   }
   return insights.map((i) => ({ ...i, actions: byInsight.get(i.id) || [] }))
+}
+
+/**
+ * Résout les points du graphe d'un insight depuis canonical_metrics.
+ *
+ * Rappel archi : le LLM n'émet JAMAIS les `data` du chart (anti-hallucination
+ * de chiffres). Il décrit seulement quoi afficher (metric_key, source). Ici le
+ * backend va chercher les vraies valeurs journalières sur la période de
+ * l'insight et les renvoie au front pour rendu.
+ *
+ * @returns {Promise<null | { chart_type, title, source, metric_key, points: [{date, value}] }>}
+ *   null si l'insight n'a pas de chart_spec exploitable (pas de metric_key, ou
+ *   aucune donnée sur la période).
+ */
+async function getInsightChart(workspaceId, insightId) {
+  const supabase = getServiceRoleClient()
+  const { data: insight, error } = await supabase
+    .from('insights')
+    .select('id, workspace_id, chart_spec, period_start, period_end')
+    .eq('workspace_id', workspaceId)
+    .eq('id', insightId)
+    .maybeSingle()
+  if (error) throw error
+  if (!insight) throw new NotFoundError('Insight introuvable.')
+
+  const spec = insight.chart_spec
+  if (!spec || !spec.metric_key) return null
+
+  // Plage : la période de l'insight, sinon 30 derniers jours par défaut.
+  const today = new Date()
+  const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const fmt = (d) => d.toISOString().slice(0, 10)
+  const startDate = insight.period_start || fmt(monthAgo)
+  const endDate = insight.period_end || fmt(today)
+
+  let rows = []
+  try {
+    rows = await canonicalMetrics.query({
+      workspaceId,
+      metricKey: spec.metric_key,
+      source: spec.source || undefined,
+      startDate,
+      endDate,
+      limit: 400,
+    })
+  } catch {
+    return null
+  }
+  if (!rows.length) return null
+
+  // Une valeur par jour (si plusieurs sources, on somme — le spec.source
+  // restreint normalement à une source précise).
+  const byDate = new Map()
+  for (const r of rows) {
+    byDate.set(r.date, (byDate.get(r.date) || 0) + Number(r.metric_value))
+  }
+  const points = Array.from(byDate.entries())
+    .map(([date, value]) => ({ date, value: Math.round(value * 100) / 100 }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+
+  return {
+    chart_type: ['line', 'bar', 'donut', 'funnel', 'sparkline'].includes(spec.chart_type)
+      ? spec.chart_type
+      : 'line',
+    title: spec.title || null,
+    source: spec.source || null,
+    metric_key: spec.metric_key,
+    points,
+  }
 }
 
 /** Liste les action_cards d'un workspace (utile pour un board d'actions). */
@@ -99,6 +169,7 @@ async function updateActionStatus(workspaceId, actionId, status) {
 module.exports = {
   listInsights,
   listActions,
+  getInsightChart,
   updateInsightStatus,
   updateActionStatus,
   INSIGHT_STATUSES,
