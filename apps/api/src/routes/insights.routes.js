@@ -58,6 +58,26 @@ router.get(
   },
 )
 
+// ━━━ GET /insights/:id/chart — points du graphe (résolus depuis canonical_metrics) ━━━
+// Renvoie { chart } (ou { chart: null } si pas de chart_spec exploitable).
+router.get(
+  '/:id/chart',
+  [
+    param('id').isUUID().withMessage('id UUID requis.'),
+    query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+  ],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const chart = await insightsService.getInsightChart(req.workspaceId, req.params.id)
+      res.json({ chart })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
 // ━━━ PATCH /insights/:id — change le statut d'un insight ━━━
 router.patch(
   '/:id',

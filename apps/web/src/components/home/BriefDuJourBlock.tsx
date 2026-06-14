@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
+import InsightChart from '@/components/home/InsightChart'
 import { apiFetch } from '@/lib/api'
 import type {
   Insight,
@@ -33,9 +34,7 @@ export default function BriefDuJourBlock({ workspaceId }: { workspaceId: string 
     queryKey: ['insights', 'list', workspaceId, 'open'],
     enabled: Boolean(workspaceId),
     queryFn: () =>
-      apiFetch<{ insights: Insight[] }>(
-        `/api/v1/insights?workspaceId=${workspaceId}&status=open`,
-      ),
+      apiFetch<{ insights: Insight[] }>(`/api/v1/insights?workspaceId=${workspaceId}&status=open`),
     staleTime: 60_000,
   })
 
@@ -101,6 +100,7 @@ export default function BriefDuJourBlock({ workspaceId }: { workspaceId: string 
             <InsightItem
               key={ins.id}
               insight={ins}
+              workspaceId={workspaceId}
               onChangeInsight={(status) => setInsightStatus.mutate({ id: ins.id, status })}
               onChangeAction={(id, status) => setActionStatus.mutate({ id, status })}
             />
@@ -125,10 +125,12 @@ function EmptyState() {
 
 function InsightItem({
   insight,
+  workspaceId,
   onChangeInsight,
   onChangeAction,
 }: {
   insight: Insight
+  workspaceId: string
   onChangeInsight: (s: InsightStatus) => void
   onChangeAction: (id: string, s: ActionStatus) => void
 }) {
@@ -179,6 +181,11 @@ function InsightItem({
 
       {open && (
         <div className="border-t border-border px-3 pb-3 pt-2">
+          {insight.chart_spec && (
+            <div className="mb-3">
+              <InsightChart workspaceId={workspaceId} insightId={insight.id} />
+            </div>
+          )}
           {insight.evidence.length > 1 && (
             <div className="mb-3">
               <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
@@ -270,11 +277,17 @@ function ActionLine({
       <div className="min-w-0 flex-1">
         <div className={isDone ? 'text-text-3 line-through' : 'text-text-1'}>{action.title}</div>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-text-3">
-          <span>{t('home.brief.impact')}: {action.impact}</span>
+          <span>
+            {t('home.brief.impact')}: {action.impact}
+          </span>
           <span>·</span>
-          <span>{t('home.brief.effort')}: {action.effort}</span>
+          <span>
+            {t('home.brief.effort')}: {action.effort}
+          </span>
           <span>·</span>
-          <span>{t('home.brief.priority')}: {action.priority}</span>
+          <span>
+            {t('home.brief.priority')}: {action.priority}
+          </span>
         </div>
       </div>
     </li>
