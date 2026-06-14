@@ -166,6 +166,8 @@ function createApp() {
   app.use('/api/v1/audit', require('./routes/audit.routes'))
   // RGPD self-service : export (Art. 15) + delete account (Art. 17).
   app.use('/api/v1/me', require('./routes/me.routes'))
+  // Librairie de fichiers (brief V2 §3.7B)
+  app.use('/api/v1/files', require('./routes/files.routes'))
   // TODO: reports
   // app.use('/api/v1/reports', require('./routes/reports.routes'))
 
