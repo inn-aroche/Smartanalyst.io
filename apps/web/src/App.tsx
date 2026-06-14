@@ -13,6 +13,7 @@ import Live from './pages/Live'
 import Login from './pages/Login'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import ResetPasswordRequest from './pages/ResetPasswordRequest'
+import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Sources from './pages/Sources'
 import Tasks from './pages/Tasks'
@@ -59,6 +60,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Sources />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/rapports"
+        element={
+          <ProtectedRoute>
+            <Reports />
           </ProtectedRoute>
         }
       />
