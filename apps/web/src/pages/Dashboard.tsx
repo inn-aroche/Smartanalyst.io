@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import AppLayout from '@/components/AppLayout'
 import BriefDuJourBlock from '@/components/home/BriefDuJourBlock'
+import OnboardingChecklist from '@/components/home/OnboardingChecklist'
 import TrackingHealthBlock from '@/components/home/TrackingHealthBlock'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -90,9 +91,7 @@ export default function Dashboard() {
       ),
   })
 
-  const activeConnectors = (connectors.data?.connectors ?? []).filter(
-    (c) => c.status === 'active',
-  )
+  const activeConnectors = (connectors.data?.connectors ?? []).filter((c) => c.status === 'active')
   const hasConnectors = activeConnectors.length > 0
   const tiles = summary.data?.tiles ?? []
   const hasAnyMetric = tiles.some((t) => t.has_data)
@@ -110,9 +109,7 @@ export default function Dashboard() {
             <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
               {t('dashboard.overview')}
             </span>
-            <h1 className="mt-2 font-head text-3xl font-bold text-text-1">
-              {heading}
-            </h1>
+            <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{heading}</h1>
             {summary.data && (
               <p className="mt-1 font-mono text-xs text-text-3">
                 {summary.data.window.start_date} → {summary.data.window.end_date}
@@ -140,33 +137,15 @@ export default function Dashboard() {
         </div>
 
         {workspaceId && (
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <TrackingHealthBlock workspaceId={workspaceId} />
-            <BriefDuJourBlock workspaceId={workspaceId} />
+          <div className="mt-8">
+            <OnboardingChecklist workspaceId={workspaceId} hasActiveConnector={hasConnectors} />
           </div>
         )}
 
-        {!hasConnectors && (
-          <div className="sa-card mt-8 border-brand-cyan/30 bg-brand-cyan/5">
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-cyan/20 font-mono text-brand-cyan">
-                →
-              </div>
-              <div className="flex-1">
-                <h2 className="font-head text-lg font-semibold text-text-1">
-                  {t('dashboard.emptyConnectorsTitle')}
-                </h2>
-                <p className="mt-1 text-sm text-text-2">
-                  {t('dashboard.emptyConnectorsBody')}
-                </p>
-                <Link
-                  to="/connectors"
-                  className="sa-btn sa-btn-primary mt-4 !py-1.5 !text-xs"
-                >
-                  {t('dashboard.addConnector')}
-                </Link>
-              </div>
-            </div>
+        {workspaceId && (
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            <TrackingHealthBlock workspaceId={workspaceId} />
+            <BriefDuJourBlock workspaceId={workspaceId} />
           </div>
         )}
 
@@ -174,12 +153,7 @@ export default function Dashboard() {
           {summary.isLoading
             ? Array.from({ length: 4 }).map((_, i) => <TileSkeleton key={i} />)
             : tiles.map((tile) => (
-                <Tile
-                  key={tile.key}
-                  tile={tile}
-                  hasAnyConnector={hasConnectors}
-                  format={fmt}
-                />
+                <Tile key={tile.key} tile={tile} hasAnyConnector={hasConnectors} format={fmt} />
               ))}
         </div>
 
@@ -239,9 +213,7 @@ function Tile({
 
   return (
     <div className="sa-card flex flex-col">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-        {label}
-      </div>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">{label}</div>
       <div className="mt-2 font-head text-3xl font-bold text-text-1">
         {tile.has_data ? formatValue(tile, format) : '—'}
       </div>
@@ -262,10 +234,7 @@ function Tile({
 //   - 0 < v ≤ 1   → un pourcentage (ex: 0.43 = 43% bounce rate)
 //   - v > 1       → un facteur (ex: 3.2x ROAS, 5.4 position moyenne)
 // On heuristic-detect plutôt que d'ajouter un champ "subFormat" côté API.
-function formatValue(
-  tile: SummaryTile,
-  format: ReturnType<typeof useFormatters>,
-): string {
+function formatValue(tile: SummaryTile, format: ReturnType<typeof useFormatters>): string {
   if (tile.format === 'currency') return format.currency(tile.value)
   if (tile.format === 'ratio') {
     if (tile.value <= 1) return `${(tile.value * 100).toFixed(1)}%`
@@ -317,9 +286,7 @@ function NextStep({
   const t = useT()
   const inner = (
     <>
-      <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
-        {badge}
-      </span>
+      <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">{badge}</span>
       <h3 className="mt-2 font-head text-base font-semibold text-text-1">{t(titleKey)}</h3>
       <p className="mt-1.5 flex-1 text-sm text-text-2">{t(bodyKey)}</p>
       <span
@@ -334,10 +301,7 @@ function NextStep({
 
   if (disabled) {
     return (
-      <div
-        className="sa-card flex cursor-not-allowed flex-col opacity-60"
-        title={t('nav.soon')}
-      >
+      <div className="sa-card flex cursor-not-allowed flex-col opacity-60" title={t('nav.soon')}>
         {inner}
       </div>
     )
