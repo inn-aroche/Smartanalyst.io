@@ -122,11 +122,22 @@ test('alerts checkWorkspace stub returns expected shape', async () => {
 
 // ━━━ insights.handler ━━━
 
-test('insights generateForWorkspace stub returns expected shape', async () => {
-  const result = await insightsHandler.generateForWorkspace({ data: { workspaceId: 'ws-1' } })
-  assert.equal(result.workspaceId, 'ws-1')
-  assert.equal(result.stub, true)
-  assert.equal(result.insightsCount, 0)
+test('insights generateForWorkspace délègue au moteur et passe le résultat', async () => {
+  const engine = require('../src/services/insights/insight-engine.service')
+  const restore = mock.method(engine, 'generateForWorkspace', async () => ({
+    generated: 2,
+    dropped: 1,
+    skipped: false,
+  }))
+  try {
+    const result = await insightsHandler.generateForWorkspace({ data: { workspaceId: 'ws-1' } })
+    assert.equal(result.workspaceId, 'ws-1')
+    assert.equal(result.generated, 2)
+    assert.equal(result.dropped, 1)
+    assert.equal(result.skipped, false)
+  } finally {
+    restore.mock.restore()
+  }
 })
 
 // ━━━ scheduler schedules sanity ━━━

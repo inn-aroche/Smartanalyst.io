@@ -61,7 +61,61 @@ async function generateOnce({ systemPrompt, userMessage, temperature = 0.4 }) {
   return { text, modelName }
 }
 
+/**
+ * Génère une réponse JSON structurée (Structured Output).
+ *
+ * Force `responseMimeType: application/json` → Gemini renvoie du JSON valide
+ * (pas de prose, pas de ```json fences). Le `responseSchema` optionnel
+ * contraint encore le décodage côté Google. On parse + on laisse l'appelant
+ * valider finement (cf insight-schema.js) — ceinture ET bretelles.
+ *
+ * @param {object} params
+ * @param {string} params.systemPrompt
+ * @param {string} params.userMessage
+ * @param {object} [params.responseSchema]   - Schema au format SDK Gemini (optionnel)
+ * @param {number} [params.temperature=0.3]
+ * @param {number} [params.maxOutputTokens=4096]
+ * @returns {Promise<{ json: any, raw: string, modelName: string }>}
+ * @throws si la réponse n'est pas du JSON parsable
+ */
+async function generateStructured({
+  systemPrompt,
+  userMessage,
+  responseSchema,
+  temperature = 0.3,
+  maxOutputTokens = 4096,
+}) {
+  const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL
+  const model = getModel(modelName)
+
+  const generationConfig = {
+    temperature,
+    maxOutputTokens,
+    responseMimeType: 'application/json',
+  }
+  if (responseSchema) generationConfig.responseSchema = responseSchema
+
+  const result = await model.generateContent({
+    systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+    contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    generationConfig,
+  })
+  const raw = result.response.text()
+
+  let json
+  try {
+    json = JSON.parse(raw)
+  } catch (err) {
+    const e = new Error(`Gemini structured output is not valid JSON: ${err.message}`)
+    e.code = 'STRUCTURED_OUTPUT_INVALID_JSON'
+    e.raw = raw
+    throw e
+  }
+  return { json, raw, modelName }
+}
+
 module.exports = {
   getModel,
   generateOnce,
+  generateStructured,
 }
