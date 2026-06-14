@@ -15,6 +15,7 @@ const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { generateStructured } = require('../ai/gemini.service')
 const aggregator = require('./aggregator.service')
+const digestService = require('../notifications/digest.service')
 const { validateInsightsPayload, SCHEMA_DESCRIPTION_FOR_PROMPT } = require('./insight-schema')
 
 const SYSTEM_PROMPT = `Tu es Smart Analyst, un analyste marketing IA spécialisé dans l'analyse de performance.
@@ -177,7 +178,22 @@ async function generateForWorkspace(workspaceId) {
   for (const insight of insights) {
     try {
       const r = await storeInsight(workspaceId, insight, result.json)
-      if (r.created) created++
+      if (r.created) {
+        created++
+        // Brief V2 §3.3 : alerte email immédiate sur insight critical
+        // nouvellement créé (la veille qui prévient AVANT qu'on demande).
+        // Best-effort, jamais bloquant pour la génération.
+        if (insight.severity === 'critical') {
+          digestService
+            .sendCriticalAlert(workspaceId, insight)
+            .catch((err) =>
+              logger.warn(
+                { event: 'critical_alert_dispatch_failed', workspaceId, error: err.message },
+                'Critical alert dispatch failed',
+              ),
+            )
+        }
+      }
     } catch (err) {
       logger.warn(
         { event: 'insight_store_failed', workspaceId, error: err.message },

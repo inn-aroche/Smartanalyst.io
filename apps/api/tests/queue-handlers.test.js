@@ -144,7 +144,7 @@ test('insights generateForWorkspace délègue au moteur et passe le résultat', 
 
 test('scheduler exports schedules with valid cron patterns', () => {
   const { SCHEDULES } = require('../src/queue-jobs/scheduler')
-  assert.equal(SCHEDULES.length, 4)
+  assert.equal(SCHEDULES.length, 5)
   for (const s of SCHEDULES) {
     assert.ok(s.queueName, 'queueName required')
     assert.ok(s.jobName, 'jobName required')
@@ -161,6 +161,7 @@ test('queues module exposes canonical names', () => {
     'data-sync',
     'insights-generation',
     'monthly-reports',
+    'notifications',
     'oauth-refresh',
   ])
   assert.ok(JOB_NAMES.DATA_SYNC_SCAN)
