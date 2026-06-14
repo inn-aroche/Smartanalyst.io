@@ -17,9 +17,21 @@
     "dev:web": "npm run dev --workspace=@smartanalyst/web",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "format": "prettier --write \"apps/*/src/**/*.{js,ts,astro,html,css}\" \"packages/*/src/**/*.{js,ts}\""
+    "format": "prettier --write \"apps/*/src/**/*.{js,ts,astro,html,css}\" \"packages/*/src/**/*.{js,ts}\"",
+    "format:check": "prettier --check \"apps/*/src/**/*.{js,ts,astro,html,css}\" \"packages/*/src/**/*.{js,ts}\"",
+    "prepare": "husky || true"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
     "prettier": "^3.3.0"
+  },
+  "lint-staged": {
+    "apps/*/src/**/*.{js,ts,tsx,css}": [
+      "prettier --write"
+    ],
+    "packages/*/src/**/*.{js,ts}": [
+      "prettier --write"
+    ]
   }
 }

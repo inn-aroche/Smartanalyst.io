@@ -1,0 +1,25 @@
+# Build artifacts
+**/dist/
+**/build/
+**/.astro/
+**/.vite/
+
+# Dependencies
+**/node_modules/
+
+# Generated / vendored
+**/coverage/
+**/*.min.js
+**/*.min.css
+
+# Astro (besoin du plugin prettier-plugin-astro — pas installé pour l'instant)
+**/*.astro
+
+# Lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Misc
+.env*
+*.log
