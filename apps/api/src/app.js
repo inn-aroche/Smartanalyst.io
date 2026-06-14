@@ -172,8 +172,8 @@ function createApp() {
   app.use('/api/v1/notification-settings', require('./routes/notification-settings.routes'))
   // Alertes custom utilisateur (brief V2 §3.3 — WatchModal)
   app.use('/api/v1/watches', require('./routes/watches.routes'))
-  // TODO: reports
-  // app.use('/api/v1/reports', require('./routes/reports.routes'))
+  // Rapports HTML (brief V2 §3.6 — synthèse mensuelle / à la demande)
+  app.use('/api/v1/reports', require('./routes/reports.routes'))
 
   // Sentry Express error handler — DOIT être avant les autres error handlers.
   // En v8+ du SDK, c'est `setupExpressErrorHandler` qui s'occupe d'attacher

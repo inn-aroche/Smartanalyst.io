@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/chat', labelKey: 'nav.assistant', icon: '✦' },
   { to: '/veille', labelKey: 'nav.veille', icon: '◎', badgeKey: 'insights' },
   { to: '/tasks', labelKey: 'nav.todo', icon: '✓', badgeKey: 'tasks' },
-  { to: '/rapports', labelKey: 'nav.reports', icon: '▤', soon: true },
+  { to: '/rapports', labelKey: 'nav.reports', icon: '▤' },
   { to: '/sources', labelKey: 'nav.sources', icon: '◈' },
 ]
 
