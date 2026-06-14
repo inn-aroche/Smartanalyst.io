@@ -40,35 +40,72 @@ function getModel(name) {
  * Higher-level "conversation" semantics live in chat.service.
  *
  * @param {object} params
- * @param {string} params.systemPrompt - System instructions for the model
- * @param {string} params.userMessage  - The user's message
+ * @param {string} params.systemPrompt
+ * @param {string} [params.userMessage]    - Le message texte (omis si `contents` fourni)
+ * @param {Array}  [params.contents]       - Override : historique de messages au format Gemini (role/parts)
+ * @param {Array}  [params.tools]          - Function declarations (function calling, brief V2 §3.5)
+ * @param {Array}  [params.attachments]    - Multimodal inline parts (image/PDF)
  * @param {number} [params.temperature=0.4]
- * @returns {Promise<{ text: string, modelName: string }>}
+ * @returns {Promise<{ text: string, modelName: string, functionCalls: Array, candidate: object }>}
+ *   `functionCalls` est non-vide si le model demande à appeler des tools.
  */
-async function generateOnce({ systemPrompt, userMessage, temperature = 0.4, attachments = [] }) {
+async function generateOnce({
+  systemPrompt,
+  userMessage,
+  contents,
+  tools,
+  temperature = 0.4,
+  attachments = [],
+}) {
   const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL
   const model = getModel(modelName)
 
-  // Multimodal (brief V2 §3.2) : les pièces jointes deviennent des `inlineData`
-  // parts (base64 + mimeType). Gemini 2.5 Flash accepte images + PDF nativement.
-  const parts = [{ text: userMessage }]
-  for (const att of attachments) {
-    if (att && att.data && att.mimeType) {
-      parts.push({ inlineData: { mimeType: att.mimeType, data: att.data } })
+  let payloadContents = contents
+  if (!payloadContents) {
+    // Multimodal (brief V2 §3.2) : pièces jointes en inlineData parts.
+    const parts = [{ text: userMessage }]
+    for (const att of attachments) {
+      if (att && att.data && att.mimeType) {
+        parts.push({ inlineData: { mimeType: att.mimeType, data: att.data } })
+      }
     }
+    payloadContents = [{ role: 'user', parts }]
   }
 
-  const result = await model.generateContent({
+  const requestBody = {
     systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
-    contents: [{ role: 'user', parts }],
+    contents: payloadContents,
     generationConfig: {
       temperature,
       maxOutputTokens: 1500,
     },
-  })
+  }
+  if (Array.isArray(tools) && tools.length > 0) {
+    requestBody.tools = [{ functionDeclarations: tools }]
+  }
+
+  const result = await model.generateContent(requestBody)
   const response = result.response
-  const text = response.text()
-  return { text, modelName }
+  const candidate = response.candidates?.[0] || null
+
+  // Extrait les functionCalls éventuels (Gemini peut en émettre plusieurs en
+  // parallèle dans le même tour).
+  const functionCalls = []
+  const candidateParts = candidate?.content?.parts || []
+  for (const p of candidateParts) {
+    if (p.functionCall) functionCalls.push(p.functionCall)
+  }
+
+  // `response.text()` lance si la réponse n'a que des function calls. On le
+  // protège pour pouvoir retourner functionCalls sans crash.
+  let text = ''
+  try {
+    text = response.text()
+  } catch {
+    text = ''
+  }
+
+  return { text, modelName, functionCalls, candidate }
 }
 
 /**

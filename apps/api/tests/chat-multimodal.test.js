@@ -19,7 +19,12 @@ function load({ fileContents = {}, fileThrowsFor = [] } = {}) {
     exports: {
       generateOnce: async (args) => {
         lastGenerateArgs = args
-        return { text: 'Réponse.', modelName: 'gemini-2.5-flash' }
+        return {
+          text: 'Réponse.',
+          modelName: 'gemini-2.5-flash',
+          functionCalls: [],
+          candidate: null,
+        }
       },
     },
   }
@@ -54,10 +59,17 @@ function load({ fileContents = {}, fileThrowsFor = [] } = {}) {
   return { svc: require(SERVICE_PATH), getLast: () => lastGenerateArgs }
 }
 
+// Helper : extrait les inlineData parts du 1er message user (les attachments
+// sont posés dans contents[0].parts à côté du texte depuis function-calling).
+function attachmentsOf(args) {
+  const parts = args?.contents?.[0]?.parts || []
+  return parts.filter((p) => p.inlineData).map((p) => p.inlineData)
+}
+
 test('ask sans fileIds → pas de pièce jointe', async () => {
   const { svc, getLast } = load()
   await svc.ask({ userId: 'u', workspaceId: 'ws-1', message: 'Salut', locale: 'fr' })
-  assert.deepEqual(getLast().attachments, [])
+  assert.deepEqual(attachmentsOf(getLast()), [])
 })
 
 test('ask avec fileIds → résout en attachments inline', async () => {
@@ -74,7 +86,7 @@ test('ask avec fileIds → résout en attachments inline', async () => {
     locale: 'fr',
     fileIds: ['file-a', 'file-b'],
   })
-  const atts = getLast().attachments
+  const atts = attachmentsOf(getLast())
   assert.equal(atts.length, 2)
   assert.deepEqual(atts[0], { mimeType: 'image/png', data: 'IMG' })
   assert.deepEqual(atts[1], { mimeType: 'application/pdf', data: 'PDF' })
@@ -93,12 +105,22 @@ test('ask : un fichier illisible est ignoré, pas bloquant', async () => {
     fileIds: ['broken', 'ok'],
   })
   assert.equal(r.answer, 'Réponse.')
-  assert.equal(getLast().attachments.length, 1)
-  assert.equal(getLast().attachments[0].data, 'OK')
+  const atts = attachmentsOf(getLast())
+  assert.equal(atts.length, 1)
+  assert.equal(atts[0].data, 'OK')
 })
 
 test('ask : cap à 4 fichiers', async () => {
-  const { svc, getLast } = load()
+  const { svc, getLast } = load({
+    fileContents: {
+      a: { mimeType: 'image/png', base64: 'A' },
+      b: { mimeType: 'image/png', base64: 'B' },
+      c: { mimeType: 'image/png', base64: 'C' },
+      d: { mimeType: 'image/png', base64: 'D' },
+      e: { mimeType: 'image/png', base64: 'E' },
+      f: { mimeType: 'image/png', base64: 'F' },
+    },
+  })
   await svc.ask({
     userId: 'u',
     workspaceId: 'ws-1',
@@ -106,5 +128,5 @@ test('ask : cap à 4 fichiers', async () => {
     locale: 'fr',
     fileIds: ['a', 'b', 'c', 'd', 'e', 'f'],
   })
-  assert.equal(getLast().attachments.length, 4)
+  assert.equal(attachmentsOf(getLast()).length, 4)
 })

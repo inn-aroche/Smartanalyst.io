@@ -7,6 +7,7 @@ const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const filesService = require('../files/files.service')
+const chatTools = require('./chat-tools')
 
 const SYSTEM_PROMPT_FR = `Tu es SmartAnalyst, un analyste marketing IA pour PME et agences.
 Tu réponds en français, de manière structurée et concise.
@@ -258,12 +259,55 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
   }
 
   const t0 = Date.now()
-  const { text, modelName } = await generateOnce({
-    systemPrompt,
-    userMessage: message,
-    temperature: 0.4,
-    attachments,
-  })
+  // Function-calling loop (brief V2 §3.5). On envoie les tool declarations
+  // au model ; tant qu'il demande à appeler un tool, on exécute et on
+  // re-soumet l'historique enrichi du functionResponse. Max 3 tours pour
+  // éviter les loops infinies (en pratique 1-2 suffisent).
+  const initialParts = [{ text: message }]
+  for (const att of attachments) {
+    if (att && att.data && att.mimeType) {
+      initialParts.push({ inlineData: { mimeType: att.mimeType, data: att.data } })
+    }
+  }
+  const history = [{ role: 'user', parts: initialParts }]
+
+  const MAX_TOOL_ROUNDS = 3
+  const toolsUsed = []
+  let finalText = ''
+  let modelName = ''
+  for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
+    const out = await generateOnce({
+      systemPrompt,
+      contents: history,
+      tools: chatTools.DECLARATIONS,
+      temperature: 0.4,
+    })
+    modelName = out.modelName
+
+    if (out.functionCalls.length === 0 || round === MAX_TOOL_ROUNDS) {
+      finalText = out.text
+      break
+    }
+
+    // On enregistre la sortie model (parts contenant functionCall) dans l'historique
+    // pour que le model ait le contexte du tour précédent.
+    history.push({ role: 'model', parts: out.candidate.content.parts })
+
+    // Exécute chaque tool en parallèle (best-effort).
+    const responses = await Promise.all(
+      out.functionCalls.map(async (call) => {
+        const res = await chatTools.execute(
+          { name: call.name, args: call.args || {} },
+          { workspaceId },
+        )
+        toolsUsed.push(call.name)
+        return { functionResponse: { name: call.name, response: { result: res } } }
+      }),
+    )
+    history.push({ role: 'user', parts: responses })
+  }
+
+  const text = finalText
   const durationMs = Date.now() - t0
 
   // Filtre les sources réellement citées dans la réponse — pas la peine
@@ -292,6 +336,7 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
       hasMetricsContext: Boolean(metricsContext),
       sourcesAvailable: fullSources.length,
       sourcesCited: usedSources.length,
+      toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
     },
     'Chat answered',
   )
