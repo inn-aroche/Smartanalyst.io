@@ -1,11 +1,18 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { pickSuggestions } from '@/lib/chat-suggestions'
 import { useLocale, useT } from '@/lib/i18n'
+
+type SaFile = {
+  id: string
+  filename: string
+  mime_type: string
+}
 
 type Source = {
   id: number
@@ -44,9 +51,42 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Fichier joint à la prochaine requête. Persiste tant que l'user ne
+  // l'enlève pas — l'assistant peut s'y référer dans plusieurs échanges.
+  const [attachedFileId, setAttachedFileId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const workspaceId = state.workspaces[0]?.id
+
+  // Préfill depuis l'URL — `?q=<question>` posé par Veille, BriefHome…
+  // `?file=<id>` posé par Sources/Files. Cleaned aussitôt lu pour éviter
+  // un re-fire sur back/forward.
+  useEffect(() => {
+    const q = searchParams.get('q')
+    const fileId = searchParams.get('file')
+    if (q || fileId) {
+      if (q) setInput(q)
+      if (fileId) setAttachedFileId(fileId)
+      // Nettoie sans déclencher un fetch (replace, pas push).
+      const next = new URLSearchParams(searchParams)
+      next.delete('q')
+      next.delete('file')
+      setSearchParams(next, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Métadonnée du fichier joint pour afficher son nom dans la pastille.
+  const attachedFileQ = useQuery({
+    queryKey: ['files', 'meta', workspaceId, attachedFileId],
+    enabled: Boolean(workspaceId && attachedFileId),
+    queryFn: async () => {
+      const all = await apiFetch<{ files: SaFile[] }>(`/api/v1/files?workspaceId=${workspaceId}`)
+      return all.files.find((f) => f.id === attachedFileId) ?? null
+    },
+    staleTime: 5 * 60_000,
+  })
 
   // Suggestions adaptées aux sources connectées (cache 5min, fallback silencieux).
   const connectors = useQuery({
@@ -60,9 +100,7 @@ export default function ChatPage() {
   })
   const activeSources = useMemo(
     () =>
-      (connectors.data?.connectors ?? [])
-        .filter((c) => c.status === 'active')
-        .map((c) => c.source),
+      (connectors.data?.connectors ?? []).filter((c) => c.status === 'active').map((c) => c.source),
     [connectors.data],
   )
   const suggestions = useMemo(
@@ -92,7 +130,12 @@ export default function ChatPage() {
     try {
       const res = await apiFetch<AskResponse>('/api/v1/chat/ask', {
         method: 'POST',
-        body: { message: trimmed, workspaceId, locale },
+        body: {
+          message: trimmed,
+          workspaceId,
+          locale,
+          fileIds: attachedFileId ? [attachedFileId] : undefined,
+        },
       })
       setMessages((m) =>
         m.map((msg) =>
@@ -125,9 +168,7 @@ export default function ChatPage() {
           <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
             {t('chat.kicker')}
           </span>
-          <h1 className="mt-2 font-head text-3xl font-bold text-text-1">
-            {t('chat.title')}
-          </h1>
+          <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{t('chat.title')}</h1>
         </div>
 
         <div
@@ -148,6 +189,25 @@ export default function ChatPage() {
         {error && (
           <div className="mt-3 flex-shrink-0 rounded-lg border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">
             {error}
+          </div>
+        )}
+
+        {/* Pastille fichier joint — visible quand un fileId est posé (depuis
+            Sources/Files, ou plus tard via le bouton joindre). */}
+        {attachedFileId && (
+          <div className="mt-3 flex flex-shrink-0 items-center gap-2 self-start rounded-full border border-brand-blue-deep/30 bg-brand-blue-dim px-3 py-1.5 text-xs">
+            <span className="text-brand-blue-deep">📎</span>
+            <span className="max-w-[260px] truncate font-medium text-text-1">
+              {attachedFileQ.data?.filename ?? t('chat.attachedFile')}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAttachedFileId(null)}
+              aria-label={t('chat.removeAttachment')}
+              className="ml-1 text-text-3 hover:text-brand-red"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -183,9 +243,7 @@ function EmptyState({
   const t = useT()
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
-      <div className="max-w-md text-sm leading-relaxed text-text-2">
-        {t('chat.emptyState')}
-      </div>
+      <div className="max-w-md text-sm leading-relaxed text-text-2">{t('chat.emptyState')}</div>
       <div className="flex flex-col items-center gap-3">
         <div className="font-mono text-[11px] uppercase tracking-widest text-text-3">
           {t('chat.suggestions')}
