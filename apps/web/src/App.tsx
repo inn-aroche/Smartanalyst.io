@@ -5,6 +5,7 @@ import { usePageViewTracker } from './lib/gtm'
 import Audit from './pages/Audit'
 import AuthCallback from './pages/AuthCallback'
 import BetaLocked from './pages/BetaLocked'
+import BriefHome from './pages/BriefHome'
 import Chat from './pages/Chat'
 import Connectors from './pages/Connectors'
 import Dashboard from './pages/Dashboard'
@@ -29,6 +30,14 @@ export default function App() {
       <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
       <Route
         path="/"
+        element={
+          <ProtectedRoute>
+            <BriefHome />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
         element={
           <ProtectedRoute>
             <Dashboard />
