@@ -17,6 +17,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AppLayout, { Topbar } from '@/components/AppLayout'
 import KpiCard, { type Kpi } from '@/components/charts/KpiCard'
 import ScoreRing from '@/components/charts/ScoreRing'
+import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
@@ -125,6 +126,9 @@ export default function BriefHomePage() {
               {t('brief.greeting', { name: firstName })} ☀️
             </h1>
           </div>
+
+          {/* ─── CTA Onboarding (workspace vide) ─── */}
+          {!scoreQ.isLoading && !scoreQ.data?.has_data && <OnboardingCta />}
 
           {/* ─── Hero brief : ScoreRing + paragraphe narré ─── */}
           <HeroBrief
@@ -473,6 +477,32 @@ function formatTileValue(
     return `${pct.toFixed(1)}%`
   }
   return new Intl.NumberFormat(loc, { maximumFractionDigits: 0 }).format(value)
+}
+
+// ─── CTA Onboarding ─────────────────────────────────────────────────────
+
+function OnboardingCta() {
+  const t = useT()
+  return (
+    <button
+      type="button"
+      onClick={openOnboarding}
+      className="mb-5 flex w-full items-center gap-4 rounded-brief border border-brand-blue-deep/30 bg-brand-blue-dim px-5 py-4 text-left transition-all hover:border-brand-blue-deep/50 hover:bg-brand-blue-deep/15"
+    >
+      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[10px] bg-brand-grad text-lg text-white">
+        ✦
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="font-head text-[15px] font-bold text-text-1">
+          {t('brief.onboardCta.title')}
+        </div>
+        <div className="mt-0.5 text-[13px] text-text-2">{t('brief.onboardCta.body')}</div>
+      </div>
+      <span className="hidden whitespace-nowrap text-[13px] font-semibold text-brand-blue-deep sm:inline">
+        {t('brief.onboardCta.cta')} →
+      </span>
+    </button>
+  )
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
