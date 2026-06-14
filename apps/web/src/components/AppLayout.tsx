@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/veille', labelKey: 'nav.veille', icon: '◎', soon: true, badgeKey: 'insights' },
   { to: '/tasks', labelKey: 'nav.todo', icon: '✓', badgeKey: 'tasks' },
   { to: '/rapports', labelKey: 'nav.reports', icon: '▤', soon: true },
-  { to: '/connectors', labelKey: 'nav.sources', icon: '◈' },
+  { to: '/sources', labelKey: 'nav.sources', icon: '◈' },
 ]
 
 // ─── Toast context ────────────────────────────────────────────────────────

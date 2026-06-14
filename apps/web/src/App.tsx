@@ -13,6 +13,7 @@ import Login from './pages/Login'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import ResetPasswordRequest from './pages/ResetPasswordRequest'
 import Settings from './pages/Settings'
+import Sources from './pages/Sources'
 import Tasks from './pages/Tasks'
 import Signup from './pages/Signup'
 import TrackingInstall from './pages/TrackingInstall'
@@ -40,6 +41,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Connectors />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sources"
+        element={
+          <ProtectedRoute>
+            <Sources />
           </ProtectedRoute>
         }
       />
