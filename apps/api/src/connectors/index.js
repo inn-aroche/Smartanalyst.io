@@ -46,13 +46,16 @@ function getConnector(workspaceId, connectorRecord) {
       const ShopifyConnector = require('./shopify.connector')
       return new ShopifyConnector(workspaceId, connectorRecord)
     }
+    case 'search_console': {
+      const SearchConsoleConnector = require('./search-console.connector')
+      return new SearchConsoleConnector(workspaceId, connectorRecord)
+    }
     // TODO: case 'google_ads': return new (require('./google-ads.connector'))(workspaceId, connectorRecord)
-    // TODO: case 'search_console': return new (require('./search-console.connector'))(workspaceId, connectorRecord)
     default:
-      throw new UserFacingError(
-        `Connecteur "${connectorRecord.source}" pas encore disponible.`,
-        { statusCode: 501, code: 'CONNECTOR_NOT_IMPLEMENTED' },
-      )
+      throw new UserFacingError(`Connecteur "${connectorRecord.source}" pas encore disponible.`, {
+        statusCode: 501,
+        code: 'CONNECTOR_NOT_IMPLEMENTED',
+      })
   }
 }
 

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
 import CopyButton from '@/components/CopyButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
+import NotificationSettings from '@/components/settings/NotificationSettings'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { openConsentPreferences } from '@/lib/consent'
@@ -155,6 +156,12 @@ export default function SettingsPage() {
             </button>
           </div>
         </Section>
+
+        {workspace?.id && (
+          <Section title={t('settings.section.notifications')}>
+            <NotificationSettings workspaceId={workspace.id} />
+          </Section>
+        )}
 
         <Section title={t('settings.section.security')}>
           <div className="sa-card flex items-center justify-between gap-4">

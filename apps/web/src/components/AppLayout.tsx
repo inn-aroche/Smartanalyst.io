@@ -16,6 +16,8 @@ type NavItem = { to: string; labelKey: StringKey; icon: string; soon?: boolean }
 // directe /audit.
 const NAV_ITEMS: NavItem[] = [
   { to: '/', labelKey: 'nav.dashboard', icon: '◧' },
+  { to: '/tasks', labelKey: 'nav.tasks', icon: '◐' },
+  { to: '/chat', labelKey: 'nav.chat', icon: '◑' },
   { to: '/live', labelKey: 'nav.live', icon: '◉' },
   { to: '/connectors', labelKey: 'nav.connectors', icon: '◴' },
   { to: '/reports', labelKey: 'nav.reports', icon: '▤', soon: true },
@@ -73,7 +75,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             aria-expanded={mobileNavOpen}
             className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-text-1 hover:bg-card"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
               <line x1="3" y1="18" x2="21" y2="18" />
@@ -82,11 +94,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Brand />
           <div className="ml-auto flex items-center gap-2">
             <LocaleSwitcher />
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="sa-btn !py-1 !text-xs"
-            >
+            <button type="button" onClick={() => void logout()} className="sa-btn !py-1 !text-xs">
               {t('common.signOut')}
             </button>
           </div>
@@ -117,7 +125,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 aria-label={t('nav.closeMenu')}
                 className="-mr-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-text-3 hover:bg-bg-1 hover:text-text-1"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -207,9 +225,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
             <div className="truncate text-sm text-text-1">
               {state.user?.full_name ?? t('common.you')}
             </div>
-            <div className="truncate font-mono text-[11px] text-text-3">
-              {state.user?.email}
-            </div>
+            <div className="truncate font-mono text-[11px] text-text-3">{state.user?.email}</div>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2">
