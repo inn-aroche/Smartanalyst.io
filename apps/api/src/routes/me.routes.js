@@ -8,8 +8,11 @@ const rateLimit = require('express-rate-limit')
 const { body } = require('express-validator')
 
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
+const { workspaceScope } = require('../middleware/workspace-scope.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
+const { query } = require('express-validator')
 const gdprService = require('../services/gdpr/gdpr.service')
+const aiUsage = require('../services/ai/ai-usage.service')
 
 const router = express.Router()
 router.use(jwtMiddleware)
@@ -21,7 +24,9 @@ const exportLimiter = rateLimit({
   max: 3, // 3 exports / heure / IP
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: { code: 'RATE_LIMIT', message: "Trop d'exports demandés. Attends une heure." } },
+  message: {
+    error: { code: 'RATE_LIMIT', message: "Trop d'exports demandés. Attends une heure." },
+  },
 })
 
 const deleteLimiter = rateLimit({
@@ -62,6 +67,22 @@ router.post(
       gdprService.requireConfirmation(req.body.confirm)
       const result = await gdprService.deleteUserData(req.user.id, req.user.email)
       res.json({ ok: true, ...result })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ━━━ GET /me/ai-usage — usage IA du mois en cours pour un workspace ━━━
+router.get(
+  '/ai-usage',
+  [query('workspaceId').isUUID()],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const usage = await aiUsage.getMonthlyUsage(req.workspaceId)
+      res.json(usage)
     } catch (err) {
       next(err)
     }

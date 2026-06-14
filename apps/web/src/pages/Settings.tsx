@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout'
 import CopyButton from '@/components/CopyButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
+import AiUsageBlock from '@/components/settings/AiUsageBlock'
 import NotificationSettings from '@/components/settings/NotificationSettings'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -156,6 +157,12 @@ export default function SettingsPage() {
             </button>
           </div>
         </Section>
+
+        {workspace?.id && (
+          <Section title={t('settings.section.aiUsage')}>
+            <AiUsageBlock workspaceId={workspace.id} />
+          </Section>
+        )}
 
         {workspace?.id && (
           <Section title={t('settings.section.notifications')}>

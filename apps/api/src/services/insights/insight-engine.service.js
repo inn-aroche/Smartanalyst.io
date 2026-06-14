@@ -14,6 +14,7 @@
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { generateStructured } = require('../ai/gemini.service')
+const aiUsage = require('../ai/ai-usage.service')
 const aggregator = require('./aggregator.service')
 const digestService = require('../notifications/digest.service')
 const { validateInsightsPayload, SCHEMA_DESCRIPTION_FOR_PROMPT } = require('./insight-schema')
@@ -144,6 +145,15 @@ async function generateForWorkspace(workspaceId) {
       userMessage: buildUserMessage(context),
       temperature: 0.3,
       maxOutputTokens: 4096,
+    })
+    // Tracking d'usage IA — best-effort, ne throw jamais.
+    void aiUsage.recordUsage({
+      workspaceId,
+      model: result.usage?.model || result.modelName,
+      requestType: 'insight_engine',
+      inputTokens: result.usage?.inputTokens || 0,
+      outputTokens: result.usage?.outputTokens || 0,
+      durationMs: result.usage?.durationMs,
     })
   } catch (err) {
     if (err.code === 'GEMINI_NOT_CONFIGURED') {

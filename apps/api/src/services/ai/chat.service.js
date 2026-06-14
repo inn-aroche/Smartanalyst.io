@@ -3,6 +3,7 @@
 // audit log (best-effort), returns the text.
 
 const { generateOnce } = require('./gemini.service')
+const aiUsage = require('./ai-usage.service')
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
@@ -283,6 +284,18 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
       temperature: 0.4,
     })
     modelName = out.modelName
+
+    // Tracking d'usage IA : chaque tour de la boucle function-calling compte.
+    // Fire-and-forget (recordUsage est best-effort, ne throw jamais).
+    void aiUsage.recordUsage({
+      workspaceId,
+      userId,
+      model: out.usage?.model || out.modelName,
+      requestType: 'chat',
+      inputTokens: out.usage?.inputTokens || 0,
+      outputTokens: out.usage?.outputTokens || 0,
+      durationMs: out.usage?.durationMs,
+    })
 
     if (out.functionCalls.length === 0 || round === MAX_TOOL_ROUNDS) {
       finalText = out.text
