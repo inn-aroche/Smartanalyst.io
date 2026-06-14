@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import AppLayout from '@/components/AppLayout'
+import { SkeletonCardGrid } from '@/components/Skeleton'
 import {
   CATEGORIES,
   countByStatus,
@@ -122,7 +123,12 @@ export default function ConnectorsPage() {
         </div>
 
         {catalogQuery.isLoading && (
-          <div className="sa-card text-center text-text-2">{t('connectors.loading')}</div>
+          <div className="mb-6">
+            <h2 className="mb-4 font-head text-lg font-semibold text-text-1">
+              {t('connectors.section.available')}
+            </h2>
+            <SkeletonCardGrid count={6} />
+          </div>
         )}
 
         {available.length > 0 && (
