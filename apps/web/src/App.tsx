@@ -10,6 +10,8 @@ import Connectors from './pages/Connectors'
 import Dashboard from './pages/Dashboard'
 import Live from './pages/Live'
 import Login from './pages/Login'
+import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
+import ResetPasswordRequest from './pages/ResetPasswordRequest'
 import Settings from './pages/Settings'
 import Signup from './pages/Signup'
 import TrackingInstall from './pages/TrackingInstall'
@@ -22,6 +24,8 @@ export default function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/beta-locked" element={<BetaLocked />} />
+      <Route path="/reset-password/request" element={<ResetPasswordRequest />} />
+      <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
       <Route
         path="/"
         element={

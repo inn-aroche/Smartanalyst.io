@@ -250,4 +250,95 @@ async function getSession(userId) {
   }
 }
 
-module.exports = { signup, login, refresh, logout, getSession }
+/**
+ * Demande de reset password. Anti-enumeration : on renvoie TOUJOURS success,
+ * que l'email existe ou pas. Supabase Auth envoie le mail si l'user existe.
+ *
+ * Le lien dans l'email pointe vers APP_URL/reset-password/confirm. Supabase
+ * ajoute le `access_token` dans le fragment d'URL côté browser.
+ *
+ * On NE bloque PAS sur beta lockdown ici (on ne veut pas leak quels emails
+ * sont whitelistés) — le user pourra demander un reset même s'il n'est pas
+ * dans la beta, mais quand il essaiera de se connecter avec son nouveau
+ * password, le login le rejettera proprement.
+ */
+async function requestPasswordReset({ email }) {
+  const anon = getAnonClient()
+  const appUrl = (process.env.APP_URL || 'https://app.smartanalyst.io').replace(/\/$/, '')
+  const { error } = await anon.auth.resetPasswordForEmail(email, {
+    redirectTo: `${appUrl}/reset-password/confirm`,
+  })
+  // On log les erreurs côté serveur mais on ne les remonte JAMAIS au client
+  // (anti enumeration). Le caller lui dira "si l'email existe, on a envoyé".
+  if (error) {
+    logger.warn(
+      { event: 'password_reset_request_failed', email, error: error.message },
+      'Supabase password reset failed',
+    )
+  } else {
+    logger.info({ event: 'password_reset_requested', email }, 'Password reset email sent')
+  }
+}
+
+/**
+ * Confirme le reset : avec l'access_token reçu via le lien, on update le
+ * password via l'API REST Supabase Auth. On évite supabase-js pour ne pas
+ * mélanger des sessions client/server.
+ */
+async function confirmPasswordReset({ accessToken, newPassword }) {
+  if (!accessToken || !newPassword) {
+    throw new UserFacingError('Token et nouveau mot de passe requis.', {
+      statusCode: 400,
+      code: 'MISSING_FIELDS',
+    })
+  }
+  // Supabase exige au moins 6 caractères ; on force notre minimum à 12.
+  if (newPassword.length < 12) {
+    throw new UserFacingError('Le mot de passe doit faire au moins 12 caractères.', {
+      statusCode: 400,
+      code: 'WEAK_PASSWORD',
+    })
+  }
+  const supabaseUrl = process.env.SUPABASE_URL
+  const anonKey = process.env.SUPABASE_ANON_KEY
+  if (!supabaseUrl || !anonKey) {
+    throw new UserFacingError('Service indisponible.', {
+      statusCode: 503,
+      code: 'AUTH_NOT_CONFIGURED',
+    })
+  }
+  const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    method: 'PUT',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password: newPassword }),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    logger.warn(
+      { event: 'password_reset_confirm_failed', status: res.status, body: body.slice(0, 300) },
+      'Supabase password update rejected',
+    )
+    // 401 = token invalide / expiré.
+    if (res.status === 401 || res.status === 403) {
+      throw new UserFacingError(
+        'Le lien de reset est invalide ou expiré. Redemande un email.',
+        { statusCode: 400, code: 'INVALID_OR_EXPIRED_TOKEN' },
+      )
+    }
+    throw new UserFacingError(
+      'Impossible de mettre à jour le mot de passe. Réessaie.',
+      { statusCode: 500, code: 'PASSWORD_UPDATE_FAILED' },
+    )
+  }
+  const json = await res.json().catch(() => ({}))
+  logger.info(
+    { event: 'password_reset_confirmed', userId: json?.id },
+    'Password reset confirmed',
+  )
+}
+
+module.exports = { signup, login, refresh, logout, getSession, requestPasswordReset, confirmPasswordReset }

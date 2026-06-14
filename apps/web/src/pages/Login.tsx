@@ -93,9 +93,17 @@ export default function Login() {
               />
             </div>
             <div>
-              <label className="sa-label" htmlFor="password">
-                {t('common.password')}
-              </label>
+              <div className="flex items-baseline justify-between">
+                <label className="sa-label" htmlFor="password">
+                  {t('common.password')}
+                </label>
+                <Link
+                  to="/reset-password/request"
+                  className="text-xs text-text-3 hover:text-text-1"
+                >
+                  {t('login.forgotPassword')}
+                </Link>
+              </div>
               <input
                 id="password"
                 className="sa-input"

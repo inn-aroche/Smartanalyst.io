@@ -214,6 +214,59 @@ router.get('/google/callback', async (req, res, next) => {
   }
 })
 
-// TODO: password reset (request + confirm) — dépend du service Resend
+// ━━━ Password reset ━━━
+// Rate limit strict : 5 demandes / heure / IP (anti-spam, anti-enumeration).
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMIT', message: 'Trop de demandes. Attends une heure.' } },
+})
+
+// ━━━ POST /auth/password-reset/request ━━━
+// Body: { email }
+// Réponse 200 systématique (anti-enumeration). Si l'email existe côté
+// Supabase Auth, un mail de reset est envoyé.
+router.post(
+  '/password-reset/request',
+  passwordResetLimiter,
+  [body('email').isEmail().withMessage('Email invalide.').normalizeEmail()],
+  runValidation,
+  async (req, res, next) => {
+    try {
+      await authService.requestPasswordReset({ email: req.body.email })
+      res.json({ ok: true })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ━━━ POST /auth/password-reset/confirm ━━━
+// Body: { accessToken, password } — accessToken vient du fragment d'URL
+// après le clic sur le lien de reset envoyé par Supabase.
+router.post(
+  '/password-reset/confirm',
+  [
+    body('accessToken').isString().notEmpty().withMessage('Token requis.'),
+    body('password')
+      .isString()
+      .isLength({ min: 12 })
+      .withMessage('Mot de passe ≥ 12 caractères.'),
+  ],
+  runValidation,
+  async (req, res, next) => {
+    try {
+      await authService.confirmPasswordReset({
+        accessToken: req.body.accessToken,
+        newPassword: req.body.password,
+      })
+      res.json({ ok: true })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
 
 module.exports = router
