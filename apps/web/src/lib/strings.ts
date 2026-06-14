@@ -75,7 +75,7 @@ const en = {
   'brief.onboardCta.cta': 'Start onboarding',
 
   // ━━━ Onboarding (App v2 — overlay 5 étapes §3.7C) ━━━
-  'onboarding.title': 'Onboarding',
+  'onboarding.flowTitle': 'Onboarding',
   'onboarding.step': 'STEP',
   'onboarding.exit': 'Exit',
   'onboarding.exit.confirm':
@@ -811,7 +811,7 @@ const fr: Record<keyof typeof en, string> = {
   'brief.onboardCta.cta': "Lancer l'onboarding",
 
   // ━━━ Onboarding (App v2 — overlay 5 étapes §3.7C) ━━━
-  'onboarding.title': 'Onboarding',
+  'onboarding.flowTitle': 'Onboarding',
   'onboarding.step': 'ÉTAPE',
   'onboarding.exit': 'Quitter',
   'onboarding.exit.confirm':

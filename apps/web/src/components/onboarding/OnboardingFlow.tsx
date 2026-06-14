@@ -221,7 +221,7 @@ function OnboardingShell({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[2000] flex flex-col bg-bg-0"
       role="dialog"
       aria-modal="true"
-      aria-label={t('onboarding.title')}
+      aria-label={t('onboarding.flowTitle')}
     >
       <TopBar step={step} onClose={handleClose} />
 
