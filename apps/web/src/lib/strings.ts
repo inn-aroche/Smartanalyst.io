@@ -12,6 +12,7 @@ const en = {
   'common.loading': 'Loading…',
   'common.back': 'Back',
   'common.backToSite': 'Back to smartanalyst.io',
+  'common.delete': 'Delete',
 
   // ━━━ Nav / layout (App v2 — direction "Le Brief") ━━━
   'nav.workspace': 'Workspace',
@@ -101,6 +102,34 @@ const en = {
   'veille.empty.allClear':
     "All quiet on the watch front — I'll surface anything new the moment I spot it.",
   'veille.empty.resolved': 'Nothing handled yet.',
+
+  // ━━━ Sources (App v2 — connecteurs + librairie §3.7) ━━━
+  'sources.topbar.title': 'My data sources',
+  'sources.subtitle': 'Live connectors and file library',
+  'sources.title': 'Your data sources',
+  'sources.intro':
+    "Connectors feed your dashboard in real time. The library is your assistant's raw material — anything you drop in becomes queryable.",
+  'sources.tab.connectors': 'Live connectors',
+  'sources.tab.library': 'File library',
+  'sources.counters.active': '{{n}} active',
+  'sources.counters.reconnect': '{{n}} to reconnect',
+  'sources.addSource': 'Add a source',
+  'sources.recommended': 'Recommended for your activity',
+  'sources.reconnect': 'Reconnect',
+  'sources.neverSynced': 'never synced',
+  'sources.status.synced': 'Synced',
+  'sources.status.expired': 'Expired',
+  'sources.empty.connectors':
+    'No source connected yet. Plug GA4, Meta Ads or Stripe in a few clicks — your dashboard will fill up automatically.',
+  'sources.dropzone.title': 'Drop a file here',
+  'sources.dropzone.body': 'CSV, Excel, PDF or image — reusable in the assistant',
+  'sources.dropzone.browse': 'Browse my files',
+  'sources.dropzone.uploading': 'Uploading…',
+  'sources.empty.files': 'No file yet. Drop a CSV, Excel, PDF or image to query it.',
+  'sources.askAbout': 'Ask',
+  'sources.toast.uploaded': 'File uploaded',
+  'sources.toast.uploadFailed': 'Upload failed',
+  'sources.toast.deleted': 'File deleted',
 
   // ━━━ Chat ━━━
   'chat.kicker': 'Ask SmartAnalyst',
@@ -665,6 +694,7 @@ const fr: Record<keyof typeof en, string> = {
   'common.loading': 'Chargement…',
   'common.back': 'Retour',
   'common.backToSite': 'Retour sur smartanalyst.io',
+  'common.delete': 'Supprimer',
 
   // ━━━ Nav / layout (App v2 — direction « Le Brief ») ━━━
   'nav.workspace': 'Espace',
@@ -754,6 +784,35 @@ const fr: Record<keyof typeof en, string> = {
   'veille.recap.opportunityCount': '{{n}} opportunité(s)',
   'veille.empty.allClear': "Rien sur le radar pour l'instant — je remonte tout dès que ça bouge.",
   'veille.empty.resolved': 'Aucun insight traité pour le moment.',
+
+  // ━━━ Sources (App v2 — connecteurs + librairie §3.7) ━━━
+  'sources.topbar.title': 'Mes sources de données',
+  'sources.subtitle': 'Connecteurs live et librairie de fichiers',
+  'sources.title': 'Tes sources de données',
+  'sources.intro':
+    "Les connecteurs alimentent ton tableau de bord en continu. La librairie, c'est ta matière première pour l'assistant — tout ce que tu y déposes devient interrogeable.",
+  'sources.tab.connectors': 'Connecteurs live',
+  'sources.tab.library': 'Librairie de fichiers',
+  'sources.counters.active': '{{n}} actif(s)',
+  'sources.counters.reconnect': '{{n}} à reconnecter',
+  'sources.addSource': 'Ajouter une source',
+  'sources.recommended': 'Recommandé pour ton activité',
+  'sources.reconnect': 'Reconnecter',
+  'sources.neverSynced': 'jamais synchronisé',
+  'sources.status.synced': 'Synchro',
+  'sources.status.expired': 'Expiré',
+  'sources.empty.connectors':
+    'Aucune source connectée. Branche GA4, Meta Ads ou Stripe en quelques clics — ton tableau de bord se remplira tout seul.',
+  'sources.dropzone.title': 'Dépose un fichier ici',
+  'sources.dropzone.body': "CSV, Excel, PDF ou image — réutilisable dans l'assistant",
+  'sources.dropzone.browse': 'Parcourir mes fichiers',
+  'sources.dropzone.uploading': 'Upload en cours…',
+  'sources.empty.files':
+    "Aucun fichier pour le moment. Dépose un CSV, un Excel, un PDF ou une image pour l'interroger.",
+  'sources.askAbout': 'Interroger',
+  'sources.toast.uploaded': 'Fichier uploadé',
+  'sources.toast.uploadFailed': "Échec de l'upload",
+  'sources.toast.deleted': 'Fichier supprimé',
 
   // ━━━ Chat ━━━
   'chat.kicker': 'Demande à SmartAnalyst',
