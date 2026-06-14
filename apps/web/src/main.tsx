@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 
 import App from './App'
+import ConsentBanner from './components/ConsentBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AuthProvider } from './lib/auth'
 import { installGlobalErrorReporting } from './lib/client-errors'
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')!).render(
           <LocaleProvider>
             <AuthProvider>
               <App />
+              <ConsentBanner />
             </AuthProvider>
           </LocaleProvider>
         </BrowserRouter>

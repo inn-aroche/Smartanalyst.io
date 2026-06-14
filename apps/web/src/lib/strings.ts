@@ -373,6 +373,28 @@ const en = {
   'settings.language.body':
     'Change the language of the interface. Your choice is saved on this device.',
   'settings.section.tracking': 'Tracking — SmartTag',
+  'settings.section.privacy': 'Privacy',
+  'settings.privacy.title': 'Cookie preferences',
+  'settings.privacy.body':
+    'Review or update your cookie choices for analytics and marketing. Strictly necessary cookies cannot be disabled.',
+  'settings.privacy.button': 'Manage cookies',
+
+  // ━━━ Consent banner ━━━
+  'consent.title': 'Cookies & tracking',
+  'consent.message':
+    'We use cookies to keep you signed in and improve SmartAnalyst. Analytics and marketing are optional — you can change your mind anytime.',
+  'consent.acceptAll': 'Accept all',
+  'consent.rejectAll': 'Reject all',
+  'consent.save': 'Save choice',
+  'consent.privacyLink': 'Read our Privacy policy',
+  'consent.cat.necessary.label': 'Strictly necessary',
+  'consent.cat.necessary.desc':
+    'Authentication, session, security. Required to use SmartAnalyst — always on.',
+  'consent.cat.analytics.label': 'Analytics',
+  'consent.cat.analytics.desc':
+    'Helps us understand how the app is used so we can improve it. Aggregated, never sold.',
+  'consent.cat.marketing.label': 'Marketing',
+  'consent.cat.marketing.desc': 'Allows measuring our ad campaigns. Disabled by default.',
 
   // ━━━ Tracking (SmartTag block inside Settings) ━━━
   'tracking.writeKey.label': 'Write key',
@@ -893,6 +915,29 @@ const fr: Record<keyof typeof en, string> = {
   'settings.language.body':
     'Change la langue de l’interface. Ton choix est gardé sur cet appareil.',
   'settings.section.tracking': 'Tracking — SmartTag',
+  'settings.section.privacy': 'Confidentialité',
+  'settings.privacy.title': 'Préférences cookies',
+  'settings.privacy.body':
+    'Revoir ou modifier ton choix concernant les cookies analytics et marketing. Les cookies strictement nécessaires ne peuvent pas être désactivés.',
+  'settings.privacy.button': 'Gérer les cookies',
+
+  // ━━━ Bannière de consentement ━━━
+  'consent.title': 'Cookies & tracking',
+  'consent.message':
+    'On utilise des cookies pour te garder connecté et améliorer SmartAnalyst. Analytics et marketing sont optionnels — tu peux changer d’avis à tout moment.',
+  'consent.acceptAll': 'Tout accepter',
+  'consent.rejectAll': 'Tout refuser',
+  'consent.save': 'Enregistrer',
+  'consent.privacyLink': 'Lire notre politique de confidentialité',
+  'consent.cat.necessary.label': 'Strictement nécessaires',
+  'consent.cat.necessary.desc':
+    'Authentification, session, sécurité. Requis pour utiliser SmartAnalyst — toujours actifs.',
+  'consent.cat.analytics.label': 'Analytics',
+  'consent.cat.analytics.desc':
+    'Nous aide à comprendre comment l’app est utilisée pour l’améliorer. Agrégé, jamais revendu.',
+  'consent.cat.marketing.label': 'Marketing',
+  'consent.cat.marketing.desc':
+    'Permet de mesurer nos campagnes publicitaires. Désactivé par défaut.',
 
   // ━━━ Tracking (bloc SmartTag dans Settings) ━━━
   'tracking.writeKey.label': 'Clé d’écriture',
