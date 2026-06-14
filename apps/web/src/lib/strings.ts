@@ -36,6 +36,39 @@ const en = {
   'nav.dataUpToDate': 'Up to date',
   'nav.askQuestion': 'Question',
 
+  // ━━━ Brief home (App v2 — accueil narré) ━━━
+  'brief.topbar.title': 'My morning brief',
+  'brief.greeting': 'Hi {{name}}',
+  'brief.score.label': 'health',
+  'brief.score.good': 'Going well',
+  'brief.score.mid': 'Mixed signals',
+  'brief.score.low': 'Needs attention',
+  'brief.score.unknown': 'Not enough data yet',
+  'brief.score.noData':
+    "Connect a data source and I'll start scoring your business in a few minutes.",
+  'brief.narrative.up': 'Your score is up {{delta}} points this week — momentum is on your side.',
+  'brief.narrative.down':
+    'Your score is down {{delta}} points this week — let me show you what changed.',
+  'brief.narrative.flat': 'Your score is steady this week.',
+  'brief.narrative.one': "There's one thing I'd fix in priority.",
+  'brief.narrative.many': "There are {{n}} things I'd look at in priority.",
+  'brief.narrative.allGood': 'Nothing critical to flag — keep going.',
+  'brief.three.title': 'The 3 things that matter this morning',
+  'brief.three.body': "Each item: what's happening, why, and what I'd recommend.",
+  'brief.three.empty':
+    "Nothing critical right now. I'll surface things here as soon as I spot them.",
+  'brief.three.reco': 'My reco',
+  'brief.three.cta': 'See all my watch',
+  'brief.proposed.title': "What I'd suggest you do",
+  'brief.proposed.body': "Validate what makes sense; I'll handle the rest.",
+  'brief.proposed.empty': 'No proposals waiting. Check back tomorrow morning.',
+  'brief.proposed.cta': 'All my tasks',
+  'brief.proposed.toCurate': 'to curate',
+  'brief.kpis.eyebrow': 'At a glance',
+  'brief.kpis.empty': 'Connect a source to see your KPIs here.',
+  'brief.ask.body': "A question on your numbers? Ask me, I've got everything at hand.",
+  'brief.ask.cta': 'Open the assistant',
+
   // ━━━ Chat ━━━
   'chat.kicker': 'Ask SmartAnalyst',
   'chat.title': 'What do you want to know?',
@@ -622,6 +655,40 @@ const fr: Record<keyof typeof en, string> = {
   'nav.collapse': 'Réduire le panneau',
   'nav.dataUpToDate': 'Données à jour',
   'nav.askQuestion': 'Question',
+
+  // ━━━ Brief home (App v2 — accueil narré) ━━━
+  'brief.topbar.title': 'Mon point du jour',
+  'brief.greeting': 'Bonjour {{name}}',
+  'brief.score.label': 'santé',
+  'brief.score.good': 'Ça va plutôt bien',
+  'brief.score.mid': 'Signaux mitigés',
+  'brief.score.low': 'À surveiller',
+  'brief.score.unknown': 'Pas encore assez de données',
+  'brief.score.noData':
+    'Connecte une source de données et je commence à scorer ton business en quelques minutes.',
+  'brief.narrative.up':
+    'Ton score progresse de {{delta}} points cette semaine — la dynamique est avec toi.',
+  'brief.narrative.down':
+    'Ton score perd {{delta}} points cette semaine — je te montre ce qui a changé.',
+  'brief.narrative.flat': 'Ton score est stable cette semaine.',
+  'brief.narrative.one': 'Il y a une chose à régler en priorité.',
+  'brief.narrative.many': 'Il y a {{n}} choses à regarder en priorité.',
+  'brief.narrative.allGood': 'Rien de critique à signaler — continue comme ça.',
+  'brief.three.title': 'Les 3 choses qui comptent ce matin',
+  'brief.three.body': 'Chaque point : ce qui se passe, pourquoi, et ce que je te recommande.',
+  'brief.three.empty':
+    'Rien de critique pour le moment. Je remonte les éléments dès que je les détecte.',
+  'brief.three.reco': 'Ma reco',
+  'brief.three.cta': 'Voir toute ma veille',
+  'brief.proposed.title': 'Ce que je te propose de faire',
+  'brief.proposed.body': "Valide ce qui te parle, je m'occupe du reste.",
+  'brief.proposed.empty': 'Aucune proposition en attente. Reviens demain matin.',
+  'brief.proposed.cta': 'Toutes mes tâches',
+  'brief.proposed.toCurate': 'à curer',
+  'brief.kpis.eyebrow': "En un coup d'œil",
+  'brief.kpis.empty': 'Connecte une source pour voir tes KPIs ici.',
+  'brief.ask.body': "Une question sur tes chiffres ? Demande-moi, j'ai tout sous la main.",
+  'brief.ask.cta': "Ouvrir l'assistant",
 
   // ━━━ Chat ━━━
   'chat.kicker': 'Demande à SmartAnalyst',
