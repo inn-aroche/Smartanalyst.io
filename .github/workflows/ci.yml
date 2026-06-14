@@ -29,13 +29,12 @@ jobs:
         run: npm ci
 
       - name: Prettier (format check)
-        # NOTE: informative-only for now. Two things must land before this can block PRs:
-        #   1. Add `prettier-plugin-astro` to root devDeps + declare it in .prettierrc
-        #      (otherwise .astro files report "No parser could be inferred")
-        #   2. Run `npm run format` once to reformat existing files to match Prettier defaults
-        # Then remove `continue-on-error` here.
+        # Informative-only for now. `format:check` respecte .prettierignore
+        # (qui exclut les .astro faute de prettier-plugin-astro). Reste à
+        # reformater la baseline existante (`npm run format`) avant de retirer
+        # continue-on-error et de rendre ce gate bloquant.
         continue-on-error: true
-        run: npx prettier --check "apps/*/src/**/*.{js,ts,astro,html,css}" "packages/*/src/**/*.{js,ts}"
+        run: npm run format:check
 
       - name: Lint
         # NOTE: apps/api defines `lint` (eslint v9) but no eslint.config.js exists yet.
@@ -45,6 +44,12 @@ jobs:
 
       - name: Tests
         run: npm run test --workspaces --if-present
+
+      - name: Web build (smoke)
+        # Build le SaaS React : `tsc -b && vite build`. Catch les erreurs
+        # TypeScript et les imports cassés AVANT le merge — important vu le
+        # volume de travail frontend (Home, reset password, Settings, etc.).
+        run: npm run build --workspace=@smartanalyst/web
 
       - name: Marketing build (smoke)
         # Catches Astro template / shared-package breakage before deploy.
