@@ -1,0 +1,195 @@
+---
+// Mentions légales — obligation Code Consommation L.122-1 + LCEN art. 6.
+// Squelette FR, à faire relire par un avocat avant publication.
+import DarkBase from '../../../layouts/DarkBase.astro';
+
+const LEGAL_DRAFT = true;
+---
+<DarkBase
+  title="Mentions légales — SmartAnalyst"
+  description="Mentions légales de SmartAnalyst.io : identité de l'éditeur, hébergement, contact, médiation."
+  locale="fr"
+>
+  <section class="page-hero">
+    <div class="glow" style="width:600px;height:400px;top:-80px;left:50%;transform:translateX(-50%);opacity:0.4"></div>
+    <div class="container" style="position:relative;z-index:1">
+      {LEGAL_DRAFT && (
+        <div class="legal-draft-banner" role="alert">
+          ⚠️ <strong>Version en cours de validation juridique.</strong>
+          Les informations légales (raison sociale, adresse, SIRET, hébergeur) seront publiées une fois la passe juridique terminée. La version définitive prévaut.
+        </div>
+      )}
+      <div class="eyebrow">Légal</div>
+      <h1>Mentions <span class="gradient-text">légales.</span></h1>
+      <p class="lead">
+        Qui édite ce site, qui l'héberge, comment nous joindre.
+      </p>
+      <p class="meta">Dernière mise à jour : <strong>14 juin 2026</strong></p>
+    </div>
+  </section>
+
+  <section class="page-section legal">
+    <div class="container">
+
+      <article>
+        <h2>1. Éditeur du site</h2>
+        <ul>
+          <li><strong>Raison sociale</strong> : Aurélien Roche EI (Entrepreneur individuel)</li>
+          <li><strong>Siège social</strong> : 174 Rue du Temple, 75003 Paris, France</li>
+          <li><strong>SIRET</strong> : 908 185 564 00014</li>
+          <li><strong>Directeur de la publication</strong> : Aurélien Roche</li>
+          <li><strong>Email</strong> : <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a></li>
+        </ul>
+      </article>
+
+      <article>
+        <h2>2. Hébergement</h2>
+        <p>
+          Le site marketing <code>smartanalyst.io</code> est hébergé par <strong>Cloudflare, Inc.</strong> (101 Townsend Street, San Francisco, CA 94107, USA) via Cloudflare Pages.
+        </p>
+        <p>
+          L'application <code>app.smartanalyst.io</code> est également hébergée sur Cloudflare Pages. Les services API et workers sont hébergés sur un VPS chez <strong>Hostinger International Ltd.</strong> (61 Lordou Vironos, 6023 Larnaca, Chypre).
+        </p>
+        <p>
+          La base de données et le service d'authentification sont fournis par <strong>Supabase Inc.</strong> (970 Toa Payoh North #07-04, Singapore 318992), avec des serveurs hébergés en <strong>Union européenne (Francfort)</strong>.
+        </p>
+      </article>
+
+      <article>
+        <h2>3. Propriété intellectuelle</h2>
+        <p>
+          L'ensemble du site (textes, graphismes, logos, icônes, sons, logiciels) est la propriété exclusive de SmartAnalyst, à l'exception des marques, logos ou contenus appartenant à d'autres entreprises partenaires ou auteurs.
+        </p>
+        <p>
+          Toute reproduction, représentation, modification, publication, adaptation totale ou partielle des éléments du site, quel que soit le moyen ou le procédé utilisé, est interdite sans autorisation écrite préalable.
+        </p>
+      </article>
+
+      <article>
+        <h2>4. Données personnelles</h2>
+        <p>
+          Pour tout ce qui concerne la collecte et le traitement de tes données personnelles, consulte notre <a href="/fr/legal/privacy">politique de confidentialité</a>.
+        </p>
+        <p>
+          Délégué à la protection des données (DPO) / contact RGPD : <a href="mailto:privacy@smartanalyst.io">privacy@smartanalyst.io</a>.
+        </p>
+      </article>
+
+      <article>
+        <h2>5. Médiation de la consommation</h2>
+        <p>
+          Conformément à l'article L.612-1 du Code de la consommation, en cas de litige non résolu après réclamation écrite préalable, le consommateur peut recourir gratuitement au service de médiation suivant :
+        </p>
+        <p>
+          <strong>Médiateur de la consommation</strong> à préciser dans la version finale (par exemple : Centre de la médiation de la consommation des conjoncteurs de justice — CMCC).
+        </p>
+        <p>
+          Le consommateur peut également saisir la plateforme européenne de règlement en ligne des litiges (<a href="https://ec.europa.eu/consumers/odr" rel="nofollow noopener" target="_blank">ec.europa.eu/consumers/odr</a>).
+        </p>
+      </article>
+
+      <article>
+        <h2>6. Loi applicable</h2>
+        <p>
+          Le présent site et les présentes mentions légales sont régis par la loi française. En cas de litige, et après tentative de recherche d'une solution amiable, les tribunaux français seront seuls compétents pour connaître de ce litige.
+        </p>
+      </article>
+
+      <article>
+        <h2>7. Contact</h2>
+        <p>
+          Pour toute question relative aux présentes mentions légales, contacte-nous à <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a>.
+        </p>
+      </article>
+
+    </div>
+  </section>
+</DarkBase>
+
+<style>
+  .page-hero h1 { font-size: 56px; line-height: 1.05; }
+  .page-hero .eyebrow {
+    font-family: var(--ff-m);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 18px;
+  }
+  .page-hero .lead {
+    font-size: 17px;
+    max-width: 620px;
+    margin: 18px auto 16px;
+    color: var(--text-2);
+  }
+  .page-hero .meta {
+    font-family: var(--ff-m);
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .legal-draft-banner {
+    background: rgba(255, 200, 0, 0.08);
+    border: 1px solid rgba(255, 200, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 0 auto 28px;
+    max-width: 680px;
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .page-section.legal {
+    padding: 60px 0 120px;
+  }
+  .page-section.legal .container {
+    max-width: 760px;
+  }
+  .page-section.legal article {
+    margin-bottom: 48px;
+  }
+  .page-section.legal h2 {
+    font-family: var(--ff-h);
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    color: var(--text-1);
+  }
+  .page-section.legal h3 {
+    font-family: var(--ff-h);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 22px 0 10px;
+    color: var(--text-1);
+  }
+  .page-section.legal p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-2);
+    margin: 0 0 14px;
+  }
+  .page-section.legal ul {
+    list-style: disc;
+    padding-left: 22px;
+    margin: 0 0 14px;
+  }
+  .page-section.legal li {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .page-section.legal a {
+    color: var(--cyan);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .page-section.legal code {
+    font-family: var(--ff-m);
+    font-size: 13px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text-1);
+  }
+</style>

@@ -1,0 +1,236 @@
+---
+// Conditions Générales de Vente (CGV) — squelette FR, à faire relire
+// par un avocat avant publication (LEGAL_DRAFT=true).
+import DarkBase from '../../../layouts/DarkBase.astro';
+
+const LEGAL_DRAFT = true;
+---
+<DarkBase
+  title="Conditions Générales de Vente — SmartAnalyst"
+  description="CGV de SmartAnalyst.io : abonnement SaaS, période d'essai, paiement, résiliation, responsabilité."
+  locale="fr"
+>
+  <section class="page-hero">
+    <div class="glow" style="width:600px;height:400px;top:-80px;left:50%;transform:translateX(-50%);opacity:0.4"></div>
+    <div class="container" style="position:relative;z-index:1">
+      {LEGAL_DRAFT && (
+        <div class="legal-draft-banner" role="alert">
+          ⚠️ <strong>Version en cours de validation juridique.</strong>
+          Ce document est un squelette destiné à être relu et complété par un avocat avant sa mise en production. La version finale prévaut.
+        </div>
+      )}
+      <div class="eyebrow">Légal</div>
+      <h1>Conditions <span class="gradient-text">Générales de Vente.</span></h1>
+      <p class="lead">
+        Ce que tu obtiens en t'abonnant à SmartAnalyst, et ce qu'on s'engage à fournir.
+      </p>
+      <p class="meta">Dernière mise à jour : <strong>14 juin 2026</strong></p>
+    </div>
+  </section>
+
+  <section class="page-section legal">
+    <div class="container">
+
+      <article>
+        <h2>1. Objet</h2>
+        <p>
+          Les présentes Conditions Générales de Vente (« <strong>CGV</strong> ») régissent la fourniture du service en ligne <strong>SmartAnalyst</strong> (« le Service ») par <strong>Aurélien Roche EI</strong>, SIRET 908 185 564 00014, 174 Rue du Temple, 75003 Paris (« <strong>SmartAnalyst</strong> ») à toute personne physique ou morale (« <strong>l'Abonné</strong> ») souscrivant un abonnement.
+        </p>
+      </article>
+
+      <article>
+        <h2>2. Acceptation</h2>
+        <p>
+          La création d'un compte et/ou la souscription d'un abonnement implique l'acceptation pleine et entière des présentes CGV. L'Abonné reconnaît en avoir pris connaissance et les avoir acceptées avant tout paiement.
+        </p>
+      </article>
+
+      <article>
+        <h2>3. Description du Service</h2>
+        <p>
+          SmartAnalyst est une plateforme SaaS d'analyse marketing assistée par IA. Le Service permet notamment :
+        </p>
+        <ul>
+          <li>de connecter des sources de données tierces (GA4, Meta Ads, Stripe, Shopify, etc.) via OAuth ou clé API,</li>
+          <li>d'agréger les métriques marketing et de générer des insights automatiques,</li>
+          <li>de poser des questions en langage naturel à un assistant IA contextuel,</li>
+          <li>d'installer un tag de tracking propriétaire (« SmartTag ») sur le site de l'Abonné.</li>
+        </ul>
+        <p>
+          La liste exhaustive des fonctionnalités par plan est disponible sur la page <a href="/fr/pricing">tarifs</a>. SmartAnalyst se réserve le droit de modifier les fonctionnalités du Service moyennant un préavis raisonnable à l'Abonné.
+        </p>
+      </article>
+
+      <article>
+        <h2>4. Souscription &amp; tarifs</h2>
+        <p>
+          L'Abonné souscrit un plan parmi ceux proposés. Les tarifs sont indiqués en euros (€) hors taxes sur la page <a href="/fr/pricing">tarifs</a> et applicables à la date de souscription.
+        </p>
+        <p>
+          La périodicité de facturation (mensuelle ou annuelle) est choisie par l'Abonné au moment de la souscription. L'abonnement se renouvelle automatiquement à chaque échéance, sauf résiliation par l'Abonné dans les conditions prévues à l'article 7.
+        </p>
+      </article>
+
+      <article>
+        <h2>5. Période d'essai</h2>
+        <p>
+          Une période d'essai gratuite peut être proposée pour les nouveaux Abonnés. La durée et les conditions exactes sont précisées au moment de l'inscription. Aucun moyen de paiement n'est requis durant cette période. À l'issue de la période d'essai, l'Abonné doit explicitement souscrire un plan payant pour continuer à utiliser le Service.
+        </p>
+      </article>
+
+      <article>
+        <h2>6. Paiement</h2>
+        <p>
+          Les paiements sont opérés via le prestataire <strong>Stripe</strong> (Stripe Payments Europe Limited, 1 Grand Canal Street Lower, Dublin 2, Irlande). SmartAnalyst n'a jamais accès aux données de carte bancaire de l'Abonné.
+        </p>
+        <p>
+          Toute facture est exigible à la date d'émission. En cas d'échec de paiement, SmartAnalyst pourra suspendre l'accès au Service après notification et un délai de régularisation de 7 jours.
+        </p>
+      </article>
+
+      <article>
+        <h2>7. Résiliation</h2>
+        <p>
+          L'Abonné peut résilier son abonnement à tout moment depuis l'espace <a href="https://app.smartanalyst.io/settings">paramètres</a> de son compte. La résiliation prend effet à la fin de la période en cours déjà payée — les jours restants ne donnent pas lieu à remboursement, sauf cas prévu par la loi.
+        </p>
+        <p>
+          SmartAnalyst peut résilier l'abonnement, après notification écrite et préavis de 30 jours, en cas de manquement grave de l'Abonné aux présentes CGV ou d'usage du Service contraire à la loi.
+        </p>
+      </article>
+
+      <article>
+        <h2>8. Données personnelles &amp; confidentialité</h2>
+        <p>
+          Le traitement des données personnelles est régi par notre <a href="/fr/legal/privacy">politique de confidentialité</a>. SmartAnalyst agit en qualité de sous-traitant pour les données business que l'Abonné lui confie (métriques marketing, événements de tracking, etc.) et en qualité de responsable de traitement pour les données de compte.
+        </p>
+      </article>
+
+      <article>
+        <h2>9. Propriété intellectuelle</h2>
+        <p>
+          Le Service, sa structure, son code, ses interfaces, ses logos et toute documentation associée restent la propriété exclusive de SmartAnalyst.
+        </p>
+        <p>
+          L'Abonné conserve la pleine propriété de ses données business et de ses événements de tracking. Il accorde à SmartAnalyst une licence non-exclusive, mondiale et limitée à la durée du contrat, pour traiter ces données dans le seul but de fournir le Service.
+        </p>
+      </article>
+
+      <article>
+        <h2>10. Disponibilité &amp; responsabilité</h2>
+        <p>
+          SmartAnalyst met en œuvre les moyens raisonnables pour assurer la disponibilité du Service 24/7, sans garantie d'absence d'interruption. Les opérations de maintenance planifiées seront notifiées via la <a href="/status">page de statut</a>.
+        </p>
+        <p>
+          La responsabilité de SmartAnalyst, toutes causes confondues, est limitée au montant payé par l'Abonné au titre des 12 mois précédant le fait générateur du litige. SmartAnalyst ne saurait être tenue responsable des préjudices indirects, perte de chiffre d'affaires, de données ou d'opportunité commerciale.
+        </p>
+      </article>
+
+      <article>
+        <h2>11. Force majeure</h2>
+        <p>
+          Aucune des deux parties ne sera tenue responsable d'un manquement à ses obligations en cas de force majeure, telle que définie par la jurisprudence française (article 1218 du Code civil).
+        </p>
+      </article>
+
+      <article>
+        <h2>12. Loi applicable &amp; juridiction</h2>
+        <p>
+          Les présentes CGV sont régies par la loi française. En cas de litige relatif à leur exécution ou à leur interprétation, les parties s'efforceront de trouver une solution amiable.
+        </p>
+        <p>
+          À défaut, et conformément à l'article L.612-1 du Code de la consommation, le consommateur peut recourir gratuitement au service de médiation indiqué sur la page <a href="/fr/legal/legal-notice">mentions légales</a>, avant toute action judiciaire. À défaut de règlement amiable, les tribunaux français seront seuls compétents.
+        </p>
+      </article>
+
+      <article>
+        <h2>13. Modification des CGV</h2>
+        <p>
+          SmartAnalyst se réserve le droit de modifier les présentes CGV à tout moment. Toute modification substantielle sera notifiée à l'Abonné par email au moins 30 jours avant son entrée en vigueur. L'utilisation continue du Service vaut acceptation des nouvelles CGV.
+        </p>
+      </article>
+
+      <article>
+        <h2>14. Contact</h2>
+        <p>
+          Pour toute question relative aux présentes CGV : <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a>.
+        </p>
+      </article>
+
+    </div>
+  </section>
+</DarkBase>
+
+<style>
+  .page-hero h1 { font-size: 56px; line-height: 1.05; }
+  .page-hero .eyebrow {
+    font-family: var(--ff-m);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 18px;
+  }
+  .page-hero .lead {
+    font-size: 17px;
+    max-width: 620px;
+    margin: 18px auto 16px;
+    color: var(--text-2);
+  }
+  .page-hero .meta {
+    font-family: var(--ff-m);
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .legal-draft-banner {
+    background: rgba(255, 200, 0, 0.08);
+    border: 1px solid rgba(255, 200, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 0 auto 28px;
+    max-width: 680px;
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .page-section.legal { padding: 60px 0 120px; }
+  .page-section.legal .container { max-width: 760px; }
+  .page-section.legal article { margin-bottom: 48px; }
+  .page-section.legal h2 {
+    font-family: var(--ff-h);
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    color: var(--text-1);
+  }
+  .page-section.legal p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-2);
+    margin: 0 0 14px;
+  }
+  .page-section.legal ul {
+    list-style: disc;
+    padding-left: 22px;
+    margin: 0 0 14px;
+  }
+  .page-section.legal li {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-2);
+    margin-bottom: 6px;
+  }
+  .page-section.legal a {
+    color: var(--cyan);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .page-section.legal code {
+    font-family: var(--ff-m);
+    font-size: 13px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text-1);
+  }
+</style>

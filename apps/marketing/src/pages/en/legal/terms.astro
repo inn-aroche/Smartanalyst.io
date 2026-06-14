@@ -1,0 +1,183 @@
+---
+// Terms of Sale (EN). FR is the authoritative version under French law.
+import DarkBase from '../../../layouts/DarkBase.astro';
+
+const LEGAL_DRAFT = true;
+---
+<DarkBase
+  title="Terms of Sale — SmartAnalyst"
+  description="Terms of Sale for SmartAnalyst.io: SaaS subscription, free trial, billing, cancellation, liability."
+  locale="en"
+>
+  <section class="page-hero">
+    <div class="glow" style="width:600px;height:400px;top:-80px;left:50%;transform:translateX(-50%);opacity:0.4"></div>
+    <div class="container" style="position:relative;z-index:1">
+      {LEGAL_DRAFT && (
+        <div class="legal-draft-banner" role="alert">
+          ⚠️ <strong>Draft — pending legal review.</strong>
+          The French version (<a href="/fr/legal/terms">/fr/legal/terms</a>) is the authoritative version under French law. This translation will be finalised after legal review.
+        </div>
+      )}
+      <div class="eyebrow">Legal</div>
+      <h1>Terms <span class="gradient-text">of Sale.</span></h1>
+      <p class="lead">What you get when you subscribe to SmartAnalyst, and what we commit to.</p>
+      <p class="meta">Last updated: <strong>June 14, 2026</strong></p>
+    </div>
+  </section>
+
+  <section class="page-section legal">
+    <div class="container">
+
+      <article>
+        <h2>1. Purpose</h2>
+        <p>
+          These Terms of Sale (the "<strong>Terms</strong>") govern the provision of the online service <strong>SmartAnalyst</strong> (the "Service") by <strong>Aurélien Roche EI</strong> (French SIRET 908 185 564 00014, 174 Rue du Temple, 75003 Paris, France) ("<strong>SmartAnalyst</strong>") to any individual or legal entity (the "<strong>Subscriber</strong>") who subscribes to a plan.
+        </p>
+      </article>
+
+      <article>
+        <h2>2. Acceptance</h2>
+        <p>
+          Creating an account and/or subscribing to a plan implies full and unreserved acceptance of these Terms. The Subscriber acknowledges having read and accepted them before any payment.
+        </p>
+      </article>
+
+      <article>
+        <h2>3. Service description</h2>
+        <p>SmartAnalyst is an AI-assisted marketing analytics SaaS. The Service allows in particular:</p>
+        <ul>
+          <li>connecting third-party data sources (GA4, Meta Ads, Stripe, Shopify, etc.) via OAuth or API key,</li>
+          <li>aggregating marketing metrics and generating automatic insights,</li>
+          <li>asking natural-language questions to a context-aware AI assistant,</li>
+          <li>installing a proprietary tracking tag ("SmartTag") on the Subscriber's website.</li>
+        </ul>
+        <p>
+          The exhaustive list of features per plan is available on the <a href="/en/pricing">pricing page</a>. SmartAnalyst reserves the right to modify the Service's features upon reasonable notice.
+        </p>
+      </article>
+
+      <article>
+        <h2>4. Subscription &amp; pricing</h2>
+        <p>
+          The Subscriber selects one of the plans on offer. Prices are listed in euros (€) excluding tax on the <a href="/en/pricing">pricing page</a> and apply as of the date of subscription.
+        </p>
+        <p>
+          Billing frequency (monthly or yearly) is chosen at signup. Subscriptions automatically renew at each term, unless cancelled per article 7.
+        </p>
+      </article>
+
+      <article>
+        <h2>5. Free trial</h2>
+        <p>
+          A free trial may be offered to new Subscribers. The exact duration and conditions are stated at signup. No payment method is required during the trial. To keep using the Service after the trial, the Subscriber must explicitly subscribe to a paid plan.
+        </p>
+      </article>
+
+      <article>
+        <h2>6. Payment</h2>
+        <p>
+          Payments are processed by <strong>Stripe</strong> (Stripe Payments Europe Ltd., 1 Grand Canal Street Lower, Dublin 2, Ireland). SmartAnalyst never has access to the Subscriber's card details.
+        </p>
+        <p>
+          Invoices are due upon issuance. On payment failure, SmartAnalyst may suspend access after notice and a 7-day cure period.
+        </p>
+      </article>
+
+      <article>
+        <h2>7. Cancellation</h2>
+        <p>
+          The Subscriber may cancel at any time from the account <a href="https://app.smartanalyst.io/settings">settings page</a>. Cancellation takes effect at the end of the already-paid period — remaining days are not refunded, unless required by law.
+        </p>
+        <p>
+          SmartAnalyst may terminate the subscription, after written notice and a 30-day cure period, in case of material breach by the Subscriber or unlawful use of the Service.
+        </p>
+      </article>
+
+      <article>
+        <h2>8. Personal data &amp; confidentiality</h2>
+        <p>
+          Processing of personal data is governed by our <a href="/en/legal/privacy">privacy policy</a>. SmartAnalyst acts as a data processor for the business data entrusted by the Subscriber (marketing metrics, tracking events, etc.) and as a data controller for account data.
+        </p>
+      </article>
+
+      <article>
+        <h2>9. Intellectual property</h2>
+        <p>
+          The Service, its structure, source code, interfaces, logos and any associated documentation remain the exclusive property of SmartAnalyst.
+        </p>
+        <p>
+          The Subscriber retains full ownership of their business data and tracking events. They grant SmartAnalyst a non-exclusive, worldwide licence, limited to the term of the agreement, to process such data solely for the purpose of providing the Service.
+        </p>
+      </article>
+
+      <article>
+        <h2>10. Availability &amp; liability</h2>
+        <p>
+          SmartAnalyst uses reasonable efforts to keep the Service available 24/7, with no guarantee of uninterrupted operation. Planned maintenance will be announced on the <a href="/status">status page</a>.
+        </p>
+        <p>
+          SmartAnalyst's liability, all causes combined, is capped at the amounts paid by the Subscriber during the 12 months preceding the event giving rise to the claim. SmartAnalyst is not liable for indirect damages, loss of revenue, loss of data or loss of business opportunity.
+        </p>
+      </article>
+
+      <article>
+        <h2>11. Force majeure</h2>
+        <p>
+          Neither party will be liable for any breach of its obligations in case of force majeure, as defined by French case law (article 1218 of the French Civil Code).
+        </p>
+      </article>
+
+      <article>
+        <h2>12. Governing law &amp; jurisdiction</h2>
+        <p>
+          These Terms are governed by French law. The parties will endeavour to reach an amicable resolution before any litigation.
+        </p>
+        <p>
+          Failing that, and as per article L.612-1 of the French Consumer Code, consumers may use the mediation service indicated on the <a href="/en/legal/legal-notice">legal notice page</a>, free of charge, before any court action. Failing amicable resolution, the French courts will have exclusive jurisdiction.
+        </p>
+      </article>
+
+      <article>
+        <h2>13. Modification of the Terms</h2>
+        <p>
+          SmartAnalyst may modify these Terms at any time. Any material change will be notified to the Subscriber by email at least 30 days before it takes effect. Continued use of the Service implies acceptance of the new Terms.
+        </p>
+      </article>
+
+      <article>
+        <h2>14. Contact</h2>
+        <p>For any question about these Terms: <a href="mailto:hello@smartanalyst.io">hello@smartanalyst.io</a>.</p>
+      </article>
+
+    </div>
+  </section>
+</DarkBase>
+
+<style>
+  .page-hero h1 { font-size: 56px; line-height: 1.05; }
+  .page-hero .eyebrow {
+    font-family: var(--ff-m); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 18px;
+  }
+  .page-hero .lead { font-size: 17px; max-width: 620px; margin: 18px auto 16px; color: var(--text-2); }
+  .page-hero .meta { font-family: var(--ff-m); font-size: 12px; color: var(--text-3); }
+  .legal-draft-banner {
+    background: rgba(255,200,0,0.08); border: 1px solid rgba(255,200,0,0.3);
+    border-radius: 8px; padding: 12px 16px; margin: 0 auto 28px; max-width: 680px;
+    color: var(--text-2); font-size: 13px; line-height: 1.6;
+  }
+  .page-section.legal { padding: 60px 0 120px; }
+  .page-section.legal .container { max-width: 760px; }
+  .page-section.legal article { margin-bottom: 48px; }
+  .page-section.legal h2 {
+    font-family: var(--ff-h); font-size: 22px; font-weight: 700; margin: 0 0 16px; color: var(--text-1);
+  }
+  .page-section.legal p { font-size: 15px; line-height: 1.7; color: var(--text-2); margin: 0 0 14px; }
+  .page-section.legal ul { list-style: disc; padding-left: 22px; margin: 0 0 14px; }
+  .page-section.legal li { font-size: 15px; line-height: 1.7; color: var(--text-2); margin-bottom: 6px; }
+  .page-section.legal a { color: var(--cyan); text-decoration: underline; text-underline-offset: 2px; }
+  .page-section.legal code {
+    font-family: var(--ff-m); font-size: 13px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--text-1);
+  }
+</style>
