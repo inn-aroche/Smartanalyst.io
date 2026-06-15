@@ -166,12 +166,12 @@ const softwareApplication = {
       </div>
       <div class="cap-grid">
         {[
-          { i:'◑', t:'Comprendre les performances', d:'Contexte instantané sur toute métrique, période ou canal' },
-          { i:'⚡', t:'Identifier les anomalies',    d:'Détectées automatiquement, avec analyse de cause racine' },
-          { i:'◎', t:'Expliquer les variations',    d:'Pourquoi ça a changé, avec preuves cross-sources' },
-          { i:'→', t:'Prioriser les actions',       d:'Recommandations classées, scorées par impact attendu' },
-          { i:'◈', t:'Mesurer l’impact',            d:'Avant/après pour chaque changement effectué' },
-          { i:'◉', t:'Optimiser ton stack data',    d:'GTM, consent mode, attribution, monitoring continu' },
+          { i:'◑', t:'Ton point du matin',          d:'Score de santé, 3 priorités et propositions d’actions, en 3 secondes' },
+          { i:'◎', t:'Veille proactive 24/7',       d:'Alertes custom en langage naturel, prévenu avant que ça déraille' },
+          { i:'✦', t:'Assistant multimodal',        d:'Pose tes questions à l’oral ou avec un fichier (CSV, PDF, image)' },
+          { i:'✓', t:'De l’analyse à l’action',      d:'Cycle proposé → à faire → fait, sans déversoir' },
+          { i:'▤', t:'Rapport mensuel auto',         d:'Synthèse prête à partager — pour toi ou ton board' },
+          { i:'◉', t:'Source unique de vérité',      d:'GA4, Meta, Stripe, Shopify, GTM — tout réconcilié' },
         ].map((c) => (
           <div class="sa-card">
             <div class="cap-icon">{c.i}</div>
@@ -358,8 +358,8 @@ const softwareApplication = {
           <p class="feat-desc">Hausse de CPA, chute de conversion, panne de tracking, SmartAnalyst monitore ton stack en continu 24/7 et fait remonter les anomalies au moment où elles apparaissent, avec contexte et sévérité.</p>
           <ul class="feat-bullets">
             <li>Monitoring CPA, CVR, ROAS et volumes</li>
-            <li>Alertes intégrité tracking et consentement</li>
-            <li>Scoring intelligent sévérité × impact</li>
+            <li>Crée tes alertes custom en langage naturel (« préviens-moi quand mon ROAS descend sous 2 »)</li>
+            <li>Notification in-app + email, dès que la condition se réalise</li>
           </ul>
         </div>
       </div>
@@ -654,8 +654,8 @@ const softwareApplication = {
     const tabs = document.querySelectorAll('.snav');
     const titleEl = document.querySelector('.app-title');
     const labels = {
-      en: { dash:'Dashboard', ask:'Ask AI', alerts:'Anomalies', conn:'Connectors', health:'Data Health', actions:'Actions' },
-      fr: { dash:'Dashboard', ask:'Demander à l’IA', alerts:'Anomalies', conn:'Connecteurs', health:'Santé des données', actions:'Actions' },
+      en: { dash:'My morning brief', ask:'Assistant', alerts:'Watch', conn:'Sources', health:'Reports', actions:'To do' },
+      fr: { dash:'Mon point du jour', ask:'Assistant', alerts:'Veille', conn:'Sources', health:'Rapports', actions:'À faire' },
     };
     const lang = document.documentElement.lang === 'fr' ? 'fr' : 'en';
     tabs.forEach((t) => t.addEventListener('click', () => {
