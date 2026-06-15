@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import AppLayout from '@/components/AppLayout'
+import AppLayout, { useToast } from '@/components/AppLayout'
 import CopyButton from '@/components/CopyButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import NotificationSettings from '@/components/settings/NotificationSettings'
@@ -13,6 +13,7 @@ import { useT } from '@/lib/i18n'
 export default function SettingsPage() {
   const { state, logout } = useAuth()
   const t = useT()
+  const toast = useToast()
   const user = state.user
   const workspace = state.workspaces[0]
   const [exportError, setExportError] = useState<string | null>(null)
@@ -40,6 +41,7 @@ export default function SettingsPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      toast.push(t('settings.export.success'))
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Export error')
     } finally {

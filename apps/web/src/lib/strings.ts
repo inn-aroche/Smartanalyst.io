@@ -629,6 +629,7 @@ const en = {
     'Get a JSON export of everything we have about you (workspaces, connectors, metrics, audit logs).',
   'settings.export.button': 'Download',
   'settings.export.busy': 'Preparing…',
+  'settings.export.success': 'Export downloaded',
   'settings.delete.title': 'Delete my account',
   'settings.delete.body':
     'Permanently remove your account and the workspaces you own alone. Audit logs are kept anonymized (legal retention). This can’t be undone.',
@@ -1435,6 +1436,7 @@ const fr: Record<keyof typeof en, string> = {
     'Récupère un export JSON de tout ce qu’on a sur toi (workspaces, connecteurs, métriques, audit logs).',
   'settings.export.button': 'Télécharger',
   'settings.export.busy': 'Préparation…',
+  'settings.export.success': 'Export téléchargé',
   'settings.delete.title': 'Supprimer mon compte',
   'settings.delete.body':
     'Supprime définitivement ton compte et les workspaces dont tu es seul·e membre. Les audit logs sont conservés anonymisés (rétention légale). Action irréversible.',
