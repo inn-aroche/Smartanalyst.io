@@ -625,6 +625,153 @@
   font-family: var(--ff-m);
 }
 
+/* ─── Watch card (Feature 02) ─── */
+.watch-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.watch-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.watch-eyebrow {
+  font-family: var(--ff-m);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.watch-tag {
+  font-family: var(--ff-m);
+  font-size: 10px;
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+.watch-input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.watch-prompt {
+  display: block;
+  font-family: var(--ff-m);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.watch-typed {
+  font-family: var(--ff-b);
+  font-size: 14px;
+  color: var(--text-1);
+  line-height: 1.45;
+}
+.watch-parsed {
+  background: rgba(92, 143, 255, 0.06);
+  border: 1px solid rgba(92, 143, 255, 0.22);
+  border-radius: 10px;
+  padding: 11px 14px;
+}
+.watch-parsed-label {
+  font-family: var(--ff-m);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.watch-parsed-label::before {
+  content: '✓';
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+.watch-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.watch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  color: var(--text-1);
+  font-family: var(--ff-b);
+}
+.watch-chip-k {
+  font-family: var(--ff-m);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.watch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+.watch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--text-1);
+}
+.watch-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.watch-dot.calm {
+  background: var(--green);
+}
+.watch-dot.fired {
+  background: var(--red);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.55);
+}
+.watch-row-title {
+  flex: 1;
+  font-family: var(--ff-m);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+.watch-row-state {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--ff-b);
+}
+
 /* Connector grid (Feature 03) */
 .conn-grid {
   display: grid;
@@ -1083,6 +1230,228 @@
   font-size: 10px;
   margin-top: 1px;
   flex-shrink: 0;
+}
+
+/* ─── SaaS preview: "Mon point du jour" body ───
+   Mirrors the real BriefHome layout (greeting → ScoreRing + narrative →
+   3 insight cards → ask bar). Tokens come from .app-body's light re-scope. */
+.app-pill.green {
+  color: var(--green);
+  border-color: rgba(31, 168, 115, 0.32);
+}
+.app-pill .pill-dot,
+.brief-chip .pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.brief-scroll {
+  padding: 22px 26px 24px;
+}
+.brief-eyebrow {
+  font-family: var(--ff-m);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.brief-greet {
+  font-family: var(--ff-h);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--text-1);
+  margin: 0 0 18px;
+  line-height: 1.1;
+}
+.brief-hero {
+  position: relative;
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(20, 20, 42, 0.05);
+  overflow: hidden;
+}
+.brief-hero::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -40px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(61, 107, 224, 0.12), transparent 70%);
+  pointer-events: none;
+}
+.score-ring {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  flex-shrink: 0;
+}
+.score-ring svg {
+  display: block;
+}
+.score-ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: var(--ff-h);
+}
+.score-ring-num {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--text-1);
+  letter-spacing: -0.02em;
+}
+.score-ring-of {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--ff-m);
+  margin-top: 8px;
+}
+.brief-hero-copy {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.brief-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: var(--ff-m);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.brief-chip.good {
+  color: var(--green);
+  background: rgba(31, 168, 115, 0.1);
+}
+.brief-narr {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-1);
+  margin: 0;
+  font-family: var(--ff-b);
+}
+.brief-narr strong {
+  font-weight: 700;
+  color: var(--text-1);
+}
+.brief-sec-title {
+  font-family: var(--ff-h);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin: 0 0 12px;
+}
+.brief-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.brief-card {
+  display: flex;
+  gap: 12px;
+  padding: 13px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(20, 20, 42, 0.04);
+}
+.brief-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ff-h);
+  font-size: 14px;
+  font-weight: 800;
+}
+.brief-icon.red {
+  background: rgba(224, 73, 92, 0.13);
+  color: var(--red);
+}
+.brief-icon.amber {
+  background: rgba(194, 130, 14, 0.13);
+  color: var(--orange);
+}
+.brief-icon.blue {
+  background: rgba(61, 107, 224, 0.13);
+  color: var(--blue);
+}
+.brief-card-title {
+  font-family: var(--ff-h);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-1);
+  line-height: 1.35;
+}
+.brief-card-cause {
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.brief-card-reco {
+  font-size: 12.5px;
+  color: var(--text-1);
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.reco-label {
+  font-weight: 600;
+  color: var(--blue);
+}
+.brief-card-reco code {
+  font-family: var(--ff-m);
+  font-size: 11.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(12, 12, 27, 0.05);
+  color: var(--text-1);
+}
+.brief-ask {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3d6be0 0%, #16a6be 100%);
+  box-shadow: 0 8px 24px rgba(61, 107, 224, 0.25);
+  color: #fff;
+}
+.brief-ask-mark {
+  font-size: 18px;
+}
+.brief-ask-body {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.brief-ask-cta {
+  font-family: var(--ff-m);
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 
 /* ─── AI Outputs ─── */
