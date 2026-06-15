@@ -40,6 +40,9 @@ export default function WatchModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [description, setDescription] = useState('')
   const [confirmed, setConfirmed] = useState(false)
+  const [confidence, setConfidence] = useState<'high' | 'medium' | 'low' | null>(null)
+  const [explanation, setExplanation] = useState<string | null>(null)
+  const [validating, setValidating] = useState(false)
   const [metricKey, setMetricKey] = useState(METRICS[0].key)
   const [operator, setOperator] = useState<Operator>('drops_below')
   const [threshold, setThreshold] = useState('')
@@ -74,13 +77,45 @@ export default function WatchModal({ onClose }: { onClose: () => void }) {
     },
   })
 
-  // Step 1 : "validation par l'assistant" = simple check non-vide ; on simule
-  // un délai pour le côté narratif. À remplacer par un vrai appel chat-tools
-  // quand on aura branché la validation NL côté backend.
-  function handleValidateDescription() {
+  // Step 1 : validation NL réelle via Gemini structured output.
+  // POST /watches/validate retourne { metric_key, operator, threshold,
+  // confidence, explanation }. On pré-remplit les champs du step 2 quand
+  // confidence ≥ medium, sinon l'user choisit lui-même.
+  async function handleValidateDescription() {
     if (description.trim().length < 5) return
     setConfirmed(false)
-    window.setTimeout(() => setConfirmed(true), 700)
+    setValidating(true)
+    try {
+      const res = await apiFetch<{
+        metric_key: string | null
+        operator: Operator | null
+        threshold: number | null
+        confidence: 'high' | 'medium' | 'low'
+        explanation: string
+      }>('/api/v1/watches/validate', {
+        method: 'POST',
+        body: { description: description.trim() },
+      })
+      setConfidence(res.confidence)
+      setExplanation(res.explanation)
+      // Pré-remplit seulement si l'IA est confiante.
+      if (res.confidence !== 'low') {
+        if (res.metric_key && METRICS.some((m) => m.key === res.metric_key)) {
+          setMetricKey(res.metric_key)
+        }
+        if (res.operator) setOperator(res.operator)
+        if (res.threshold && res.threshold > 0) setThreshold(String(res.threshold))
+      }
+      setConfirmed(true)
+    } catch (err) {
+      // Erreur réseau ou Gemini down — on tombe en confiance low et l'user
+      // pourra continuer manuellement.
+      setConfidence('low')
+      setExplanation(err instanceof Error ? err.message : t('watchModal.s1.error'))
+      setConfirmed(true)
+    } finally {
+      setValidating(false)
+    }
   }
 
   const metric = METRICS.find((m) => m.key === metricKey) ?? METRICS[0]
@@ -129,7 +164,9 @@ export default function WatchModal({ onClose }: { onClose: () => void }) {
               setDescription={setDescription}
               confirmed={confirmed}
               onValidate={handleValidateDescription}
-              metricLabel={metric.label}
+              validating={validating}
+              confidence={confidence}
+              explanation={explanation}
             />
           )}
           {step === 2 && (
@@ -202,15 +239,32 @@ function Step1({
   setDescription,
   confirmed,
   onValidate,
-  metricLabel,
+  validating,
+  confidence,
+  explanation,
 }: {
   description: string
   setDescription: (v: string) => void
   confirmed: boolean
   onValidate: () => void
-  metricLabel: string
+  validating: boolean
+  confidence: 'high' | 'medium' | 'low' | null
+  explanation: string | null
 }) {
   const t = useT()
+  // Couleur du chip selon la confiance retournée par Gemini.
+  const chipCls =
+    confidence === 'high'
+      ? 'bg-brand-green/10 text-brand-green'
+      : confidence === 'medium'
+        ? 'bg-brand-amber/10 text-brand-amber'
+        : 'bg-text-3/10 text-text-3'
+  const chipDotCls =
+    confidence === 'high'
+      ? 'bg-brand-green'
+      : confidence === 'medium'
+        ? 'bg-brand-amber'
+        : 'bg-text-3'
   return (
     <div className="flex flex-col gap-3.5">
       <div>
@@ -227,23 +281,32 @@ function Step1({
           {description.length}/280 · {t('watchModal.s1.hint')}
         </div>
       </div>
-      <div className="flex items-center justify-between rounded-[10px] bg-bg-2 px-3 py-2.5">
-        {confirmed ? (
-          <span className="sa-chip bg-brand-green/10 text-brand-green">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-            {t('watchModal.s1.validated', { metric: metricLabel })}
-          </span>
-        ) : (
-          <span className="text-[13px] text-text-2">{t('watchModal.s1.askToValidate')}</span>
+      <div className="flex flex-col gap-2 rounded-[10px] bg-bg-2 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          {confirmed ? (
+            <span className={`sa-chip ${chipCls}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${chipDotCls}`} />
+              {confidence === 'high'
+                ? t('watchModal.s1.conf.high')
+                : confidence === 'medium'
+                  ? t('watchModal.s1.conf.medium')
+                  : t('watchModal.s1.conf.low')}
+            </span>
+          ) : (
+            <span className="text-[13px] text-text-2">{t('watchModal.s1.askToValidate')}</span>
+          )}
+          <button
+            type="button"
+            onClick={onValidate}
+            disabled={description.trim().length < 5 || validating}
+            className="sa-btn !text-xs disabled:opacity-50"
+          >
+            {validating ? t('watchModal.s1.validating') : t('watchModal.s1.askButton')}
+          </button>
+        </div>
+        {confirmed && explanation && (
+          <p className="text-[12.5px] leading-[1.5] text-text-2">{explanation}</p>
         )}
-        <button
-          type="button"
-          onClick={onValidate}
-          disabled={description.trim().length < 5}
-          className="sa-btn !text-xs disabled:opacity-50"
-        >
-          {t('watchModal.s1.askButton')}
-        </button>
       </div>
     </div>
   )

@@ -7,9 +7,26 @@ const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope, requireRole } = require('../middleware/workspace-scope.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const watchesService = require('../services/watches/watches.service')
+const watchValidator = require('../services/watches/watch-validator.service')
 
 const router = express.Router()
 router.use(jwtMiddleware)
+
+// ━━━ POST /watches/validate — IA parse la description NL ━━━
+// Endpoint léger pour le step 1 du WatchModal. Pas de mutation.
+router.post(
+  '/validate',
+  [body('description').isString().isLength({ min: 3, max: 280 })],
+  runValidation,
+  async (req, res, next) => {
+    try {
+      const result = await watchValidator.validateIntent(req.body.description)
+      res.json(result)
+    } catch (err) {
+      next(err)
+    }
+  },
+)
 
 // ━━━ GET /watches — liste les alertes du workspace ━━━
 router.get(
