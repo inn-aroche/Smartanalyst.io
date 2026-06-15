@@ -139,55 +139,57 @@ const productJsonLd = {
     <div class="container">
       <h2>Plan details</h2>
       <p class="lead">Every feature, every quota, side by side.</p>
-      <table class="compare">
-        <thead>
-          <tr>
-            <th></th>
-            {PLAN_ORDER.map((key) => <th>{PLAN_LABELS_EN[key].label}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Monthly price</td>
-            {PLAN_ORDER.map((key) => <td><strong>€{PLANS[key].priceEurMonth}</strong></td>)}
-          </tr>
-          <tr>
-            <td>Clients</td>
-            {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.clients)}</td>)}
-          </tr>
-          <tr>
-            <td>Connectors</td>
-            {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.connectors)}</td>)}
-          </tr>
-          <tr>
-            <td>Insights / month</td>
-            {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.insightsPerMonth)}</td>)}
-          </tr>
-          <tr>
-            <td>Conversational analysis</td>
-            {PLAN_ORDER.map(() => <td>✓</td>)}
-          </tr>
-          <tr>
-            <td>Real-time dashboard</td>
-            {PLAN_ORDER.map(() => <td>✓</td>)}
-          </tr>
-          <tr>
-            <td>Auto-reports on the 1st</td>
-            {PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✓' : '·'}</td>)}
-          </tr>
-          <tr>
-            <td>White-label</td>
-            {PLAN_ORDER.map((key) => <td>{whiteLabelEn(PLANS[key].quotas.whiteLabel)}</td>)}
-          </tr>
-          <tr>
-            <td>Competitive benchmark</td>
-            <td>·</td>
-            <td>✓</td>
-            <td>✓</td>
-            <td>✓</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="compare-wrap">
+        <table class="compare">
+          <thead>
+            <tr>
+              <th></th>
+              {PLAN_ORDER.map((key) => <th>{PLAN_LABELS_EN[key].label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Monthly price</td>
+              {PLAN_ORDER.map((key) => <td><strong>€{PLANS[key].priceEurMonth}</strong></td>)}
+            </tr>
+            <tr>
+              <td>Clients</td>
+              {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.clients)}</td>)}
+            </tr>
+            <tr>
+              <td>Connectors</td>
+              {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.connectors)}</td>)}
+            </tr>
+            <tr>
+              <td>Insights / month</td>
+              {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.insightsPerMonth)}</td>)}
+            </tr>
+            <tr>
+              <td>Conversational analysis</td>
+              {PLAN_ORDER.map(() => <td>✓</td>)}
+            </tr>
+            <tr>
+              <td>Real-time dashboard</td>
+              {PLAN_ORDER.map(() => <td>✓</td>)}
+            </tr>
+            <tr>
+              <td>Auto-reports on the 1st</td>
+              {PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✓' : '·'}</td>)}
+            </tr>
+            <tr>
+              <td>White-label</td>
+              {PLAN_ORDER.map((key) => <td>{whiteLabelEn(PLANS[key].quotas.whiteLabel)}</td>)}
+            </tr>
+            <tr>
+              <td>Competitive benchmark</td>
+              <td>·</td>
+              <td>✓</td>
+              <td>✓</td>
+              <td>✓</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
