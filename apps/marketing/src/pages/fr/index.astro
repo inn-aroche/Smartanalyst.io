@@ -457,21 +457,21 @@ const softwareApplication = {
               <span class="brand-name" style="font-size:14px">SmartAnalyst</span>
             </div>
             <div class="app-nav">
-              <button class="snav active" data-tab="dash"><span class="snav-icon">◫</span>Dashboard</button>
-              <button class="snav" data-tab="ask"><span class="snav-icon">◉</span>Demander à l’IA</button>
-              <button class="snav" data-tab="alerts"><span class="snav-icon">⚠</span>Anomalies<span class="snav-badge">3</span></button>
-              <button class="snav" data-tab="conn"><span class="snav-icon">◈</span>Connecteurs</button>
-              <button class="snav" data-tab="health"><span class="snav-icon">◑</span>Santé des données</button>
-              <button class="snav" data-tab="actions"><span class="snav-icon">→</span>Actions</button>
+              <button class="snav active" data-tab="brief"><span class="snav-icon">◐</span>Mon point du jour</button>
+              <button class="snav" data-tab="assistant"><span class="snav-icon">✦</span>Assistant</button>
+              <button class="snav" data-tab="veille"><span class="snav-icon">◎</span>Veille<span class="snav-badge">3</span></button>
+              <button class="snav" data-tab="todo"><span class="snav-icon">✓</span>À faire</button>
+              <button class="snav" data-tab="rapports"><span class="snav-icon">▤</span>Rapports</button>
+              <button class="snav" data-tab="sources"><span class="snav-icon">◈</span>Sources</button>
             </div>
-            <div class="app-user">john@acme.com</div>
+            <div class="app-user">camille@atelier-lumi.fr</div>
           </aside>
           <main class="app-main">
             <div class="app-header">
-              <span class="app-title">Dashboard</span>
+              <span class="app-title">Mon point du jour</span>
               <div class="app-header-ctas">
-                <span class="app-pill">7 derniers jours ▾</span>
-                <span class="app-pill blue">Demander à l’IA →</span>
+                <span class="app-pill">Lun. 8 juin ▾</span>
+                <span class="app-pill blue">+ Question →</span>
               </div>
             </div>
             <div class="kpis">
@@ -654,8 +654,8 @@ const softwareApplication = {
     const tabs = document.querySelectorAll('.snav');
     const titleEl = document.querySelector('.app-title');
     const labels = {
-      en: { dash:'My morning brief', ask:'Assistant', alerts:'Watch', conn:'Sources', health:'Reports', actions:'To do' },
-      fr: { dash:'Mon point du jour', ask:'Assistant', alerts:'Veille', conn:'Sources', health:'Rapports', actions:'À faire' },
+      en: { brief:'My morning brief', assistant:'Assistant', veille:'Watch', todo:'To do', rapports:'Reports', sources:'Sources' },
+      fr: { brief:'Mon point du jour', assistant:'Assistant', veille:'Veille', todo:'À faire', rapports:'Rapports', sources:'Sources' },
     };
     const lang = document.documentElement.lang === 'fr' ? 'fr' : 'en';
     tabs.forEach((t) => t.addEventListener('click', () => {
