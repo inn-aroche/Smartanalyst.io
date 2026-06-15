@@ -84,6 +84,7 @@ async function generateOnce({
     requestBody.tools = [{ functionDeclarations: tools }]
   }
 
+  const t0 = Date.now()
   const result = await model.generateContent(requestBody)
   const response = result.response
   const candidate = response.candidates?.[0] || null
@@ -96,6 +97,18 @@ async function generateOnce({
     if (p.functionCall) functionCalls.push(p.functionCall)
   }
 
+  // Tracking d'usage : capture inputTokens/outputTokens depuis usageMetadata.
+  // Best-effort logging — ne bloque jamais la réponse.
+  // Le scope (workspaceId + requestType) est ajouté par l'appelant via
+  // un wrapper si nécessaire (voir chat.service.js).
+  const usage = response.usageMetadata || {}
+  const usageInfo = {
+    inputTokens: usage.promptTokenCount || 0,
+    outputTokens: usage.candidatesTokenCount || 0,
+    durationMs: Date.now() - t0,
+    model: modelName,
+  }
+
   // `response.text()` lance si la réponse n'a que des function calls. On le
   // protège pour pouvoir retourner functionCalls sans crash.
   let text = ''
@@ -105,7 +118,7 @@ async function generateOnce({
     text = ''
   }
 
-  return { text, modelName, functionCalls, candidate }
+  return { text, modelName, functionCalls, candidate, usage: usageInfo }
 }
 
 /**
@@ -142,12 +155,20 @@ async function generateStructured({
   }
   if (responseSchema) generationConfig.responseSchema = responseSchema
 
+  const t0 = Date.now()
   const result = await model.generateContent({
     systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts: [{ text: userMessage }] }],
     generationConfig,
   })
   const raw = result.response.text()
+  const um = result.response.usageMetadata || {}
+  const usage = {
+    inputTokens: um.promptTokenCount || 0,
+    outputTokens: um.candidatesTokenCount || 0,
+    durationMs: Date.now() - t0,
+    model: modelName,
+  }
 
   let json
   try {
@@ -158,7 +179,7 @@ async function generateStructured({
     e.raw = raw
     throw e
   }
-  return { json, raw, modelName }
+  return { json, raw, modelName, usage }
 }
 
 module.exports = {
