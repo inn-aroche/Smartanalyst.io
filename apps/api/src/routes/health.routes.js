@@ -63,6 +63,22 @@ async function checkDb() {
   }
 }
 
+// Check Gemini configuré (présence de la clé, pas un placeholder type "AIza<...>").
+// On NE fait PAS d'appel réseau ici : un check Gemini coûterait un token à
+// chaque /health/ready, et la lib Gemini n'a pas de "ping" endpoint. Une
+// clé absente / placeholder = la cause #1 d'un chat KO au démarrage, ce
+// qui justifie d'avoir un signal clair côté monitoring.
+function checkGemini() {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) {
+    return { ok: false, error: 'GEMINI_API_KEY missing' }
+  }
+  if (key.startsWith('AIza<') || key === 'placeholder') {
+    return { ok: false, error: 'GEMINI_API_KEY is a placeholder' }
+  }
+  return { ok: true }
+}
+
 // Liveness — toujours 200 tant que l'event loop répond. Le format reste
 // stable car des monitors externes le scrapent et pollueraient si on change.
 router.get('/health', (req, res) => {
@@ -77,11 +93,12 @@ router.get('/health', (req, res) => {
 // Readiness — 200 si toutes les deps répondent, 503 sinon avec détail.
 router.get('/health/ready', async (req, res) => {
   const [redis, db] = await Promise.all([checkRedis(), checkDb()])
-  const allOk = redis.ok && db.ok
+  const gemini = checkGemini()
+  const allOk = redis.ok && db.ok && gemini.ok
   res.status(allOk ? 200 : 503).json({
     status: allOk ? 'ready' : 'not_ready',
     timestamp: new Date().toISOString(),
-    checks: { redis, db },
+    checks: { redis, db, gemini },
   })
 })
 

@@ -10,6 +10,7 @@ const pinoHttp = require('pino-http')
 
 const { logger } = require('./lib/logger')
 const { errorHandler, notFoundHandler } = require('./middleware/error-handler.middleware')
+const { requestId } = require('./middleware/request-id.middleware')
 
 function createApp() {
   const app = express()
@@ -45,10 +46,19 @@ function createApp() {
     }),
   )
 
+  // Request ID — DOIT être avant pino-http pour que chaque log de requête
+  // hérite automatiquement du `requestId`. Pose aussi le header `X-Request-Id`
+  // sur la réponse, propage l'ID client s'il en envoie un (UUID v4 validé).
+  app.use(requestId)
+
   // Request logging structuré
   app.use(
     pinoHttp({
       logger,
+      // genReqId : on pioche l'ID que requestId() vient de poser. Pino l'expose
+      // sous `req.id` dans les logs (puis sous `requestId` à la sortie).
+      genReqId: (req) => req.requestId,
+      customAttributeKeys: { reqId: 'requestId' },
       customLogLevel: (req, res, err) => {
         if (err || res.statusCode >= 500) return 'error'
         if (res.statusCode >= 400) return 'warn'
