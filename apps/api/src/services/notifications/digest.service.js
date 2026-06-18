@@ -140,9 +140,54 @@ async function sendCriticalAlert(workspaceId, insight) {
   return { sent: true }
 }
 
+/**
+ * Notifie le destinataire d'un workspace qu'un nouveau rapport est dispo.
+ * Best-effort : pas de throw, on log et on continue côté caller.
+ */
+function composeReportReady(report, { orgName } = {}) {
+  const hello = orgName ? `Bonjour ${orgName},` : 'Bonjour,'
+  const url = `${appUrl()}/reports`
+  const subject = `Ton rapport — ${escapeHtml(report.title)}`
+  const text = `${hello}
+
+Le rapport "${report.title}" est prêt.
+
+Tu peux le consulter (et l'imprimer en PDF si besoin) ici :
+${url}
+
+— SmartAnalyst`
+  const html = `<p>${hello}</p>
+<p>Le rapport <strong>${escapeHtml(report.title)}</strong> est prêt.</p>
+<p>Tu peux le consulter (et l'imprimer en PDF si besoin) en suivant ce lien :</p>
+<p><a href="${url}" style="background:#3D6BE0;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">Voir mon rapport →</a></p>
+<p style="color:#9C9CB4;font-size:12px">— SmartAnalyst</p>`
+  return { subject, html, text }
+}
+
+async function sendReportReady(workspaceId, report) {
+  const recipient = await getWorkspaceRecipient(workspaceId)
+  if (!recipient) return { sent: false, reason: 'no_recipient' }
+  const composed = composeReportReady(report, { orgName: recipient.orgName })
+  const result = await sendEmail({ to: recipient.email, ...composed })
+  if (!result.ok) {
+    logger.warn(
+      { event: 'report_ready_send_failed', workspaceId, error: result.error },
+      'Report ready email failed',
+    )
+    return { sent: false, reason: 'email_failed' }
+  }
+  logger.info(
+    { event: 'report_ready_sent', workspaceId, reportId: report.id },
+    'Report ready email sent',
+  )
+  return { sent: true }
+}
+
 module.exports = {
   composeWeeklyDigest,
   composeCriticalAlert,
+  composeReportReady,
   sendWeeklyDigest,
   sendCriticalAlert,
+  sendReportReady,
 }

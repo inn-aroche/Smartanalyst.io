@@ -1,54 +1,142 @@
-// Monthly reports handlers — STUB pour l'instant.
+// Monthly reports handlers (brief V2 §3.6).
 //
-// Source: docs/20 §3, docs/18 (rapports PDF), docs/26 (feature rapports auto)
-//
-// Architecture fan-out:
-//   1. scan-all-workspaces (cron mensuel le 1er à 6am UTC) → check report_day
-//      + auto_send + timezone par workspace, enqueue un job par workspace éligible
-//   2. generate-workspace: génère le PDF (Playwright), upload Storage, envoie email
-//
-// Sera complété avec le service PDF + Email.
+// Architecture fan-out :
+//   1. scan-all-workspaces (cron quotidien 6h UTC) → check report_day +
+//      auto_send + timezone par workspace, enqueue un job par workspace
+//      éligible
+//   2. generate-workspace : appelle le report-generator service (HTML
+//      template + persist en base), puis envoie le mail "rapport prêt"
+//      au destinataire du workspace si auto_send est ON.
 
 const { logger } = require('../../lib/logger')
 const workspaceService = require('../../services/workspaces/workspace.service')
+const reportGenerator = require('../../services/reports/report-generator.service')
+const digestService = require('../../services/notifications/digest.service')
+
+/**
+ * Retourne le numéro de jour du mois pour `date`, exprimé dans la timezone
+ * IANA donnée. Fallback UTC si tz absente ou invalide. On utilise le format
+ * `en-CA` (= ISO YYYY-MM-DD) pour parser sans surprise locale.
+ */
+function dayOfMonthInTz(date, timezone) {
+  try {
+    if (!timezone) return date.getUTCDate()
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date)
+    const day = parts.find((p) => p.type === 'day')?.value
+    return day ? Number(day) : date.getUTCDate()
+  } catch {
+    return date.getUTCDate()
+  }
+}
+
+/**
+ * Calcule la période couverte par le rapport mensuel pour `today` dans la
+ * timezone du workspace : tout le mois calendaire précédent.
+ *
+ * Ex. si today = 2026-07-01 (Europe/Paris), période = 2026-06-01 → 2026-06-30.
+ */
+function previousMonthRange(today, timezone) {
+  // On reconstruit l'année / mois courants dans la TZ workspace, puis on
+  // recule d'un mois calendaire.
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone || 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+  })
+  const parts = fmt.formatToParts(today)
+  const year = Number(parts.find((p) => p.type === 'year').value)
+  const month = Number(parts.find((p) => p.type === 'month').value)
+  const prevYear = month === 1 ? year - 1 : year
+  const prevMonth = month === 1 ? 12 : month - 1
+  const lastDay = new Date(Date.UTC(prevYear, prevMonth, 0)).getUTCDate()
+  const pad = (n) => String(n).padStart(2, '0')
+  return {
+    periodStart: `${prevYear}-${pad(prevMonth)}-01`,
+    periodEnd: `${prevYear}-${pad(prevMonth)}-${pad(lastDay)}`,
+  }
+}
 
 async function scanAllWorkspaces({ reportsQueue }) {
   const workspaces = await workspaceService.listActive()
   const now = new Date()
-  const dayOfMonth = now.getUTCDate()
 
-  // MVP: tous en UTC, day_of_month doit matcher workspace.report_day
-  // TODO: respect timezone par workspace (doc 01 §5.4)
-  const eligible = workspaces.filter(
-    (ws) => ws.auto_send === true && ws.report_day === dayOfMonth,
-  )
+  // On filtre dans la timezone propre à chaque workspace : un workspace en
+  // Europe/Paris avec report_day=1 ne doit pas être skippé parce que c'est
+  // encore le 31 décembre côté UTC à 23h Paris.
+  const eligible = workspaces.filter((ws) => {
+    if (!ws.auto_send) return false
+    const dom = dayOfMonthInTz(now, ws.timezone)
+    return ws.report_day === dom
+  })
 
   logger.info(
     {
       event: 'reports_scan_started',
       workspaceTotal: workspaces.length,
       eligibleCount: eligible.length,
-      dayOfMonth,
     },
     'Scanning workspaces for monthly reports',
   )
 
   for (const ws of eligible) {
-    const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
-    const jobId = `report:${ws.id}:${period}`
-    await reportsQueue.add('generate-workspace', { workspaceId: ws.id, period }, { jobId })
+    const { periodStart, periodEnd } = previousMonthRange(now, ws.timezone)
+    // jobId déduplique entre redémarrages BullMQ — si le job a déjà été créé
+    // pour ce workspace+période, BullMQ refuse silencieusement.
+    const jobId = `report:${ws.id}:${periodStart}`
+    await reportsQueue.add(
+      'generate-workspace',
+      { workspaceId: ws.id, periodStart, periodEnd, autoSend: true },
+      { jobId },
+    )
   }
 
   return { eligibleCount: eligible.length }
 }
 
 async function generateForWorkspace(job) {
-  const { workspaceId, period } = job.data
+  const { workspaceId, periodStart, periodEnd, autoSend } = job.data
+
+  // Délègue au vrai générateur (insert reports row + render HTML + status).
+  const { id, html } = await reportGenerator.generate({
+    workspaceId,
+    periodStart,
+    periodEnd,
+    kind: 'monthly',
+  })
+
   logger.info(
-    { event: 'report_generation_stub', workspaceId, period },
-    'Monthly report generation stub — to be implemented (doc 18)',
+    { event: 'report_generated_by_cron', workspaceId, reportId: id, periodStart },
+    'Monthly report generated by cron',
   )
-  return { workspaceId, period, stub: true }
+
+  // Best-effort notification email — un échec n'invalide pas le rapport,
+  // que l'user peut quand même consulter depuis l'app.
+  if (autoSend) {
+    try {
+      await digestService.sendReportReady(workspaceId, {
+        id,
+        title: `Rapport mensuel — ${periodStart} → ${periodEnd}`,
+      })
+    } catch (err) {
+      logger.warn(
+        { event: 'report_email_failed', workspaceId, error: err.message },
+        'Report ready email failed (report still available in app)',
+      )
+    }
+  }
+
+  return { workspaceId, reportId: id, periodStart, periodEnd, htmlBytes: html.length }
 }
 
-module.exports = { scanAllWorkspaces, generateForWorkspace }
+module.exports = {
+  scanAllWorkspaces,
+  generateForWorkspace,
+  // Internal helpers exposés pour les tests
+  dayOfMonthInTz,
+  previousMonthRange,
+}
