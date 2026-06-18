@@ -60,6 +60,11 @@ async function withServer(opts, fn) {
     dbOk: opts.dbOk ?? true,
     dbDelay: opts.dbDelay ?? 0,
   })
+  // checkGemini est synchrone et lit process.env.GEMINI_API_KEY. Force la
+  // valeur ici pour ne pas dépendre de l'environnement où le test tourne.
+  const previousGemini = process.env.GEMINI_API_KEY
+  process.env.GEMINI_API_KEY = opts.geminiKey === undefined ? 'test-key' : opts.geminiKey
+
   const router = require(ROUTES_PATH)
   const app = express()
   app.use(router)
@@ -71,6 +76,8 @@ async function withServer(opts, fn) {
     await fn(port)
   } finally {
     await new Promise((res) => server.close(res))
+    if (previousGemini === undefined) delete process.env.GEMINI_API_KEY
+    else process.env.GEMINI_API_KEY = previousGemini
   }
 }
 
@@ -126,5 +133,31 @@ test('/health/ready timeout si Redis tarde > 2s', async () => {
     assert.equal(statusCode, 503)
     assert.equal(body.checks.redis.ok, false)
     assert.match(body.checks.redis.error, /timeout/)
+  })
+})
+
+test('/health/ready renvoie 503 si GEMINI_API_KEY est un placeholder', async () => {
+  await withServer({ geminiKey: 'AIza<placeholder>' }, async (port) => {
+    const { statusCode, body } = await getJson(port, '/health/ready')
+    assert.equal(statusCode, 503)
+    assert.equal(body.checks.gemini.ok, false)
+    assert.match(body.checks.gemini.error, /placeholder/)
+  })
+})
+
+test('/health/ready renvoie 503 si GEMINI_API_KEY est absente', async () => {
+  await withServer({ geminiKey: '' }, async (port) => {
+    const { statusCode, body } = await getJson(port, '/health/ready')
+    assert.equal(statusCode, 503)
+    assert.equal(body.checks.gemini.ok, false)
+    assert.match(body.checks.gemini.error, /missing/)
+  })
+})
+
+test('/health/ready renvoie 200 quand Gemini configuré', async () => {
+  await withServer({ geminiKey: 'real-key-123' }, async (port) => {
+    const { statusCode, body } = await getJson(port, '/health/ready')
+    assert.equal(statusCode, 200)
+    assert.equal(body.checks.gemini.ok, true)
   })
 })

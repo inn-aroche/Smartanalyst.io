@@ -16,8 +16,22 @@ function notFoundHandler(req, res) {
   })
 }
 
+/**
+ * Extrait le workspaceId de la requête où qu'il soit posé (body, query,
+ * params). Utilisé pour tagger les erreurs Sentry et les logs avec le
+ * workspace concerné — quand un user remonte "ça plante", on retrouve
+ * la trace en une recherche.
+ */
+function extractWorkspaceId(req) {
+  return req.body?.workspaceId || req.query?.workspaceId || req.params?.workspaceId || null
+}
+
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
+  const workspaceId = extractWorkspaceId(req)
+  const requestId = req.requestId || null
+  const userId = req.user?.id || null
+
   if (err instanceof UserFacingError) {
     logger.warn(
       {
@@ -26,6 +40,9 @@ function errorHandler(err, req, res, next) {
         statusCode: err.statusCode,
         path: req.path,
         method: req.method,
+        workspaceId,
+        userId,
+        requestId,
         meta: err.meta,
       },
       err.message,
@@ -34,6 +51,9 @@ function errorHandler(err, req, res, next) {
       error: {
         code: err.code,
         message: err.message,
+        // requestId exposé au client pour pouvoir le coller dans un ticket
+        // support — récupération de la trace en O(1) côté serveur.
+        requestId,
       },
     })
   }
@@ -44,6 +64,9 @@ function errorHandler(err, req, res, next) {
       event: 'internal_error',
       path: req.path,
       method: req.method,
+      workspaceId,
+      userId,
+      requestId,
       error: err.message,
       stack: err.stack,
     },
@@ -53,16 +76,22 @@ function errorHandler(err, req, res, next) {
   // Report à Sentry — no-op si DSN absent (dev local).
   // Sentry.setupExpressErrorHandler() est censé le faire automatiquement,
   // mais on double-capture explicitement avec des tags business utiles.
+  // workspaceId + requestId permettent de filtrer/grouper côté Sentry.
   captureException(err, {
-    tags: { route: `${req.method} ${req.route?.path || req.path}` },
-    extra: { method: req.method, path: req.path },
-    user: req.user?.id ? { id: req.user.id } : undefined,
+    tags: {
+      route: `${req.method} ${req.route?.path || req.path}`,
+      workspace_id: workspaceId || 'none',
+      request_id: requestId || 'none',
+    },
+    extra: { method: req.method, path: req.path, workspaceId, requestId },
+    user: userId ? { id: userId } : undefined,
   })
 
   res.status(500).json({
     error: {
       code: 'INTERNAL_ERROR',
-      message: "Une erreur inattendue est survenue. Réessaie dans quelques instants.",
+      message: 'Une erreur inattendue est survenue. Réessaie dans quelques instants.',
+      requestId,
     },
   })
 }

@@ -14,10 +14,15 @@ export class ApiError extends Error {
   status: number
   body: unknown
   code: string | null
-  constructor(message: string, status: number, body: unknown) {
+  // ID stable de la requête côté serveur, propagé via le header `X-Request-Id`
+  // ET le champ `error.requestId` du body. Permet à un user de coller cet ID
+  // dans un ticket support pour qu'on retrouve la trace en O(1).
+  requestId: string | null
+  constructor(message: string, status: number, body: unknown, requestId: string | null = null) {
     super(message)
     this.status = status
     this.body = body
+    this.requestId = requestId
     // Extract the error.code from the standard API error envelope so callers
     // can switch on it (e.g. BETA_LOCKED → redirect to /beta-locked).
     const err = (body as { error?: unknown })?.error
@@ -25,6 +30,16 @@ export class ApiError extends Error {
       typeof err === 'object' && err !== null && 'code' in err
         ? String((err as { code: string }).code)
         : null
+    // Body peut aussi contenir le requestId (cas d'une réponse JSON valide).
+    if (
+      !requestId &&
+      typeof err === 'object' &&
+      err !== null &&
+      'requestId' in err &&
+      typeof (err as { requestId: unknown }).requestId === 'string'
+    ) {
+      this.requestId = (err as { requestId: string }).requestId
+    }
   }
 }
 
@@ -65,7 +80,9 @@ export async function apiFetch<T>(
           : undefined) ??
       (parsed as { message?: string })?.message ??
       `${res.status} ${res.statusText}`
-    throw new ApiError(message, res.status, parsed)
+    // requestId : on lit le header en priorité (toujours posé par le
+    // middleware côté API, même quand le body n'est pas JSON / vide).
+    throw new ApiError(message, res.status, parsed, res.headers.get('X-Request-Id'))
   }
   return parsed as T
 }
