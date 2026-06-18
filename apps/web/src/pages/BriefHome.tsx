@@ -17,6 +17,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AppLayout, { Topbar } from '@/components/AppLayout'
 import KpiCard, { type Kpi } from '@/components/charts/KpiCard'
 import ScoreRing from '@/components/charts/ScoreRing'
+import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -127,24 +128,59 @@ export default function BriefHomePage() {
             </h1>
           </div>
 
-          {/* ─── CTA Onboarding (workspace vide) ─── */}
-          {!scoreQ.isLoading && !scoreQ.data?.has_data && <OnboardingCta />}
+          {/* ─── First-run : workspace vide (pas de score = pas de canonical_metrics).
+              Quand on est dans cet état, l'ensemble HeroBrief + ThreeThings + KPIs
+              n'a rien à dire — on remplace par un bloc d'accueil avec un vrai chemin
+              à parcourir. Le loading initial reste géré par HeroBrief skeleton plus
+              bas, donc on attend que scoreQ ait répondu avant de basculer. */}
+          {!scoreQ.isLoading && !scoreQ.data?.has_data ? (
+            <FirstRunBlock
+              illustration={<FirstRunIllus />}
+              eyebrow={t('brief.firstRun.eyebrow')}
+              title={t('brief.firstRun.title', { name: firstName })}
+              body={t('brief.firstRun.body')}
+              primary={{ label: t('brief.firstRun.cta'), to: '/connectors' }}
+              secondary={[
+                {
+                  label: t('brief.firstRun.tour'),
+                  sublabel: t('brief.firstRun.tourSub'),
+                  icon: '✦',
+                  onClick: openOnboarding,
+                },
+                {
+                  label: t('brief.firstRun.ask'),
+                  sublabel: t('brief.firstRun.askSub'),
+                  icon: '?',
+                  to: '/chat',
+                },
+              ]}
+            />
+          ) : (
+            <>
+              {/* ─── Hero brief : ScoreRing + paragraphe narré ─── */}
+              <HeroBrief
+                score={scoreQ.data}
+                loading={scoreQ.isLoading}
+                insights={insightsQ.data?.insights ?? []}
+              />
 
-          {/* ─── Hero brief : ScoreRing + paragraphe narré ─── */}
-          <HeroBrief
-            score={scoreQ.data}
-            loading={scoreQ.isLoading}
-            insights={insightsQ.data?.insights ?? []}
-          />
+              {/* ─── Les 3 choses qui comptent ce matin ─── */}
+              <ThreeThings
+                insights={insightsQ.data?.insights ?? []}
+                loading={insightsQ.isLoading}
+              />
 
-          {/* ─── Les 3 choses qui comptent ce matin ─── */}
-          <ThreeThings insights={insightsQ.data?.insights ?? []} loading={insightsQ.isLoading} />
+              {/* ─── Ce que je te propose de faire ─── */}
+              <ProposedTasks actions={tasksQ.data?.actions ?? []} loading={tasksQ.isLoading} />
 
-          {/* ─── Ce que je te propose de faire ─── */}
-          <ProposedTasks actions={tasksQ.data?.actions ?? []} loading={tasksQ.isLoading} />
-
-          {/* ─── En un coup d'œil : 3 KPI ─── */}
-          <QuickKpis tiles={kpisQ.data?.tiles ?? []} loading={kpisQ.isLoading} locale={locale} />
+              {/* ─── En un coup d'œil : 3 KPI ─── */}
+              <QuickKpis
+                tiles={kpisQ.data?.tiles ?? []}
+                loading={kpisQ.isLoading}
+                locale={locale}
+              />
+            </>
+          )}
 
           {/* ─── Barre "ask" : bandeau dégradé ─── */}
           <Link
@@ -479,29 +515,57 @@ function formatTileValue(
   return new Intl.NumberFormat(loc, { maximumFractionDigits: 0 }).format(value)
 }
 
-// ─── CTA Onboarding ─────────────────────────────────────────────────────
+// ─── First-run illustration ──────────────────────────────────────────────
+// Petit SVG abstrait pour donner du corps au bloc d'accueil. On reste sur le
+// langage visuel de l'app (gradient blue→cyan, strokes 2.5-3px, géométrique).
 
-function OnboardingCta() {
-  const t = useT()
+function FirstRunIllus() {
   return (
-    <button
-      type="button"
-      onClick={openOnboarding}
-      className="mb-5 flex w-full items-center gap-4 rounded-brief border border-brand-blue-deep/30 bg-brand-blue-dim px-5 py-4 text-left transition-all hover:border-brand-blue-deep/50 hover:bg-brand-blue-deep/15"
-    >
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[10px] bg-brand-grad text-lg text-white">
-        ✦
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="font-head text-[15px] font-bold text-text-1">
-          {t('brief.onboardCta.title')}
-        </div>
-        <div className="mt-0.5 text-[13px] text-text-2">{t('brief.onboardCta.body')}</div>
-      </div>
-      <span className="hidden whitespace-nowrap text-[13px] font-semibold text-brand-blue-deep sm:inline">
-        {t('brief.onboardCta.cta')} →
-      </span>
-    </button>
+    <svg width="86" height="86" viewBox="0 0 86 86" aria-hidden="true" className="flex-shrink-0">
+      <defs>
+        <linearGradient id="fr-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor="#5C8FFF" />
+          <stop offset="1" stopColor="#2DD9EE" />
+        </linearGradient>
+      </defs>
+      <rect
+        x="10"
+        y="22"
+        width="50"
+        height="50"
+        rx="11"
+        fill="none"
+        stroke="url(#fr-grad)"
+        strokeWidth="3"
+      />
+      <line
+        x1="20"
+        y1="36"
+        x2="50"
+        y2="36"
+        stroke="#5C5C78"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="20"
+        y1="47"
+        x2="44"
+        y2="47"
+        stroke="#5C5C78"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <circle cx="64" cy="20" r="10" fill="url(#fr-grad)" />
+      <path
+        d="M 60 20 L 63 23 L 68 17"
+        stroke="#fff"
+        strokeWidth="2.4"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 

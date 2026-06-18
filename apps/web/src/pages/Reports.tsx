@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
+import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
@@ -106,10 +107,27 @@ export default function ReportsPage() {
           )}
         </aside>
 
-        {/* Panneau droit : aperçu */}
+        {/* Panneau droit : aperçu OU first-run quand la liste est vide. Le
+            "selectOne" générique ne s'affiche que si la liste a des rapports
+            mais qu'aucun n'est sélectionné (cas rare après suppression). */}
         <main className="overflow-hidden bg-bg-0">
           {effectiveId ? (
             <ReportPreview workspaceId={wsId} reportId={effectiveId} />
+          ) : reports.length === 0 && !listQ.isLoading ? (
+            <div className="flex h-full items-center justify-center p-10">
+              <div className="max-w-[480px]">
+                <FirstRunBlock
+                  illustration={<ReportsIllus />}
+                  eyebrow={t('reports.firstRun.eyebrow')}
+                  title={t('reports.firstRun.title')}
+                  body={t('reports.firstRun.body')}
+                  primary={{
+                    label: t('reports.firstRun.cta'),
+                    onClick: () => setGenOpen(true),
+                  }}
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex h-full items-center justify-center p-10 text-center text-text-2">
               {t('reports.selectOne')}
@@ -387,4 +405,55 @@ function formatRange(start: string, end: string, locale: string): string {
     year: 'numeric',
   })
   return `${s} → ${e}`
+}
+
+/** Petit visuel "document avec ligne brand" pour le first-run reports. */
+function ReportsIllus() {
+  return (
+    <svg width="78" height="78" viewBox="0 0 78 78" aria-hidden="true" className="flex-shrink-0">
+      <defs>
+        <linearGradient id="rep-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor="#5C8FFF" />
+          <stop offset="1" stopColor="#2DD9EE" />
+        </linearGradient>
+      </defs>
+      <rect
+        x="18"
+        y="10"
+        width="42"
+        height="58"
+        rx="6"
+        fill="none"
+        stroke="url(#rep-grad)"
+        strokeWidth="2.8"
+      />
+      <line
+        x1="26"
+        y1="24"
+        x2="52"
+        y2="24"
+        stroke="#5C5C78"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <line
+        x1="26"
+        y1="32"
+        x2="46"
+        y2="32"
+        stroke="#5C5C78"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 26 50 L 32 44 L 38 47 L 44 40 L 52 45"
+        fill="none"
+        stroke="url(#rep-grad)"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="52" cy="45" r="2.8" fill="#2DD9EE" />
+    </svg>
+  )
 }
