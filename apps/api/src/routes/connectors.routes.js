@@ -68,6 +68,41 @@ router.get('/oauth/callback', async (req, res) => {
       subst: subst || {},
     })
 
+    // Vérifie que le provider a bien octroyé les scopes qu'on a demandés.
+    // Certains providers (Meta, Google) laissent l'user décocher des scopes
+    // dans l'écran de consentement : le token marche, mais en READ-ONLY ou
+    // sans les permissions critiques. Sans cette vérif on s'en rendrait
+    // compte uniquement au premier sync KO. On log un warning structuré
+    // pour pouvoir alerter (Sentry / debug user).
+    try {
+      const provider = await providersService.getWithDecryptedCredentials(source)
+      const requestedScopes = provider.scopes || []
+      const grantedScopes = parseGrantedScopes(tokens.scope, tokens.raw)
+      if (grantedScopes && requestedScopes.length > 0) {
+        const missing = requestedScopes.filter((s) => !grantedScopes.includes(s))
+        if (missing.length > 0) {
+          logger.warn(
+            {
+              event: 'oauth_scope_mismatch',
+              workspaceId,
+              source,
+              requested: requestedScopes,
+              granted: grantedScopes,
+              missing,
+            },
+            'OAuth provider granted fewer scopes than requested — connector may sync partial data',
+          )
+        }
+      }
+    } catch (scopeErr) {
+      // Vérification best-effort : on ne casse pas le flow si la lecture du
+      // provider échoue ici, le finalize ci-dessous remontera l'erreur réelle.
+      logger.warn(
+        { event: 'oauth_scope_check_failed', source, error: scopeErr.message },
+        'Could not verify granted scopes',
+      )
+    }
+
     // Le flow d'init OAuth ne demande pas à l'utilisateur de choisir une
     // property/account avant la redirection — c'est impossible pour la
     // plupart des providers (GA4, Meta Ads…) qui exigent d'avoir le token
@@ -342,5 +377,23 @@ router.post(
     }
   },
 )
+
+/**
+ * Normalise la liste des scopes effectivement octroyés par le provider.
+ *
+ * Google/Stripe → `scope` est une string space-separated.
+ * Meta → `granted_scopes` peut être un string CSV dans `raw`.
+ * Shopify → `scope` est une string CSV.
+ * Plein d'autres → champ absent (on retourne null = on ne vérifie pas).
+ */
+function parseGrantedScopes(scope, raw) {
+  if (typeof scope === 'string' && scope.length > 0) {
+    return scope.split(/[\s,]+/).filter(Boolean)
+  }
+  if (raw && typeof raw.granted_scopes === 'string') {
+    return raw.granted_scopes.split(/[\s,]+/).filter(Boolean)
+  }
+  return null
+}
 
 module.exports = router

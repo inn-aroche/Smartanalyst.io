@@ -120,7 +120,25 @@ async function evaluateOne(watch) {
     endDate: fmt(endDate),
     limit: 20,
   })
-  if (!rows.length) return false
+  if (!rows.length) {
+    // Pas de data dispo pour la metric_key surveillée. Avant : skip silent —
+    // l'user créait une veille, elle ne se déclenchait jamais, et personne
+    // ne savait pourquoi (source pas connectée, mauvaise key…). On log un
+    // event structuré "watch_no_data" pour pouvoir le remonter ailleurs
+    // (Sentry, dashboard admin, futur warning in-app sur la watch).
+    logger.info(
+      {
+        event: 'watch_no_data',
+        watchId: watch.id,
+        workspaceId: watch.workspace_id,
+        metricKey: watch.metric_key,
+        source: watch.source || null,
+        windowDays: days,
+      },
+      'Watch evaluated but no canonical_metrics row matched — connector likely missing for this metric',
+    )
+    return false
+  }
 
   // Tri date desc (la query renvoie déjà desc, mais on assure).
   rows.sort((a, b) => (a.date < b.date ? 1 : -1))

@@ -137,3 +137,83 @@ test('validateEnv OK si ADMIN_TOKEN ≥ 32 chars', () => {
     restoreEnv(snap, keys)
   }
 })
+
+// ━━━ APP_URL & OAUTH_REDIRECT_URI validation ━━━
+
+test('validateEnv throw si APP_URL n\'est pas une URL valide', () => {
+  const { snap, keys } = snapshotEnv()
+  try {
+    delete require.cache[ENV_VALIDATOR_PATH]
+    process.env.NODE_ENV = 'development'
+    setRequiredEnv()
+    process.env.APP_URL = 'not-a-url'
+
+    const { validateEnv } = require(ENV_VALIDATOR_PATH)
+    assert.throws(() => validateEnv(), /APP_URL is not a valid URL/)
+  } finally {
+    restoreEnv(snap, keys)
+  }
+})
+
+test('validateEnv throw si APP_URL a un slash final', () => {
+  const { snap, keys } = snapshotEnv()
+  try {
+    delete require.cache[ENV_VALIDATOR_PATH]
+    process.env.NODE_ENV = 'development'
+    setRequiredEnv()
+    process.env.APP_URL = 'https://app.smartanalyst.io/'
+
+    const { validateEnv } = require(ENV_VALIDATOR_PATH)
+    assert.throws(() => validateEnv(), /trailing slash/)
+  } finally {
+    restoreEnv(snap, keys)
+  }
+})
+
+test('validateEnv throw si APP_URL = http en prod (hors localhost)', () => {
+  const { snap, keys } = snapshotEnv()
+  try {
+    delete require.cache[ENV_VALIDATOR_PATH]
+    process.env.NODE_ENV = 'production'
+    setRequiredEnv()
+    setProductionRequiredEnv()
+    process.env.APP_URL = 'http://app.smartanalyst.io'
+
+    const { validateEnv } = require(ENV_VALIDATOR_PATH)
+    assert.throws(() => validateEnv(), /must use https in production/)
+  } finally {
+    restoreEnv(snap, keys)
+  }
+})
+
+test('validateEnv OK si APP_URL = http://localhost en dev', () => {
+  const { snap, keys } = snapshotEnv()
+  try {
+    delete require.cache[ENV_VALIDATOR_PATH]
+    process.env.NODE_ENV = 'development'
+    setRequiredEnv()
+    process.env.APP_URL = 'http://localhost:3000'
+
+    const { validateEnv } = require(ENV_VALIDATOR_PATH)
+    const result = validateEnv()
+    assert.equal(result.ok, true)
+  } finally {
+    restoreEnv(snap, keys)
+  }
+})
+
+test('validateEnv throw si OAUTH_REDIRECT_URI invalide', () => {
+  const { snap, keys } = snapshotEnv()
+  try {
+    delete require.cache[ENV_VALIDATOR_PATH]
+    process.env.NODE_ENV = 'development'
+    setRequiredEnv()
+    process.env.OAUTH_REDIRECT_URI = 'oops'
+
+    const { validateEnv } = require(ENV_VALIDATOR_PATH)
+    assert.throws(() => validateEnv(), /OAUTH_REDIRECT_URI/)
+  } finally {
+    restoreEnv(snap, keys)
+    delete process.env.OAUTH_REDIRECT_URI
+  }
+})

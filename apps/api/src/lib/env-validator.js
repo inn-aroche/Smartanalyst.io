@@ -49,9 +49,7 @@ const RECOMMENDED_VARS = [
 function validateEnv() {
   const isProduction = process.env.NODE_ENV === 'production'
 
-  const required = isProduction
-    ? [...REQUIRED_VARS, ...PRODUCTION_REQUIRED_VARS]
-    : REQUIRED_VARS
+  const required = isProduction ? [...REQUIRED_VARS, ...PRODUCTION_REQUIRED_VARS] : REQUIRED_VARS
 
   const missing = required.filter((name) => !process.env[name])
 
@@ -68,6 +66,54 @@ function validateEnv() {
 
   if (process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN.length < 32) {
     throw new Error('ADMIN_TOKEN must be at least 32 characters long')
+  }
+
+  // APP_URL pilote l'URL de redirection OAuth pour TOUS les providers (GA4,
+  // Meta, Stripe, Shopify, etc.). Une URL mal-formée (typo, slash final,
+  // protocole oublié) produit un redirect_uri silencieusement invalide :
+  // Google répond 400 sans contexte, l'user voit "error" sans qu'on sache
+  // pourquoi. On vérifie maintenant au boot pour fail-fast plutôt qu'à
+  // chaque OAuth en prod.
+  if (process.env.APP_URL) {
+    let parsed
+    try {
+      parsed = new URL(process.env.APP_URL)
+    } catch {
+      throw new Error(
+        `APP_URL is not a valid URL: "${process.env.APP_URL}". Expected something like https://app.smartanalyst.io (no trailing slash).`,
+      )
+    }
+    if (!/^https?:$/.test(parsed.protocol)) {
+      throw new Error(
+        `APP_URL must use http:// or https:// (got "${parsed.protocol}"). Most OAuth providers reject other schemes.`,
+      )
+    }
+    if (process.env.APP_URL.endsWith('/')) {
+      throw new Error(
+        `APP_URL must NOT end with a trailing slash (got "${process.env.APP_URL}"). The OAuth callback path is appended without normalization.`,
+      )
+    }
+    if (isProduction && parsed.protocol === 'http:' && parsed.hostname !== 'localhost') {
+      throw new Error(
+        `APP_URL must use https in production (got "${process.env.APP_URL}"). OAuth providers reject http callbacks outside localhost.`,
+      )
+    }
+  }
+
+  // OAUTH_REDIRECT_URI override : mêmes contraintes (URL valide, pas de slash
+  // final, https en prod).
+  if (process.env.OAUTH_REDIRECT_URI) {
+    let parsed
+    try {
+      parsed = new URL(process.env.OAUTH_REDIRECT_URI)
+    } catch {
+      throw new Error(`OAUTH_REDIRECT_URI is not a valid URL: "${process.env.OAUTH_REDIRECT_URI}".`)
+    }
+    if (isProduction && parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') {
+      throw new Error(
+        `OAUTH_REDIRECT_URI must use https in production (got "${process.env.OAUTH_REDIRECT_URI}").`,
+      )
+    }
   }
 
   const missingRecommended = RECOMMENDED_VARS.filter((name) => !process.env[name])

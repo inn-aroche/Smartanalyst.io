@@ -1,5 +1,6 @@
-// Google OAuth flow for user **sign-in / sign-up** (different from the connector
-// OAuth flow in google-oauth.service.js which uses analytics/ads scopes).
+// Google OAuth flow for user **sign-in / sign-up** (different from the
+// connector OAuth flow, which goes through oauth-generic.service for
+// analytics/ads scopes).
 //
 // Scopes: openid email profile  → we get an ID token (JWT signed by Google)
 // that we forward to Supabase via signInWithIdToken. Supabase handles
@@ -25,20 +26,18 @@ function getEnv() {
   const clientSecret = process.env.GOOGLE_LOGIN_CLIENT_SECRET
   const redirectUri = process.env.GOOGLE_LOGIN_REDIRECT_URI
   if (!clientId || !clientSecret || !redirectUri) {
-    throw new UserFacingError(
-      'La connexion Google n’est pas configurée. Contacte le support.',
-      { statusCode: 503, code: 'GOOGLE_LOGIN_NOT_CONFIGURED' },
-    )
+    throw new UserFacingError('La connexion Google n’est pas configurée. Contacte le support.', {
+      statusCode: 503,
+      code: 'GOOGLE_LOGIN_NOT_CONFIGURED',
+    })
   }
   return { clientId, clientSecret, redirectUri }
 }
 
 function signState({ returnTo }) {
-  return jwt.sign(
-    { type: STATE_TYPE, returnTo: returnTo || null },
-    process.env.JWT_SECRET,
-    { expiresIn: STATE_TTL },
-  )
+  return jwt.sign({ type: STATE_TYPE, returnTo: returnTo || null }, process.env.JWT_SECRET, {
+    expiresIn: STATE_TTL,
+  })
 }
 
 function verifyState(state) {
@@ -239,8 +238,7 @@ async function handleCallback({ code, state, ipAddress, userAgent }) {
   }
 
   const user = signInData.user
-  const fullName =
-    user.user_metadata?.full_name || user.user_metadata?.name || null
+  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || null
 
   // Beta lockdown — refuse la connexion Google si l'email n'est pas
   // dans la whitelist. Important pour ce flow car Supabase a déjà créé
@@ -263,7 +261,11 @@ async function handleCallback({ code, state, ipAddress, userAgent }) {
     .eq('user_id', user.id)
 
   if (memErr) {
-    logger.error({ event: 'google_signin_memberships_failed', userId: user.id, error: memErr.message })
+    logger.error({
+      event: 'google_signin_memberships_failed',
+      userId: user.id,
+      error: memErr.message,
+    })
   }
 
   const workspaces = (memberships || []).map((m) => ({
