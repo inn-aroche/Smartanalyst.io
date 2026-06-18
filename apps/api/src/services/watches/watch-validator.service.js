@@ -11,6 +11,7 @@
 // `metric_key=null` — le frontend laisse l'user choisir manuellement à l'étape 2.
 
 const { generateStructured } = require('../ai/gemini.service')
+const aiUsage = require('../ai/ai-usage.service')
 const { logger } = require('../../lib/logger')
 
 // Liste curatée des metric_keys que l'IA peut suggérer.
@@ -93,9 +94,12 @@ Si la description ne matche aucune métrique évidente → metric_key="unknown" 
  * Valide une description NL d'alerte.
  *
  * @param {string} description — La saisie utilisateur, 3-280 chars.
+ * @param {object} [opts]
+ * @param {string} [opts.workspaceId] — pour le tracking d'usage IA.
+ * @param {string} [opts.userId]
  * @returns {Promise<{ metric_key, operator, threshold, confidence, explanation }>}
  */
-async function validateIntent(description) {
+async function validateIntent(description, { workspaceId, userId } = {}) {
   const desc = String(description || '').trim()
   if (desc.length < 3) {
     return {
@@ -108,12 +112,24 @@ async function validateIntent(description) {
   }
 
   try {
-    const { json } = await generateStructured({
+    const { json, modelName, usage } = await generateStructured({
       systemPrompt: SYSTEM_PROMPT,
       userMessage: desc,
       responseSchema: RESPONSE_SCHEMA,
       temperature: 0.1,
       maxOutputTokens: 400,
+    })
+    // Best-effort tracking : le validator est peu volume (1 appel par
+    // création de veille) mais on veut quand même qu'il rentre dans le budget
+    // mensuel du workspace.
+    void aiUsage.recordUsage({
+      workspaceId,
+      userId,
+      model: usage?.model || modelName,
+      requestType: 'watch_validator',
+      inputTokens: usage?.inputTokens || 0,
+      outputTokens: usage?.outputTokens || 0,
+      durationMs: usage?.durationMs,
     })
     // Normalise les "unknown" en null pour le frontend.
     const metric_key = json.metric_key === 'unknown' ? null : json.metric_key

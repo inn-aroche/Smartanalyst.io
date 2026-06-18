@@ -265,6 +265,8 @@ const en = {
   'chat.suggestion2': 'What is a healthy LTV/CAC ratio for a SaaS?',
   'chat.suggestion3': 'How do I detect Meta Ads creative fatigue?',
   'chat.error': 'Something went wrong. Try again.',
+  'chat.error.budget':
+    'Your monthly AI budget is reached. Raise it in Settings or wait until the 1st.',
   'chat.you': 'You',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',
@@ -1082,6 +1084,8 @@ const fr: Record<keyof typeof en, string> = {
   'chat.suggestion2': 'Quel ratio LTV/CAC sain pour un SaaS ?',
   'chat.suggestion3': 'Comment détecter une fatigue créative Meta ?',
   'chat.error': 'Quelque chose a planté. Réessaie.',
+  'chat.error.budget':
+    'Ton budget IA mensuel est atteint. Augmente-le dans Réglages ou attends le 1ᵉʳ du mois.',
   'chat.you': 'Toi',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',

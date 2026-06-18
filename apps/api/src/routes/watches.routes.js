@@ -16,11 +16,17 @@ router.use(jwtMiddleware)
 // Endpoint léger pour le step 1 du WatchModal. Pas de mutation.
 router.post(
   '/validate',
-  [body('description').isString().isLength({ min: 3, max: 280 })],
+  [
+    body('description').isString().isLength({ min: 3, max: 280 }),
+    body('workspaceId').optional().isUUID().withMessage('workspaceId UUID requis.'),
+  ],
   runValidation,
   async (req, res, next) => {
     try {
-      const result = await watchValidator.validateIntent(req.body.description)
+      const result = await watchValidator.validateIntent(req.body.description, {
+        workspaceId: req.body.workspaceId,
+        userId: req.user?.id,
+      })
       res.json(result)
     } catch (err) {
       next(err)
