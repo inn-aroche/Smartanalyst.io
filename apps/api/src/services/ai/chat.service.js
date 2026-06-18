@@ -4,6 +4,7 @@
 
 const { generateOnce } = require('./gemini.service')
 const aiUsage = require('./ai-usage.service')
+const chatHighlights = require('./chat-highlights.service')
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
@@ -19,6 +20,42 @@ class AiBudgetExceededError extends Error {
     this.used = used
     this.limit = limit
   }
+}
+
+// Mapping vers une erreur cliente compréhensible (429 / 504 / 502) selon ce
+// que renvoie l'API Gemini. Le client distingue ainsi "réessaie dans Xs"
+// d'un vrai bug. Conserve le `code` pour que le frontend pioche le bon i18n.
+class ChatProviderError extends Error {
+  constructor(code, message, { statusCode = 502, retryAfterSec } = {}) {
+    super(message)
+    this.code = code
+    this.statusCode = statusCode
+    this.retryAfterSec = retryAfterSec
+  }
+}
+
+function classifyGeminiError(err) {
+  if (!err || err.code === 'AI_BUDGET_EXCEEDED') return err
+  // Le SDK Google emballe parfois le status HTTP dans `.status` ou dans le
+  // message ("[429 Too Many Requests]"). On essaie les deux.
+  const status = err.status || err.statusCode
+  const msg = String(err.message || '')
+  if (status === 429 || /\b429\b|rate.?limit|quota/i.test(msg)) {
+    // Best-effort : si Google a renvoyé un retryDelay (en secondes), on le
+    // remonte au client pour qu'il affiche "réessaie dans Xs".
+    const retryMatch = msg.match(/retry.{0,20}?(\d+)/i)
+    return new ChatProviderError('AI_RATE_LIMIT', 'AI rate limit hit', {
+      statusCode: 429,
+      retryAfterSec: retryMatch ? Number(retryMatch[1]) : 30,
+    })
+  }
+  if (status === 504 || /timeout|deadline.exceeded/i.test(msg)) {
+    return new ChatProviderError('AI_TIMEOUT', 'AI provider timed out', { statusCode: 504 })
+  }
+  if (status === 503 || status === 502 || /unavailable|overloaded/i.test(msg)) {
+    return new ChatProviderError('AI_PROVIDER_DOWN', 'AI provider unavailable', { statusCode: 503 })
+  }
+  return err
 }
 
 const SYSTEM_PROMPT_FR = `Tu es SmartAnalyst, un analyste marketing IA pour PME et agences.
@@ -269,6 +306,15 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
   }
 
   const metricsContext = await buildMetricsContext(workspaceId, locale)
+
+  // Empty workspace short-circuit : pas de canonical_metrics ET pas de fichier
+  // joint = le modèle n'a aucune donnée user pour répondre, et hallucinerait
+  // ou produirait une réponse fade. On renvoie un message dirigé "branche une
+  // source" avec un highlight callout actionnable, sans cramer un appel LLM.
+  if (!metricsContext && attachments.length === 0 && workspaceId) {
+    return emptyWorkspaceResponse(locale)
+  }
+
   let systemPrompt = metricsContext ? `${basePrompt}\n\n${metricsContext.contextStr}` : basePrompt
 
   // Multimodal (brief V2 §3.2) : si des pièces jointes accompagnent le message,
@@ -298,12 +344,19 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
   let finalText = ''
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
-    const out = await generateOnce({
-      systemPrompt,
-      contents: history,
-      tools: chatTools.DECLARATIONS,
-      temperature: 0.4,
-    })
+    let out
+    try {
+      out = await generateOnce({
+        systemPrompt,
+        contents: history,
+        tools: chatTools.DECLARATIONS,
+        temperature: 0.4,
+      })
+    } catch (err) {
+      // Map les erreurs Gemini (rate-limit / timeout / unavailable) en codes
+      // exploitables par le frontend (i18n dédié + retryAfterSec optionnel).
+      throw classifyGeminiError(err)
+    }
     modelName = out.modelName
 
     // Tracking d'usage IA : chaque tour de la boucle function-calling compte.
@@ -389,7 +442,74 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
       if (error) logger.warn({ event: 'chat_audit_failed', error: error.message })
     })
 
-  return { answer: text, model: modelName, sources: usedSources }
+  // 2e passe : extrait 0-3 highlights visuels (KPI cards / callouts) à partir
+  // de la réponse prose. Best-effort, latence ~500ms-1s. Si KO, on continue
+  // sans highlights — le chat texte reste pleinement utilisable.
+  const highlights = await chatHighlights.extract({
+    workspaceId,
+    userId,
+    question: message,
+    answer: text,
+    sources: usedSources,
+    locale,
+  })
+
+  return { answer: text, model: modelName, sources: usedSources, highlights }
 }
 
-module.exports = { ask, AiBudgetExceededError }
+/**
+ * Réponse pré-canned quand un workspace n'a aucune donnée connectée.
+ * Évite (a) un appel LLM inutile, (b) une réponse molle ou hallucinée du
+ * modèle, (c) un user perdu qui ne sait pas par où commencer.
+ */
+function emptyWorkspaceResponse(locale) {
+  if (locale === 'en') {
+    return {
+      answer:
+        "I'd love to help — but right now I don't see any source connected yet, so I can't ground my answer in your real numbers. Pick the tool you check most (GA4, Meta Ads, Google Ads, Stripe…) and connect it. Once one sync completes (a few minutes), come back and ask me anything.",
+      model: 'short-circuit',
+      sources: [],
+      highlights: [
+        {
+          type: 'callout',
+          tone: 'info',
+          icon: 'lightbulb',
+          title: 'Connect a source first',
+          summary: 'GA4, Meta Ads, Stripe… one click, OAuth in seconds, and I can start digging.',
+          value: null,
+          delta: null,
+          deltaUp: null,
+          metricKey: null,
+          sourceIds: [],
+          sparkline: null,
+          cta: { href: '/connectors', label: 'Connect a source' },
+        },
+      ],
+    }
+  }
+  return {
+    answer:
+      "Avec plaisir — mais là tout de suite je ne vois aucune source connectée, donc je ne peux pas baser ma réponse sur tes vrais chiffres. Choisis l'outil que tu regardes le plus (GA4, Meta Ads, Google Ads, Stripe…) et branche-le. Une fois la première sync passée (quelques minutes), reviens me poser ta question.",
+    model: 'short-circuit',
+    sources: [],
+    highlights: [
+      {
+        type: 'callout',
+        tone: 'info',
+        icon: 'lightbulb',
+        title: 'Branche une source pour commencer',
+        summary:
+          'GA4, Meta Ads, Stripe… un clic, OAuth en quelques secondes, et je peux te répondre.',
+        value: null,
+        delta: null,
+        deltaUp: null,
+        metricKey: null,
+        sourceIds: [],
+        sparkline: null,
+        cta: { href: '/connectors', label: 'Brancher une source' },
+      },
+    ],
+  }
+}
+
+module.exports = { ask, AiBudgetExceededError, ChatProviderError, classifyGeminiError }

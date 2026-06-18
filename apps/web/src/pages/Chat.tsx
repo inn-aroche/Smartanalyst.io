@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
+import HighlightStack, { type Highlight } from '@/components/chat/HighlightStack'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { pickSuggestions } from '@/lib/chat-suggestions'
@@ -29,10 +30,21 @@ type Source = {
 
 type Message =
   | { id: string; role: 'user'; text: string }
-  | { id: string; role: 'assistant'; text: string; sources?: Source[] }
+  | {
+      id: string
+      role: 'assistant'
+      text: string
+      sources?: Source[]
+      highlights?: Highlight[]
+    }
   | { id: string; role: 'assistant'; pending: true }
 
-type AskResponse = { answer: string; model: string; sources?: Source[] }
+type AskResponse = {
+  answer: string
+  model: string
+  sources?: Source[]
+  highlights?: Highlight[]
+}
 
 type WorkspaceConnector = {
   id: string
@@ -153,25 +165,19 @@ export default function ChatPage() {
       setMessages((m) =>
         m.map((msg) =>
           msg.id === pendingMsg.id
-            ? { id: msg.id, role: 'assistant', text: res.answer, sources: res.sources }
+            ? {
+                id: msg.id,
+                role: 'assistant',
+                text: res.answer,
+                sources: res.sources,
+                highlights: res.highlights,
+              }
             : msg,
         ),
       )
     } catch (err) {
       setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
-      if (err instanceof ApiError && err.code === 'AI_BUDGET_EXCEEDED') {
-        // Hard-stop budget : un message dédié + lien vers Settings pour
-        // augmenter le quota plutôt que le message d'erreur générique.
-        setError(t('chat.error.budget'))
-      } else {
-        setError(
-          err instanceof ApiError && err.status === 503
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : t('chat.error'),
-        )
-      }
+      setError(mapErrorToMessage(err, t))
     }
   }
 
@@ -298,42 +304,85 @@ function MessageBubble({ message }: { message: Message }) {
   // Assistant
   if ('pending' in message && message.pending) {
     return (
-      <div className="flex flex-col gap-1.5">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-          {t('chat.assistant')}
-        </div>
-        <div className="inline-flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3">
-          <Dot delay="0s" />
-          <Dot delay="0.18s" />
-          <Dot delay="0.36s" />
+      <div className="flex items-start gap-2.5">
+        <AssistantAvatar />
+        <div className="flex flex-col gap-1.5">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+            {t('chat.assistant')}
+          </div>
+          <div className="inline-flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3">
+            <Dot delay="0s" />
+            <Dot delay="0.18s" />
+            <Dot delay="0.36s" />
+          </div>
         </div>
       </div>
     )
   }
   const text = 'text' in message ? message.text : ''
   const sources = 'sources' in message ? message.sources || [] : []
+  const highlights = 'highlights' in message ? message.highlights || [] : []
   const byId = new Map(sources.map((s) => [s.id, s]))
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-        {t('chat.assistant')}
-      </div>
-      <div className="self-start whitespace-pre-wrap rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm leading-relaxed text-text-1">
-        {renderWithCitations(text, byId)}
-      </div>
-      {sources.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1.5 self-start">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-            {t('chat.sources')}
-          </span>
-          {sources.map((s) => (
-            <SourceChip key={s.id} source={s} />
-          ))}
+    <div className="flex items-start gap-2.5">
+      <AssistantAvatar />
+      <div className="min-w-0 flex-1">
+        <div className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-text-3">
+          {t('chat.assistant')}
         </div>
-      )}
+        <div className="whitespace-pre-wrap rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm leading-relaxed text-text-1">
+          {renderWithCitations(text, byId)}
+        </div>
+        {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini. */}
+        <HighlightStack highlights={highlights} />
+        {sources.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+              {t('chat.sources')}
+            </span>
+            {sources.map((s) => (
+              <SourceChip key={s.id} source={s} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
+}
+
+function AssistantAvatar() {
+  return (
+    <div
+      aria-hidden="true"
+      className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[9px] bg-brand-grad font-head text-sm font-bold text-white shadow-sm"
+    >
+      ✦
+    </div>
+  )
+}
+
+/**
+ * Mappe une erreur API/network vers un message i18n côté chat. Concentre la
+ * logique en un seul endroit pour que `send()` reste lisible.
+ */
+function mapErrorToMessage(err: unknown, t: ReturnType<typeof useT>): string {
+  if (err instanceof ApiError) {
+    switch (err.code) {
+      case 'AI_BUDGET_EXCEEDED':
+        return t('chat.error.budget')
+      case 'AI_RATE_LIMIT':
+        return t('chat.error.rateLimit')
+      case 'AI_TIMEOUT':
+        return t('chat.error.timeout')
+      case 'AI_PROVIDER_DOWN':
+        return t('chat.error.providerDown')
+      default:
+        return err.status === 503 ? err.message : err.message || t('chat.error')
+    }
+  }
+  if (err instanceof Error) return err.message
+  return t('chat.error')
 }
 
 /**
