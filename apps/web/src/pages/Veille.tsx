@@ -18,10 +18,13 @@ import { useNavigate } from 'react-router-dom'
 import AppLayout, { Topbar } from '@/components/AppLayout'
 import InsightCard from '@/components/insights/InsightCard'
 import WatchModal from '@/components/insights/WatchModal'
+import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
 import type { Insight } from '@/lib/insights-types'
+
+type HealthScore = { score: number; delta: number | null; has_data: boolean }
 
 type FilterId = 'all' | 'critical' | 'warning' | 'opportunity' | 'resolved'
 
@@ -49,6 +52,16 @@ export default function VeillePage() {
     enabled: !!wsId && filter === 'resolved',
     queryFn: () =>
       apiFetch<{ insights: Insight[] }>(`/api/v1/insights?workspaceId=${wsId}&status=resolved`),
+    staleTime: 60_000,
+  })
+  // Détection workspace vide : on pioche has_data depuis health-score (déjà
+  // queryé par BriefHome, dedupé par React Query → coût ~zéro). Permet de
+  // distinguer "all clear" (l'IA a regardé, rien à signaler) du vrai
+  // "première utilisation, branche une source d'abord".
+  const scoreQ = useQuery({
+    queryKey: ['health-score', wsId],
+    enabled: !!wsId,
+    queryFn: () => apiFetch<HealthScore>(`/api/v1/health-score?workspaceId=${wsId}`),
     staleTime: 60_000,
   })
 
@@ -162,7 +175,15 @@ export default function VeillePage() {
               ))}
             </div>
           ) : list.length === 0 ? (
-            <EmptyState filter={filter} />
+            // Vraie première utilisation (pas de canonical_metrics) vs "all
+            // clear" (workspace branché mais rien à signaler) : on bascule sur
+            // FirstRunBlock dans le 1er cas pour donner une vraie direction
+            // à l'utilisateur.
+            filter === 'all' && !scoreQ.isLoading && !scoreQ.data?.has_data ? (
+              <VeilleFirstRun onOpenWatchModal={() => setWatchModalOpen(true)} />
+            ) : (
+              <EmptyState filter={filter} />
+            )
           ) : (
             <div className="flex flex-col gap-3.5">
               {list.map((i) => (
@@ -246,6 +267,43 @@ function WeeklyRecap({
         <div className="text-[13px] opacity-90">{body}</div>
       </div>
     </div>
+  )
+}
+
+function VeilleFirstRun({ onOpenWatchModal }: { onOpenWatchModal: () => void }) {
+  const t = useT()
+  return (
+    <FirstRunBlock
+      illustration={<WatchIllus />}
+      eyebrow={t('veille.firstRun.eyebrow')}
+      title={t('veille.firstRun.title')}
+      body={t('veille.firstRun.body')}
+      primary={{ label: t('veille.firstRun.cta'), to: '/connectors' }}
+      // 3 templates de veille populaires — l'idée n'est pas que l'IA les
+      // applique automatiquement (faudrait connaître les métriques user) mais
+      // de donner des exemples concrets de ce qu'on peut surveiller. Le clic
+      // ouvre le WatchModal en mode NL, l'user finit la phrase à sa sauce.
+      secondary={[
+        {
+          label: t('veille.firstRun.template.roas'),
+          sublabel: t('veille.firstRun.template.roasSub'),
+          icon: '↘',
+          onClick: onOpenWatchModal,
+        },
+        {
+          label: t('veille.firstRun.template.cpa'),
+          sublabel: t('veille.firstRun.template.cpaSub'),
+          icon: '↗',
+          onClick: onOpenWatchModal,
+        },
+        {
+          label: t('veille.firstRun.template.churn'),
+          sublabel: t('veille.firstRun.template.churnSub'),
+          icon: '!',
+          onClick: onOpenWatchModal,
+        },
+      ]}
+    />
   )
 }
 

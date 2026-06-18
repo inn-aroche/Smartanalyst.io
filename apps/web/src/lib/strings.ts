@@ -74,6 +74,16 @@ const en = {
   'brief.onboardCta.body':
     "I'll analyze your site, detect your sector and connect your first source.",
   'brief.onboardCta.cta': 'Start onboarding',
+  // First-run state (workspace sans canonical_metrics)
+  'brief.firstRun.eyebrow': 'WELCOME',
+  'brief.firstRun.title': "Hi {{name}} — let's set the stage.",
+  'brief.firstRun.body':
+    'To brief you each morning on what moved, I need at least one source connected. It takes 30 seconds — pick the tool you check the most.',
+  'brief.firstRun.cta': 'Connect a source',
+  'brief.firstRun.tour': 'Guided tour',
+  'brief.firstRun.tourSub': 'I analyze your site, suggest a profile and walk you through.',
+  'brief.firstRun.ask': 'Try the assistant',
+  'brief.firstRun.askSub': "Ask a question right away — I'll show you what I can do.",
 
   // ━━━ Onboarding (App v2 — overlay 5 étapes §3.7C) ━━━
   'onboarding.flowTitle': 'Onboarding',
@@ -160,6 +170,18 @@ const en = {
   'veille.empty.allClear':
     "All quiet on the watch front — I'll surface anything new the moment I spot it.",
   'veille.empty.resolved': 'Nothing handled yet.',
+  // First-run state (no canonical_metrics yet)
+  'veille.firstRun.eyebrow': 'WATCH',
+  'veille.firstRun.title': 'Tell me what to keep an eye on.',
+  'veille.firstRun.body':
+    'A watch = a condition I monitor for you (ROAS dropping, CPA rising, churn spiking…). I ping you the moment it actually fires. Pick an idea or start your own — but first, connect at least one source.',
+  'veille.firstRun.cta': 'Connect a source',
+  'veille.firstRun.template.roas': 'Watch a ROAS drop',
+  'veille.firstRun.template.roasSub': '"Ping me when my Meta ROAS goes below 2 for 3 days"',
+  'veille.firstRun.template.cpa': 'Watch a CPA spike',
+  'veille.firstRun.template.cpaSub': '"Tell me when my Google Ads CPA exceeds €30"',
+  'veille.firstRun.template.churn': 'Watch churn rising',
+  'veille.firstRun.template.churnSub': '"Alert me when my monthly churn goes above 5%"',
 
   // ━━━ Watch modal (App v2 — création d'alerte custom §3.3) ━━━
   'watchModal.title': 'Create an alert',
@@ -204,6 +226,12 @@ const en = {
   'reports.generate': 'Generate a report',
   'reports.empty': 'No report yet. Generate one for the current month.',
   'reports.selectOne': 'Select a report to preview it here.',
+  // First-run state (no report yet)
+  'reports.firstRun.eyebrow': 'REPORTS',
+  'reports.firstRun.title': 'Generate your first report.',
+  'reports.firstRun.body':
+    'A report = a clean, shareable summary of your month: health score, KPIs, what mattered, what to do. Pick a period, I do the rest in 30 seconds.',
+  'reports.firstRun.cta': 'Generate now',
   'reports.printPdf': 'Print as PDF',
   'reports.printBlocked': 'Pop-up blocked. Allow pop-ups to print.',
   'reports.notReady': 'Report not ready yet.',
@@ -902,6 +930,16 @@ const fr: Record<keyof typeof en, string> = {
   'brief.onboardCta.body':
     "J'analyse ton site, je détecte ton secteur et je branche ta première source.",
   'brief.onboardCta.cta': "Lancer l'onboarding",
+  // First-run state (workspace sans canonical_metrics)
+  'brief.firstRun.eyebrow': 'BIENVENUE',
+  'brief.firstRun.title': 'Salut {{name}} — on installe le terrain.',
+  'brief.firstRun.body':
+    "Pour pouvoir te briefer chaque matin sur ce qui a bougé, j'ai besoin qu'au moins une source soit branchée. Ça prend 30 secondes — pars de l'outil que tu regardes le plus.",
+  'brief.firstRun.cta': 'Brancher une source',
+  'brief.firstRun.tour': 'Visite guidée',
+  'brief.firstRun.tourSub': "J'analyse ton site, je te propose un profil et je t'accompagne.",
+  'brief.firstRun.ask': "Essayer l'assistant",
+  'brief.firstRun.askSub': 'Pose une question tout de suite — je te montre ce que je sais faire.',
 
   // ━━━ Onboarding (App v2 — overlay 5 étapes §3.7C) ━━━
   'onboarding.flowTitle': 'Onboarding',
@@ -987,6 +1025,19 @@ const fr: Record<keyof typeof en, string> = {
   'veille.recap.warningCount': '{{n}} point(s) à surveiller',
   'veille.recap.opportunityCount': '{{n}} opportunité(s)',
   'veille.empty.allClear': "Rien sur le radar pour l'instant — je remonte tout dès que ça bouge.",
+  // First-run state (no canonical_metrics yet)
+  'veille.firstRun.eyebrow': 'VEILLE',
+  'veille.firstRun.title': 'Dis-moi quoi surveiller.',
+  'veille.firstRun.body':
+    "Une veille = une condition que je surveille pour toi (ROAS qui chute, CPA qui monte, churn qui spike…). Je te préviens dès qu'elle se déclenche vraiment. Pioche une idée ou écris la tienne — mais d'abord, branche au moins une source.",
+  'veille.firstRun.cta': 'Brancher une source',
+  'veille.firstRun.template.roas': 'Surveiller la chute du ROAS',
+  'veille.firstRun.template.roasSub':
+    '« Préviens-moi quand mon ROAS Meta passe sous 2 pendant 3 jours »',
+  'veille.firstRun.template.cpa': 'Surveiller le CPA qui monte',
+  'veille.firstRun.template.cpaSub': '« Préviens-moi quand mon CPA Google dépasse 30 € »',
+  'veille.firstRun.template.churn': 'Surveiller le churn qui spike',
+  'veille.firstRun.template.churnSub': '« Alerte-moi quand mon churn mensuel dépasse 5 % »',
   'veille.empty.resolved': 'Aucun insight traité pour le moment.',
 
   // ━━━ Watch modal (App v2 — création d'alerte custom §3.3) ━━━
@@ -1032,6 +1083,12 @@ const fr: Record<keyof typeof en, string> = {
   'reports.generate': 'Générer un rapport',
   'reports.empty': "Aucun rapport pour l'instant. Génère-en un pour le mois en cours.",
   'reports.selectOne': 'Sélectionne un rapport pour l’aperçu.',
+  // First-run state (no report yet)
+  'reports.firstRun.eyebrow': 'RAPPORTS',
+  'reports.firstRun.title': 'Lance ton premier rapport.',
+  'reports.firstRun.body':
+    "Un rapport = une synthèse propre et partageable de ton mois : score de santé, KPI, ce qui a compté, quoi faire. Choisis une période, je m'occupe du reste en 30 secondes.",
+  'reports.firstRun.cta': 'Générer maintenant',
   'reports.printPdf': 'Imprimer en PDF',
   'reports.printBlocked': 'Pop-up bloquée. Autorise les pop-ups pour imprimer.',
   'reports.notReady': "Le rapport n'est pas encore prêt.",
