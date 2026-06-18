@@ -107,6 +107,8 @@ const en = {
   'onboarding.s3.recommended': 'Recommended',
   'onboarding.s3.connect': 'Connect Shopify',
   'onboarding.s3.later': "I'll connect later",
+  'onboarding.s3.fallback':
+    "I couldn't read the site automatically — manual mode. Pick the source you check the most and we'll go from there.",
   'onboarding.s4.title': 'Pulling your last 30 days…',
   'onboarding.s4.body': 'Sales, traffic and campaigns. Takes about 15 seconds.',
   'onboarding.s4.check1': 'Connection established',
@@ -122,6 +124,8 @@ const en = {
     "Your acquisition is solid. Your first lever: conversion — we'll work on it together.",
   'onboarding.s5.cardBodyNoData':
     "I'll have more to say as soon as your data finishes flowing in. In the meantime, here's your fresh space.",
+  'onboarding.s5.errorNoWorkspace':
+    "Your account isn't fully set up yet. Refresh the page, or contact support if this persists.",
   'onboarding.s5.cta': 'Enter my space',
 
   // ━━━ Veille (App v2 — surveillance proactive §3.3) ━━━
@@ -923,6 +927,8 @@ const fr: Record<keyof typeof en, string> = {
   'onboarding.s3.recommended': 'Recommandé',
   'onboarding.s3.connect': 'Connecter Shopify',
   'onboarding.s3.later': 'Je connecterai plus tard',
+  'onboarding.s3.fallback':
+    "Je n'ai pas pu lire le site automatiquement — mode manuel. Choisis la source que tu regardes le plus, on partira de là.",
   'onboarding.s4.title': 'Je récupère tes 30 derniers jours…',
   'onboarding.s4.body': 'Ventes, trafic et campagnes. Ça prend une quinzaine de secondes.',
   'onboarding.s4.check1': 'Connexion établie',
@@ -939,6 +945,8 @@ const fr: Record<keyof typeof en, string> = {
     "Ton acquisition est solide. Ton premier levier : la conversion. On va s'en occuper ensemble.",
   'onboarding.s5.cardBodyNoData':
     "J'aurai plus à dire dès que tes données seront synchronisées. En attendant, voici ton espace.",
+  'onboarding.s5.errorNoWorkspace':
+    "Ton compte n'est pas tout à fait prêt. Rafraîchis la page, ou contacte le support si ça persiste.",
   'onboarding.s5.cta': 'Entrer dans mon espace',
 
   // ━━━ Veille (App v2 — surveillance proactive §3.3) ━━━

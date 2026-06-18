@@ -25,6 +25,45 @@ import { useT } from '@/lib/i18n'
 
 export const ONBOARDING_OPEN_EVENT = 'sa-onboarding:open'
 
+// Clé sessionStorage pour persister l'état du flow à travers les rechargements
+// de page. L'OAuth d'un connecteur navigue hors de l'app (window.location.href),
+// donc sans persistance le user revient à la step 1, perte sèche d'UX.
+const STORAGE_KEY = 'sa-onboarding:state-v1'
+
+type PersistedState = {
+  step: 1 | 2 | 3 | 4 | 5
+  url: string
+  detected: DetectedProfile | null
+  fallback: boolean
+}
+
+function loadPersisted(): PersistedState | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<PersistedState>
+    if (!parsed || !parsed.step || parsed.step < 1 || parsed.step > 5) return null
+    return {
+      step: parsed.step as 1 | 2 | 3 | 4 | 5,
+      url: typeof parsed.url === 'string' ? parsed.url : 'https://',
+      detected: parsed.detected ?? null,
+      fallback: !!parsed.fallback,
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearPersisted(): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // sessionStorage indispo (mode privé strict) — pas grave.
+  }
+}
+
 export function openOnboarding(): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(ONBOARDING_OPEN_EVENT))
@@ -72,29 +111,61 @@ export default function OnboardingFlow() {
         const newUrl =
           window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash
         window.history.replaceState({}, '', newUrl)
+      } else if (loadPersisted()) {
+        // Flow démarré, user parti faire son OAuth, retour sur l'app :
+        // on rouvre automatiquement à l'étape où il s'était arrêté.
+        setOpen(true)
       }
     }
     return () => window.removeEventListener(ONBOARDING_OPEN_EVENT, onOpen)
   }, [])
   if (!open) return null
-  return <OnboardingShell onClose={() => setOpen(false)} />
+  return (
+    <OnboardingShell
+      onClose={(opts) => {
+        // keepState=true : on ferme l'overlay (ex. user part faire l'OAuth)
+        // mais on garde le sessionStorage pour pouvoir reprendre au retour.
+        if (!opts?.keepState) clearPersisted()
+        setOpen(false)
+      }}
+    />
+  )
 }
 
-function OnboardingShell({ onClose }: { onClose: () => void }) {
+function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }) => void }) {
   const t = useT()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { state } = useAuth()
   const workspace = state.workspaces[0]
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
-  const [url, setUrl] = useState('https://')
-  const [detected, setDetected] = useState<DetectedProfile | null>(null)
+  // Hydrate depuis sessionStorage si on reprend un flow en cours (cas OAuth :
+  // user redirigé hors app puis ramené, React state perdu).
+  const persisted = useMemo(() => loadPersisted(), [])
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(persisted?.step ?? 1)
+  const [url, setUrl] = useState(persisted?.url ?? 'https://')
+  const [detected, setDetected] = useState<DetectedProfile | null>(persisted?.detected ?? null)
+  const [fallback, setFallback] = useState<boolean>(persisted?.fallback ?? false)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [prog, setProg] = useState(0)
   const [finalScore, setFinalScore] = useState<HealthScore | null>(null)
   const [finalInsights, setFinalInsights] = useState<Insight[]>([])
+  const [loadWowError, setLoadWowError] = useState<string | null>(null)
+
+  // Persiste le state critique à chaque changement utile (step / URL /
+  // profil détecté / flag fallback). Step 5 n'est pas persisté : si le user
+  // a atteint le wow, c'est terminé, pas besoin de rouvrir au F5.
+  useEffect(() => {
+    if (step >= 5) return
+    const payload: PersistedState = { step, url, detected, fallback }
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch {
+      // sessionStorage indispo (mode privé strict) — pas grave, on continue
+      // sans persistance.
+    }
+  }, [step, url, detected, fallback])
 
   // Loading animation step 4 — 15s simulés (4 paliers).
   useEffect(() => {
@@ -115,7 +186,15 @@ function OnboardingShell({ onClose }: { onClose: () => void }) {
   }, [step])
 
   async function loadFinalWow() {
-    if (!workspace?.id) return
+    if (!workspace?.id) {
+      // Cas rare mais bloquant : l'auth n'a pas encore résolu le workspace
+      // (ex. retour OAuth dans une nouvelle session, refresh raté). On
+      // affiche step 5 quand même, mais avec un message explicite plutôt
+      // qu'un écran blanc.
+      setLoadWowError(t('onboarding.s5.errorNoWorkspace'))
+      setStep(5)
+      return
+    }
     // Best-effort : on tente le score + insights. Si l'API n'a rien, on
     // affichera l'écran "premier wow" avec un état placeholder.
     try {
@@ -152,7 +231,9 @@ function OnboardingShell({ onClose }: { onClose: () => void }) {
       })
       if (res.fallback) {
         // Fallback : on saute l'écran "profil détecté" et on va direct à la
-        // connexion. Pas idéal mais pas bloquant.
+        // connexion. On flag explicitement le mode dégradé pour que la
+        // step 3 affiche un chip "mode manuel" et ne laisse pas l'user
+        // se demander pourquoi son profil n'a pas été détecté.
         setDetected({
           url: cleaned,
           sector: '',
@@ -162,9 +243,11 @@ function OnboardingShell({ onClose }: { onClose: () => void }) {
           detected_tools: {},
           confidence_score: null,
         })
+        setFallback(true)
         setStep(3)
       } else {
         setDetected(res.profile)
+        setFallback(false)
         setStep(2)
       }
     } catch (err) {
@@ -210,9 +293,19 @@ function OnboardingShell({ onClose }: { onClose: () => void }) {
   }
 
   function handleConnect() {
-    // On garde l'overlay ouvert pendant que l'user fait l'OAuth dans un nouvel
-    // onglet, et on continue vers le loading dès qu'il revient (best-effort).
-    onClose()
+    // L'OAuth d'un connecteur sort de l'app (window.location.href = ...),
+    // donc le state React est perdu. On force-sauve l'état actuel en
+    // sessionStorage avec step=3 (pour que l'auto-open au retour rouvre
+    // sur l'écran connexion plutôt que step 1), puis on ferme l'overlay
+    // et on navigue vers /connectors.
+    try {
+      const payload: PersistedState = { step: 3, url, detected, fallback }
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch {
+      // sessionStorage indispo : on continue, dans le pire des cas l'user
+      // devra rouvrir le flow manuellement depuis Settings.
+    }
+    onClose({ keepState: true })
     navigate('/connectors')
   }
 
@@ -245,13 +338,16 @@ function OnboardingShell({ onClose }: { onClose: () => void }) {
               error={analyzeError}
             />
           )}
-          {step === 3 && <StepConnect onConnect={handleConnect} onSkip={() => setStep(4)} />}
+          {step === 3 && (
+            <StepConnect onConnect={handleConnect} onSkip={() => setStep(4)} fallback={fallback} />
+          )}
           {step === 4 && <StepLoading progress={prog} />}
           {step === 5 && (
             <StepWow
               score={finalScore}
               insights={finalInsights}
               firstName={(state.user?.full_name ?? '').split(' ')[0] || ''}
+              loadError={loadWowError}
               onDone={() => {
                 onClose()
                 navigate('/')
@@ -481,7 +577,15 @@ function Row({
 
 // ─── Step 3 : Connecter 1re source ───────────────────────────────────────
 
-function StepConnect({ onConnect, onSkip }: { onConnect: () => void; onSkip: () => void }) {
+function StepConnect({
+  onConnect,
+  onSkip,
+  fallback,
+}: {
+  onConnect: () => void
+  onSkip: () => void
+  fallback: boolean
+}) {
   const t = useT()
   return (
     <>
@@ -489,7 +593,15 @@ function StepConnect({ onConnect, onSkip }: { onConnect: () => void; onSkip: () 
       <h1 className="mb-2.5 font-head text-[25px] font-bold tracking-[-0.02em] text-text-1">
         {t('onboarding.s3.title')}
       </h1>
-      <p className="mb-6 text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s3.body')}</p>
+      <p className="mb-3 text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s3.body')}</p>
+      {fallback && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-[13px] text-text-1">
+          <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-brand-amber font-bold text-white">
+            !
+          </span>
+          <span>{t('onboarding.s3.fallback')}</span>
+        </div>
+      )}
       <div className="sa-card">
         <div className="mb-4 flex items-center gap-3.5">
           <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[13px] bg-[#5E8E3E]">
@@ -577,11 +689,13 @@ function StepWow({
   score,
   insights,
   firstName,
+  loadError,
   onDone,
 }: {
   score: HealthScore | null
   insights: Insight[]
   firstName: string
+  loadError: string | null
   onDone: () => void
 }) {
   const t = useT()
@@ -597,6 +711,11 @@ function StepWow({
           {t('onboarding.s5.title')}
         </h1>
         <p className="text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s5.body')}</p>
+        {loadError && (
+          <div className="mx-auto mt-4 max-w-[440px] rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-left text-[13px] text-text-1">
+            {loadError}
+          </div>
+        )}
       </div>
 
       <div className="sa-card mb-3.5">
