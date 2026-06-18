@@ -654,6 +654,8 @@ const en = {
   'settings.export.button': 'Download',
   'settings.export.busy': 'Preparing…',
   'settings.export.success': 'Export downloaded',
+  'settings.export.empty':
+    'Export downloaded — your workspace has no connectors or metrics yet, so the file is mostly empty.',
   'settings.delete.title': 'Delete my account',
   'settings.delete.body':
     'Permanently remove your account and the workspaces you own alone. Audit logs are kept anonymized (legal retention). This can’t be undone.',
@@ -1486,6 +1488,8 @@ const fr: Record<keyof typeof en, string> = {
   'settings.export.button': 'Télécharger',
   'settings.export.busy': 'Préparation…',
   'settings.export.success': 'Export téléchargé',
+  'settings.export.empty':
+    "Export téléchargé — ton workspace n'a pas encore de connecteur ni de métrique, le fichier est presque vide.",
   'settings.delete.title': 'Supprimer mon compte',
   'settings.delete.body':
     'Supprime définitivement ton compte et les workspaces dont tu es seul·e membre. Les audit logs sont conservés anonymisés (rétention légale). Action irréversible.',

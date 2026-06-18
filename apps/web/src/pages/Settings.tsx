@@ -42,7 +42,14 @@ export default function SettingsPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      toast.push(t('settings.export.success'))
+      // Si l'export ne contient que le squelette user (pas de connecteurs, pas
+      // de métriques), l'user mérite d'être prévenu : sinon il télécharge un
+      // fichier de 200 octets et se demande si quelque chose a foiré.
+      if (isExportEmpty(data)) {
+        toast.push(t('settings.export.empty'))
+      } else {
+        toast.push(t('settings.export.success'))
+      }
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Export error')
     } finally {
@@ -59,7 +66,12 @@ export default function SettingsPage() {
         body: { confirm: 'DELETE MY ACCOUNT' },
       })
       // Données supprimées + token serveur invalidé. On force le logout local.
-      void logout()
+      // IMPORTANT : on AWAIT le logout — sinon en cas de réseau lent, l'user
+      // peut naviguer ailleurs avant que le state auth soit clear, et se
+      // retrouver dans un état zombie (token serveur invalidé mais session
+      // React encore "connectée"). Le `finally` setDeleting attend la fin
+      // du logout aussi pour éviter un flicker du bouton.
+      await logout()
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Delete error'
@@ -292,4 +304,21 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
       </div>
     </div>
   )
+}
+
+/**
+ * Détecte un export "vide" : workspace sans connecteur ET sans métrique. Le
+ * fichier contient quand même les infos user/workspace, mais aucune donnée
+ * business — on prévient l'user pour éviter l'effet "le bouton est cassé ?".
+ *
+ * On garde la détection volontairement défensive (tous les champs optionnels)
+ * pour ne pas péter si le backend change le shape de l'export.
+ */
+function isExportEmpty(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false
+  const d = data as Record<string, unknown>
+  const connectors = Array.isArray(d.connectors) ? d.connectors : null
+  const metrics = Array.isArray(d.metrics) ? d.metrics : null
+  if (connectors === null && metrics === null) return false
+  return (connectors?.length ?? 0) === 0 && (metrics?.length ?? 0) === 0
 }
