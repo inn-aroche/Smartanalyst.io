@@ -12,6 +12,7 @@ const CANONICAL_PATH = require.resolve('../src/services/metrics/canonical-metric
 const FILES_PATH = require.resolve('../src/services/files/files.service')
 const TOOLS_PATH = require.resolve('../src/services/ai/chat-tools')
 const HIGHLIGHTS_PATH = require.resolve('../src/services/ai/chat-highlights.service')
+const CONV_PATH = require.resolve('../src/services/ai/chat-conversations.service')
 const SERVICE_PATH = require.resolve('../src/services/ai/chat.service')
 
 function load({ rows = [], generateOnceImpl, highlightsImpl } = {}) {
@@ -79,6 +80,20 @@ function load({ rows = [], generateOnceImpl, highlightsImpl } = {}) {
     filename: HIGHLIGHTS_PATH,
     loaded: true,
     exports: { extract: highlightsImpl || (async () => []) },
+  }
+  // No-op pour la persistance — non testée ici.
+  require.cache[CONV_PATH] = {
+    id: CONV_PATH,
+    filename: CONV_PATH,
+    loaded: true,
+    exports: {
+      MAX_CONTEXT_MESSAGES: 20,
+      getConversation: async () => null,
+      createConversation: async () => ({ id: 'conv-stub' }),
+      loadRecentMessages: async () => [],
+      appendMessage: async () => ({ id: 'msg-stub' }),
+      toGeminiContents: () => [],
+    },
   }
   delete require.cache[SERVICE_PATH]
   return { svc: require(SERVICE_PATH), getGenerateCount: () => generateCallCount }

@@ -2,12 +2,13 @@
 
 const express = require('express')
 const rateLimit = require('express-rate-limit')
-const { body } = require('express-validator')
+const { body, param, query } = require('express-validator')
 
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const { UserFacingError } = require('../lib/error-handler')
 const chatService = require('../services/ai/chat.service')
+const chatConversations = require('../services/ai/chat-conversations.service')
 
 const router = express.Router()
 
@@ -42,6 +43,9 @@ router.post(
     // Multimodal (brief V2 §3.2) : référence des fichiers de la librairie.
     body('fileIds').optional().isArray({ max: 4 }).withMessage('fileIds: 4 max.'),
     body('fileIds.*').optional().isUUID().withMessage('fileId invalide.'),
+    // Mémoire de conversation (migration 031) : si fourni, on charge
+    // l'historique du fil. Sinon on en crée un nouveau.
+    body('conversationId').optional().isUUID().withMessage('conversationId invalide.'),
   ],
   runValidation,
   async (req, res, next) => {
@@ -52,6 +56,7 @@ router.post(
         message: req.body.message,
         locale: req.body.locale || 'fr',
         fileIds: req.body.fileIds || [],
+        conversationId: req.body.conversationId || null,
       })
       res.json(result)
     } catch (err) {
@@ -102,6 +107,88 @@ router.post(
           }),
         )
       }
+      next(err)
+    }
+  },
+)
+
+// ─── Conversations (mémoire chat — migration 031) ───────────────────────
+
+// Liste les fils de discussion du workspace (sidebar future + reprise
+// auto au mount du chat).
+router.get(
+  '/conversations',
+  jwtMiddleware,
+  [query('workspaceId').isUUID().withMessage('workspaceId UUID requis.')],
+  runValidation,
+  async (req, res, next) => {
+    try {
+      const conversations = await chatConversations.listConversations(req.query.workspaceId, {
+        limit: 50,
+      })
+      res.json({ conversations })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Détail d'un fil + ses messages, pour le rendre côté UI à la reprise.
+router.get(
+  '/conversations/:id',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('conversation id invalide.'),
+    query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+  ],
+  runValidation,
+  async (req, res, next) => {
+    try {
+      const conversation = await chatConversations.getConversation(
+        req.params.id,
+        req.query.workspaceId,
+      )
+      if (!conversation) {
+        return next(
+          new UserFacingError('Conversation introuvable.', {
+            statusCode: 404,
+            code: 'CONVERSATION_NOT_FOUND',
+          }),
+        )
+      }
+      const messages = await chatConversations.listMessages(conversation.id)
+      res.json({ conversation, messages })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Supprime un fil (cascade sur messages).
+router.delete(
+  '/conversations/:id',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('conversation id invalide.'),
+    query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+  ],
+  runValidation,
+  async (req, res, next) => {
+    try {
+      const result = await chatConversations.deleteConversation(
+        req.params.id,
+        req.query.workspaceId,
+      )
+      if (!result.deleted) {
+        return next(
+          new UserFacingError('Conversation introuvable.', {
+            statusCode: 404,
+            code: 'CONVERSATION_NOT_FOUND',
+          }),
+        )
+      }
+      res.json({ deleted: true })
+    } catch (err) {
       next(err)
     }
   },

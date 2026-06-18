@@ -7,6 +7,7 @@ const GEMINI_PATH = require.resolve('../src/services/ai/gemini.service')
 const SUPABASE_PATH = require.resolve('../src/lib/supabase')
 const CANONICAL_PATH = require.resolve('../src/services/metrics/canonical-metrics.service')
 const FILES_PATH = require.resolve('../src/services/files/files.service')
+const CONV_PATH = require.resolve('../src/services/ai/chat-conversations.service')
 const SERVICE_PATH = require.resolve('../src/services/ai/chat.service')
 
 function load({ fileContents = {}, fileThrowsFor = [] } = {}) {
@@ -53,6 +54,19 @@ function load({ fileContents = {}, fileThrowsFor = [] } = {}) {
         if (fileThrowsFor.includes(fileId)) throw new Error('boom')
         return fileContents[fileId] || { filename: 'f', mimeType: 'image/png', base64: 'AAAA' }
       },
+    },
+  }
+  require.cache[CONV_PATH] = {
+    id: CONV_PATH,
+    filename: CONV_PATH,
+    loaded: true,
+    exports: {
+      MAX_CONTEXT_MESSAGES: 20,
+      getConversation: async () => null,
+      createConversation: async () => ({ id: 'conv-stub' }),
+      loadRecentMessages: async () => [],
+      appendMessage: async () => ({ id: 'msg-stub' }),
+      toGeminiContents: () => [],
     },
   }
   delete require.cache[SERVICE_PATH]

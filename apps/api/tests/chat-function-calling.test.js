@@ -9,6 +9,7 @@ const SUPABASE_PATH = require.resolve('../src/lib/supabase')
 const CANONICAL_PATH = require.resolve('../src/services/metrics/canonical-metrics.service')
 const FILES_PATH = require.resolve('../src/services/files/files.service')
 const TOOLS_PATH = require.resolve('../src/services/ai/chat-tools')
+const CONV_PATH = require.resolve('../src/services/ai/chat-conversations.service')
 const SERVICE_PATH = require.resolve('../src/services/ai/chat.service')
 
 function load({ generateOutputs = [{ text: 'Done', functionCalls: [] }], toolResults = {} } = {}) {
@@ -81,6 +82,22 @@ function load({ generateOutputs = [{ text: 'Done', functionCalls: [] }], toolRes
         toolCalls.push({ name, args, ctx })
         return toolResults[name] ?? { ok: true }
       },
+    },
+  }
+  // Mock conversation persistence : no-op, on ne teste pas la persistance
+  // ici (couvert par chat-conversations.test.js). loadRecentMessages renvoie
+  // [] pour ne pas injecter d'historique dans les attentes de tests.
+  require.cache[CONV_PATH] = {
+    id: CONV_PATH,
+    filename: CONV_PATH,
+    loaded: true,
+    exports: {
+      MAX_CONTEXT_MESSAGES: 20,
+      getConversation: async () => null,
+      createConversation: async () => ({ id: 'conv-stub' }),
+      loadRecentMessages: async () => [],
+      appendMessage: async () => ({ id: 'msg-stub' }),
+      toGeminiContents: () => [],
     },
   }
   delete require.cache[SERVICE_PATH]

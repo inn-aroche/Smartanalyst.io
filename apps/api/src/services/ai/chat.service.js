@@ -5,6 +5,7 @@
 const { generateOnce } = require('./gemini.service')
 const aiUsage = require('./ai-usage.service')
 const chatHighlights = require('./chat-highlights.service')
+const chatConversations = require('./chat-conversations.service')
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
@@ -274,7 +275,14 @@ async function buildMetricsContext(workspaceId, locale) {
  * @param {string} [params.locale='fr']
  * @returns {Promise<{ answer: string, model: string }>}
  */
-async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }) {
+async function ask({
+  userId,
+  workspaceId,
+  message,
+  locale = 'fr',
+  fileIds = [],
+  conversationId = null,
+}) {
   // Hard-stop budget : si le workspace a déjà dépassé son quota mensuel de
   // tokens IA, on refuse l'appel avant même de toucher Gemini. Le bloc usage
   // côté Settings reflète déjà la conso ; le client doit gérer l'erreur.
@@ -283,6 +291,30 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
   const budget = await aiUsage.checkBudget(workspaceId)
   if (!budget.allowed) {
     throw new AiBudgetExceededError({ used: budget.used, limit: budget.limit })
+  }
+
+  // ─── Conversation (mémoire) ──────────────────────────────────────────
+  // Si un conversationId est fourni, on vérifie qu'il appartient bien au
+  // workspace, puis on charge les MAX_CONTEXT_MESSAGES derniers messages
+  // pour les passer en historique au LLM.
+  // Si pas de conversationId, on en crée une nouvelle, titrée d'après ce
+  // 1er message. Le client la garde pour les tours suivants.
+  let conversation = null
+  let priorMessages = []
+  if (conversationId && workspaceId) {
+    conversation = await chatConversations.getConversation(conversationId, workspaceId)
+    if (conversation) {
+      priorMessages = await chatConversations.loadRecentMessages(conversation.id)
+    }
+    // Si l'ID était invalide / pas owné, on retombe sur "nouvelle conv" sans
+    // crash — c'est plus indulgent que de bloquer l'user pour un ID périmé.
+  }
+  if (!conversation && workspaceId) {
+    conversation = await chatConversations.createConversation({
+      workspaceId,
+      userId,
+      firstMessage: message,
+    })
   }
 
   const basePrompt = pickSystemPrompt(locale)
@@ -311,8 +343,33 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
   // joint = le modèle n'a aucune donnée user pour répondre, et hallucinerait
   // ou produirait une réponse fade. On renvoie un message dirigé "branche une
   // source" avec un highlight callout actionnable, sans cramer un appel LLM.
+  // On persiste quand même le tour (user msg + réponse pré-canned) pour ne
+  // pas créer un trou dans l'historique côté UI.
   if (!metricsContext && attachments.length === 0 && workspaceId) {
-    return emptyWorkspaceResponse(locale)
+    const empty = emptyWorkspaceResponse(locale)
+    if (conversation) {
+      try {
+        await chatConversations.appendMessage({
+          conversationId: conversation.id,
+          role: 'user',
+          content: message,
+        })
+        await chatConversations.appendMessage({
+          conversationId: conversation.id,
+          role: 'assistant',
+          content: empty.answer,
+          sources: empty.sources,
+          highlights: empty.highlights,
+          model: 'short-circuit',
+        })
+      } catch (err) {
+        logger.warn(
+          { event: 'chat_persist_failed', conversationId: conversation.id, error: err.message },
+          'Could not persist empty-workspace turn',
+        )
+      }
+    }
+    return { ...empty, conversationId: conversation?.id || null }
   }
 
   let systemPrompt = metricsContext ? `${basePrompt}\n\n${metricsContext.contextStr}` : basePrompt
@@ -337,7 +394,15 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
       initialParts.push({ inlineData: { mimeType: att.mimeType, data: att.data } })
     }
   }
-  const history = [{ role: 'user', parts: initialParts }]
+  // L'historique passé au LLM : tours visibles persistés (user/assistant)
+  // dans l'ordre chronologique, PUIS le nouveau message user. Les
+  // function_calls intermédiaires ne sont pas dans priorMessages (on ne les
+  // persiste pas) ; Gemini rappellera les bons tools selon la nouvelle
+  // question. Cap déjà appliqué côté loadRecentMessages.
+  const history = [
+    ...chatConversations.toGeminiContents(priorMessages),
+    { role: 'user', parts: initialParts },
+  ]
 
   const MAX_TOOL_ROUNDS = 3
   const toolsUsed = []
@@ -454,7 +519,40 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
     locale,
   })
 
-  return { answer: text, model: modelName, sources: usedSources, highlights }
+  // Persistance du tour (user msg + réponse assistant) dans la conversation
+  // pour que le tour suivant retrouve le contexte. Best-effort : un crash ici
+  // ne doit pas casser la réponse — l'user voit son message + la réponse,
+  // c'est juste l'historique qui ne se construit pas.
+  if (conversation) {
+    try {
+      await chatConversations.appendMessage({
+        conversationId: conversation.id,
+        role: 'user',
+        content: message,
+      })
+      await chatConversations.appendMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: text,
+        sources: usedSources,
+        highlights,
+        model: modelName,
+      })
+    } catch (err) {
+      logger.warn(
+        { event: 'chat_persist_failed', conversationId: conversation.id, error: err.message },
+        'Could not persist chat turn',
+      )
+    }
+  }
+
+  return {
+    answer: text,
+    model: modelName,
+    sources: usedSources,
+    highlights,
+    conversationId: conversation?.id || null,
+  }
 }
 
 /**
