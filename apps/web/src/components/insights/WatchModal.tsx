@@ -94,7 +94,7 @@ export default function WatchModal({ onClose }: { onClose: () => void }) {
         explanation: string
       }>('/api/v1/watches/validate', {
         method: 'POST',
-        body: { description: description.trim() },
+        body: { description: description.trim(), workspaceId: wsId },
       })
       setConfidence(res.confidence)
       setExplanation(res.explanation)

@@ -64,6 +64,15 @@ router.post(
           ),
         )
       }
+      // Hard-stop budget : workspace a dépassé son quota mensuel de tokens.
+      if (err && err.code === 'AI_BUDGET_EXCEEDED') {
+        return next(
+          new UserFacingError(
+            'Ton budget IA mensuel est atteint. Augmente-le dans Réglages ou attends le 1ᵉʳ du mois.',
+            { statusCode: 402, code: 'AI_BUDGET_EXCEEDED' },
+          ),
+        )
+      }
       next(err)
     }
   },

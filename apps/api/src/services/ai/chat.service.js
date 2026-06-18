@@ -10,6 +10,17 @@ const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const filesService = require('../files/files.service')
 const chatTools = require('./chat-tools')
 
+// Thrown when the workspace has hit its monthly AI token budget. The route
+// catches this and maps it to a 402 Payment Required for the client.
+class AiBudgetExceededError extends Error {
+  constructor({ used, limit }) {
+    super('AI monthly token budget exceeded')
+    this.code = 'AI_BUDGET_EXCEEDED'
+    this.used = used
+    this.limit = limit
+  }
+}
+
 const SYSTEM_PROMPT_FR = `Tu es SmartAnalyst, un analyste marketing IA pour PME et agences.
 Tu réponds en français, de manière structurée et concise.
 Format de réponse :
@@ -227,6 +238,16 @@ async function buildMetricsContext(workspaceId, locale) {
  * @returns {Promise<{ answer: string, model: string }>}
  */
 async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }) {
+  // Hard-stop budget : si le workspace a déjà dépassé son quota mensuel de
+  // tokens IA, on refuse l'appel avant même de toucher Gemini. Le bloc usage
+  // côté Settings reflète déjà la conso ; le client doit gérer l'erreur.
+  // checkBudget est fail-open (laisse passer en cas d'erreur Supabase) pour
+  // ne pas bloquer le chat si la base de tracking est down.
+  const budget = await aiUsage.checkBudget(workspaceId)
+  if (!budget.allowed) {
+    throw new AiBudgetExceededError({ used: budget.used, limit: budget.limit })
+  }
+
   const basePrompt = pickSystemPrompt(locale)
 
   // Multimodal (brief V2 §3.2) : résout les fichiers de la librairie référencés
@@ -371,4 +392,4 @@ async function ask({ userId, workspaceId, message, locale = 'fr', fileIds = [] }
   return { answer: text, model: modelName, sources: usedSources }
 }
 
-module.exports = { ask }
+module.exports = { ask, AiBudgetExceededError }

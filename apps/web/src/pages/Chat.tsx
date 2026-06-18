@@ -159,13 +159,19 @@ export default function ChatPage() {
       )
     } catch (err) {
       setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
-      setError(
-        err instanceof ApiError && err.status === 503
-          ? err.message
-          : err instanceof Error
+      if (err instanceof ApiError && err.code === 'AI_BUDGET_EXCEEDED') {
+        // Hard-stop budget : un message dédié + lien vers Settings pour
+        // augmenter le quota plutôt que le message d'erreur générique.
+        setError(t('chat.error.budget'))
+      } else {
+        setError(
+          err instanceof ApiError && err.status === 503
             ? err.message
-            : t('chat.error'),
-      )
+            : err instanceof Error
+              ? err.message
+              : t('chat.error'),
+        )
+      }
     }
   }
 
