@@ -55,14 +55,16 @@ test('sync scanAllWorkspaces handles zero workspaces', async () => {
 // ━━━ reports.handler ━━━
 
 test('reports scanAllWorkspaces only enqueues workspaces eligible today', async () => {
+  // On force la fake "now" via une instance Date contrôlée pour rendre le
+  // test déterministe quelle que soit la vraie date au moment d'exécution.
   const today = new Date().getUTCDate()
   const otherDay = today === 1 ? 15 : 1
 
   const restore = mock.method(workspaceService, 'listActive', async () => [
-    { id: 'ws-eligible-1', auto_send: true, report_day: today },
-    { id: 'ws-eligible-2', auto_send: true, report_day: today },
-    { id: 'ws-wrong-day', auto_send: true, report_day: otherDay },
-    { id: 'ws-no-autosend', auto_send: false, report_day: today },
+    { id: 'ws-eligible-1', auto_send: true, report_day: today, timezone: 'UTC' },
+    { id: 'ws-eligible-2', auto_send: true, report_day: today, timezone: 'UTC' },
+    { id: 'ws-wrong-day', auto_send: true, report_day: otherDay, timezone: 'UTC' },
+    { id: 'ws-no-autosend', auto_send: false, report_day: today, timezone: 'UTC' },
   ])
   const added = []
   const fakeQueue = {
@@ -78,20 +80,83 @@ test('reports scanAllWorkspaces only enqueues workspaces eligible today', async 
       added.map((a) => a.data.workspaceId).sort(),
       ['ws-eligible-1', 'ws-eligible-2'],
     )
-    // période YYYY-MM dans le jobId
-    assert.match(added[0].opts.jobId, /^report:ws-eligible-1:\d{4}-\d{2}$/)
+    // jobId déduplication : préfixé par la période YYYY-MM-DD du mois précédent.
+    assert.match(added[0].opts.jobId, /^report:ws-eligible-1:\d{4}-\d{2}-01$/)
+    // Payload contient maintenant periodStart/periodEnd au lieu de period.
+    assert.match(added[0].data.periodStart, /^\d{4}-\d{2}-01$/)
+    assert.match(added[0].data.periodEnd, /^\d{4}-\d{2}-\d{2}$/)
+    assert.equal(added[0].data.autoSend, true)
   } finally {
     restore.mock.restore()
   }
 })
 
-test('reports generateForWorkspace stub returns expected shape', async () => {
-  const result = await reportsHandler.generateForWorkspace({
-    data: { workspaceId: 'ws-1', period: '2025-05' },
+test('reports generateForWorkspace appelle le générateur et notifie', async () => {
+  const reportGenerator = require('../src/services/reports/report-generator.service')
+  const digestService = require('../src/services/notifications/digest.service')
+
+  const generateCalls = []
+  const emailCalls = []
+  const restoreGen = mock.method(reportGenerator, 'generate', async (args) => {
+    generateCalls.push(args)
+    return { id: 'rpt-123', html: '<html><body>ok</body></html>' }
   })
-  assert.equal(result.workspaceId, 'ws-1')
-  assert.equal(result.period, '2025-05')
-  assert.equal(result.stub, true)
+  const restoreMail = mock.method(digestService, 'sendReportReady', async (wsId, report) => {
+    emailCalls.push({ wsId, report })
+    return { sent: true }
+  })
+
+  try {
+    const result = await reportsHandler.generateForWorkspace({
+      data: {
+        workspaceId: 'ws-1',
+        periodStart: '2026-05-01',
+        periodEnd: '2026-05-31',
+        autoSend: true,
+      },
+    })
+    assert.equal(result.workspaceId, 'ws-1')
+    assert.equal(result.reportId, 'rpt-123')
+    assert.equal(result.periodStart, '2026-05-01')
+    assert.equal(generateCalls.length, 1)
+    assert.equal(generateCalls[0].kind, 'monthly')
+    assert.equal(emailCalls.length, 1)
+    assert.equal(emailCalls[0].wsId, 'ws-1')
+    assert.equal(emailCalls[0].report.id, 'rpt-123')
+  } finally {
+    restoreGen.mock.restore()
+    restoreMail.mock.restore()
+  }
+})
+
+test('reports generateForWorkspace skip mail si autoSend=false', async () => {
+  const reportGenerator = require('../src/services/reports/report-generator.service')
+  const digestService = require('../src/services/notifications/digest.service')
+
+  const emailCalls = []
+  const restoreGen = mock.method(reportGenerator, 'generate', async () => ({
+    id: 'rpt-456',
+    html: '<html></html>',
+  }))
+  const restoreMail = mock.method(digestService, 'sendReportReady', async (...args) => {
+    emailCalls.push(args)
+    return { sent: true }
+  })
+
+  try {
+    await reportsHandler.generateForWorkspace({
+      data: {
+        workspaceId: 'ws-2',
+        periodStart: '2026-05-01',
+        periodEnd: '2026-05-31',
+        autoSend: false,
+      },
+    })
+    assert.equal(emailCalls.length, 0)
+  } finally {
+    restoreGen.mock.restore()
+    restoreMail.mock.restore()
+  }
 })
 
 // ━━━ alerts.handler ━━━
