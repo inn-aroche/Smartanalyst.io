@@ -47,11 +47,22 @@ function load({ generateOutputs = [{ text: 'Done', functionCalls: [] }], toolRes
       }),
     },
   }
+  // Métrique fictive non-vide : empêche le short-circuit "empty workspace"
+  // d'intercepter avant d'atteindre Gemini, ce qu'on teste ici.
   require.cache[CANONICAL_PATH] = {
     id: CANONICAL_PATH,
     filename: CANONICAL_PATH,
     loaded: true,
-    exports: { query: async () => [] },
+    exports: {
+      query: async () => [
+        {
+          metric_key: 'sessions_all',
+          metric_value: 100,
+          source: 'ga4',
+          date: new Date().toISOString().slice(0, 10),
+        },
+      ],
+    },
   }
   require.cache[FILES_PATH] = {
     id: FILES_PATH,

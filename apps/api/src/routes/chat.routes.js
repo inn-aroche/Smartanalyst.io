@@ -73,6 +73,35 @@ router.post(
           ),
         )
       }
+      // Erreurs LLM classifiées : le frontend pioche le bon i18n + affiche le
+      // délai de retry quand on l'a.
+      if (err && err.code === 'AI_RATE_LIMIT') {
+        if (Number.isInteger(err.retryAfterSec)) {
+          res.set('Retry-After', String(err.retryAfterSec))
+        }
+        return next(
+          new UserFacingError("Trop de questions d'un coup, l'IA est saturée.", {
+            statusCode: 429,
+            code: 'AI_RATE_LIMIT',
+          }),
+        )
+      }
+      if (err && err.code === 'AI_TIMEOUT') {
+        return next(
+          new UserFacingError('La réponse a mis trop de temps. Réessaie.', {
+            statusCode: 504,
+            code: 'AI_TIMEOUT',
+          }),
+        )
+      }
+      if (err && err.code === 'AI_PROVIDER_DOWN') {
+        return next(
+          new UserFacingError("L'IA est temporairement indisponible. Réessaie dans une minute.", {
+            statusCode: 503,
+            code: 'AI_PROVIDER_DOWN',
+          }),
+        )
+      }
       next(err)
     }
   },
