@@ -146,6 +146,11 @@ function createApp() {
   // Admin waitlist — list/manage des inscriptions beta. Même auth (X-Admin-Token).
   app.use('/admin/waitlist', require('./routes/admin-waitlist.routes'))
 
+  // Admin beta playbook — tableau de bord ops (funnel d'activation, top
+  // coûts IA, inscriptions récentes). Accept: text/html → page HTML
+  // standalone, sinon JSON. Même auth X-Admin-Token.
+  app.use('/admin/beta', require('./routes/admin-beta.routes'))
+
   // Placeholder root
   app.get('/', (req, res) => {
     res.json({ name: 'SmartAnalyst API', version: '0.1.0' })
