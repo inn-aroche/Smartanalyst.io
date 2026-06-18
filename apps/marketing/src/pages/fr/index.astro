@@ -330,36 +330,50 @@ const softwareApplication = {
       <!-- Feature 02, Detect -->
       <div class="feat-row reverse">
         <div class="feat-ui">
-          <div class="alert-feed">
-            <div class="alert-head">
-              <span>Alertes, Dernières 24h</span>
-              <span class="alert-tag-crit">3 critiques</span>
+          <div class="watch-card">
+            <div class="watch-head">
+              <span class="watch-eyebrow">Veille · Nouvelle</span>
+              <span class="watch-tag">3 actives</span>
             </div>
-            <div class="alert-item">
-              <span class="alert-dot crit"></span>
-              <div class="alert-body"><strong>CPA en hausse de +34%</strong><span>31,20 € vs 23,50 € en moy.</span></div>
-              <div class="alert-meta"><span class="alert-src">Google Ads</span><span class="alert-time">il y a 12m</span></div>
+            <div class="watch-input">
+              <span class="watch-prompt">Décris ta veille en langage naturel.</span>
+              <div class="watch-typed">« Préviens-moi quand mon ROAS Meta descend sous 2 pendant 3 jours d’affilée »</div>
             </div>
-            <div class="alert-item">
-              <span class="alert-dot warn"></span>
-              <div class="alert-body"><strong>CVR checkout ↓12%</strong><span>Abandon étape 2 : 44%</span></div>
-              <div class="alert-meta"><span class="alert-src">Site</span><span class="alert-time">il y a 1h</span></div>
+            <div class="watch-parsed">
+              <div class="watch-parsed-label">Compris par l’IA</div>
+              <div class="watch-chips">
+                <span class="watch-chip"><span class="watch-chip-k">Métrique</span>ROAS Meta</span>
+                <span class="watch-chip"><span class="watch-chip-k">Seuil</span>&lt; 2</span>
+                <span class="watch-chip"><span class="watch-chip-k">Fenêtre</span>3 jours consécutifs</span>
+              </div>
             </div>
-            <div class="alert-item last">
-              <span class="alert-dot crit"></span>
-              <div class="alert-body"><strong>Tag GTM manquant</strong><span>/checkout depuis le 18 nov.</span></div>
-              <div class="alert-meta"><span class="alert-src">Tracking</span><span class="alert-time">il y a 3j</span></div>
+            <div class="watch-list">
+              <div class="watch-row">
+                <span class="watch-dot calm"></span>
+                <span class="watch-row-title">ROAS Meta &lt; 2</span>
+                <span class="watch-row-state">Calme · ROAS actuel 2,8</span>
+              </div>
+              <div class="watch-row">
+                <span class="watch-dot fired"></span>
+                <span class="watch-row-title">CPA Google &gt; 30 €</span>
+                <span class="watch-row-state">Déclenchée il y a 12 min</span>
+              </div>
+              <div class="watch-row">
+                <span class="watch-dot calm"></span>
+                <span class="watch-row-title">Sessions iOS &lt; 1 000 / jour</span>
+                <span class="watch-row-state">Calme · 1 480 hier</span>
+              </div>
             </div>
           </div>
         </div>
         <div class="feat-copy">
-          <div class="feat-eyebrow">02, Détecter</div>
-          <h3 class="feat-title">Sache avant que ça fasse mal.</h3>
-          <p class="feat-desc">Hausse de CPA, chute de conversion, panne de tracking, SmartAnalyst monitore ton stack en continu 24/7 et fait remonter les anomalies au moment où elles apparaissent, avec contexte et sévérité.</p>
+          <div class="feat-eyebrow">02, Surveiller</div>
+          <h3 class="feat-title">Tes veilles, écrites comme tu parles.</h3>
+          <p class="feat-desc">Tu décris la condition que tu veux surveiller en français. SmartAnalyst la traduit en règle exécutable, la valide contre ta vraie liste de métriques, et te prévient seulement quand elle se déclenche vraiment.</p>
           <ul class="feat-bullets">
-            <li>Monitoring CPA, CVR, ROAS et volumes</li>
-            <li>Crée tes alertes custom en langage naturel (« préviens-moi quand mon ROAS descend sous 2 »)</li>
-            <li>Notification in-app + email, dès que la condition se réalise</li>
+            <li>Langage naturel, l’IA mappe vers la bonne métrique canonique</li>
+            <li>Validation côté serveur (modèle structuré, pas d’hallucination)</li>
+            <li>Notification in-app + email dès que la condition est atteinte</li>
           </ul>
         </div>
       </div>
@@ -470,56 +484,72 @@ const softwareApplication = {
             <div class="app-header">
               <span class="app-title">Mon point du jour</span>
               <div class="app-header-ctas">
-                <span class="app-pill">Lun. 8 juin ▾</span>
+                <span class="app-pill green"><span class="pill-dot"></span>Données à jour</span>
                 <span class="app-pill blue">+ Question →</span>
               </div>
             </div>
-            <div class="kpis">
-              <div class="kpi">
-                <div class="kpi-l">Taux de conversion</div>
-                <div class="kpi-v">2,4%</div>
-                <div class="kpi-d red">−0,3% vs préc.</div>
-              </div>
-              <div class="kpi">
-                <div class="kpi-l">CPA, Google</div>
-                <div class="kpi-v">24,50 €</div>
-                <div class="kpi-d red">+3,20 € vs préc.</div>
-              </div>
-              <div class="kpi">
-                <div class="kpi-l">Sessions</div>
-                <div class="kpi-v">48 234</div>
-                <div class="kpi-d green">+8% vs préc.</div>
-              </div>
-              <div class="kpi accent">
-                <div class="kpi-l">Santé des données</div>
-                <div class="kpi-v">87/100</div>
-                <div class="kpi-d blue">Bon →</div>
-              </div>
-            </div>
-            <div class="chart">
-              <div class="chart-label">Performance, 7 jours</div>
-              <div class="chart-bars">
-                {[40,55,45,62,56,48,70].map(h => (
-                  <div class="bar-group">
-                    <div class="bar bar-blue" style={`height:${h}%`}></div>
-                    <div class="bar bar-cyan" style={`height:${h * 0.55}%`}></div>
+            <div class="brief-scroll">
+              <div class="brief-eyebrow">Lundi 8 juin 2026</div>
+              <h3 class="brief-greet">Salut Camille <span aria-hidden="true">☀️</span></h3>
+              <div class="brief-hero">
+                <div class="score-ring" role="img" aria-label="Santé des données 87 sur 100">
+                  <svg viewBox="0 0 120 120" width="112" height="112">
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(12,12,27,0.08)" stroke-width="10" />
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#sa-grad)" stroke-width="10"
+                      stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="42.5"
+                      transform="rotate(-90 60 60)" />
+                    <defs>
+                      <linearGradient id="sa-grad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stop-color="#3D6BE0" />
+                        <stop offset="100%" stop-color="#2DD9EE" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div class="score-ring-text">
+                    <span class="score-ring-num">87</span>
+                    <span class="score-ring-of">/100</span>
                   </div>
-                ))}
+                </div>
+                <div class="brief-hero-copy">
+                  <span class="brief-chip good"><span class="pill-dot"></span>Globalement bon</span>
+                  <p class="brief-narr">
+                    Ton score est stable (+1 vs hier). <strong>2 sujets méritent ton attention</strong> ce matin, j’ai préparé des actions pour chacun.
+                  </p>
+                </div>
               </div>
-            </div>
-            <div class="panels">
-              <div class="panel">
-                <div class="panel-title">Derniers insights</div>
-                <div class="panel-row"><span class="dot red"></span><span>CVR a chuté de 12%, souci checkout</span><span class="t">2h</span></div>
-                <div class="panel-row"><span class="dot orange"></span><span>CPA Meta en hausse de 18% cette semaine</span><span class="t">5h</span></div>
-                <div class="panel-row"><span class="dot gray"></span><span>Trafic iOS en baisse, revoir attribution</span><span class="t">1j</span></div>
+
+              <div class="brief-sec-title">Les 3 choses qui comptent ce matin</div>
+              <div class="brief-cards">
+                <div class="brief-card">
+                  <span class="brief-icon red">!</span>
+                  <div>
+                    <div class="brief-card-title">CVR a chuté de −12 % depuis mardi.</div>
+                    <div class="brief-card-cause">Probablement un souci de tracking sur l’étape 2 du checkout (events GTM manquants).</div>
+                    <div class="brief-card-reco"><span class="reco-label">Reco —</span> Vérifier le tag GTM sur <code>/checkout</code></div>
+                  </div>
+                </div>
+                <div class="brief-card">
+                  <span class="brief-icon amber">!</span>
+                  <div>
+                    <div class="brief-card-title">CPA Meta en hausse de +18 % cette semaine.</div>
+                    <div class="brief-card-cause">Trois créas du set « Bougies hiver » sont à plus de 4 semaines, signaux de fatigue.</div>
+                    <div class="brief-card-reco"><span class="reco-label">Reco —</span> Refresh créa avant vendredi</div>
+                  </div>
+                </div>
+                <div class="brief-card">
+                  <span class="brief-icon blue">↗</span>
+                  <div>
+                    <div class="brief-card-title">ROAS Google Search à 4,8 sur « parfum d’intérieur ».</div>
+                    <div class="brief-card-cause">Mot-clé organique en position 3 et requête en croissance (+22 % vs 30j).</div>
+                    <div class="brief-card-reco"><span class="reco-label">Reco —</span> Augmenter le budget de 30 %</div>
+                  </div>
+                </div>
               </div>
-              <div class="panel panel-blue">
-                <div class="panel-title">Actions recommandées</div>
-                <div class="panel-row"><span class="num">1.</span>Corriger le tag GTM sur /checkout</div>
-                <div class="panel-row"><span class="num">2.</span>A/B tester étape 2 du checkout</div>
-                <div class="panel-row"><span class="num">3.</span>Revoir la stratégie d’enchères iOS</div>
-                <div class="panel-row"><span class="num">4.</span>Activer Enhanced Conversions</div>
+
+              <div class="brief-ask">
+                <span class="brief-ask-mark">✦</span>
+                <span class="brief-ask-body">Une question sur tes données ? Je creuse avec toi.</span>
+                <span class="brief-ask-cta">Demander →</span>
               </div>
             </div>
           </main>
