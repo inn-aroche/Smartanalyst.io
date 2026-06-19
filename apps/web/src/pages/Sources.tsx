@@ -17,8 +17,10 @@ import { useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
 import ConnectorLogo from '@/components/connectors/ConnectorLogo'
+import SourceHealthBadge from '@/components/connectors/SourceHealthBadge'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import type { HealthState } from '@/lib/connector-health'
 import type { ConnectorDef } from '@/lib/connectors'
 import { useLocale, useT } from '@/lib/i18n'
 
@@ -28,6 +30,10 @@ type WorkspaceConnector = {
   status: 'active' | 'expired' | 'error' | 'disconnected'
   account_name: string | null
   last_synced_at: string | null
+  // Calculé côté API (cf. services/connectors/connector-health.service.js).
+  // Optional pour rester rétro-compatible avec les caches React Query plus
+  // anciens — fallback au calcul implicite via `status` côté UI.
+  health_state?: HealthState
 }
 
 type SaFile = {
@@ -222,33 +228,47 @@ function ConnectorCard({ c, iconUrl }: { c: WorkspaceConnector; iconUrl: string 
   const t = useT()
   const { locale } = useLocale()
   const navigate = useNavigate()
-  const expired = c.status === 'expired' || c.status === 'error'
   const lastSync = c.last_synced_at
     ? formatRelative(c.last_synced_at, locale)
     : t('sources.neverSynced')
   const providerName = humanizeSource(c.source)
+  // Si l'API ne renvoie pas encore health_state (cache stale), on retombe
+  // sur une heuristique simple basée sur le status pour ne pas régresser.
+  const health: HealthState = c.health_state ?? {
+    state:
+      c.status === 'expired'
+        ? 'expired'
+        : c.status === 'error'
+          ? 'failing'
+          : c.status === 'active'
+            ? 'healthy'
+            : 'unknown',
+    reason: null,
+    silent_failure: false,
+    last_synced_at: c.last_synced_at,
+  }
+  // L'action de reconnect/reset n'a de sens que si l'état est dégradé.
+  const needsAction =
+    health.state === 'expired' || health.state === 'failing' || health.state === 'stale'
 
   return (
     <div
       className={[
         'flex items-center gap-3.5 rounded-brief border bg-card p-4 shadow-card',
-        expired ? 'border-brand-amber/40' : 'border-border',
+        health.state === 'failing'
+          ? 'border-brand-red/40'
+          : needsAction
+            ? 'border-brand-amber/40'
+            : 'border-border',
       ].join(' ')}
     >
       <ConnectorLogo source={c.source} iconUrl={iconUrl} size={44} />
       <div className="min-w-0 flex-1">
         <div className="text-[14.5px] font-semibold text-text-1">{providerName}</div>
         <div className="mb-1.5 truncate text-[12px] text-text-3">{c.account_name ?? '—'}</div>
-        <span
-          className={`sa-chip text-[11px] ${expired ? 'bg-brand-amber/10 text-brand-amber' : 'bg-brand-green/10 text-brand-green'}`}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          {expired
-            ? `${t('sources.status.expired')} · ${lastSync}`
-            : `${t('sources.status.synced')} · ${lastSync}`}
-        </span>
+        <SourceHealthBadge health={health} freshness={lastSync} />
       </div>
-      {expired && (
+      {needsAction && (
         <button
           type="button"
           onClick={() => navigate('/connectors')}

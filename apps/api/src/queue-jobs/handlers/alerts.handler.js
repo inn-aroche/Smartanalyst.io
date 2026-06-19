@@ -1,12 +1,18 @@
-// Alert check handlers — STUB.
+// Alert check handlers — cahier §3 Lot 0 (santé connecteurs) + §4.7.
 //
-// Source: docs/20 §4, docs/16b (anomaly detection)
+// Architecture fan-out : scan toutes les 4 h → enqueue un check par
+// workspace → check des connecteurs en échec silencieux + (à venir Lot 1)
+// seuils d'anomalies sur le health score + tracking cassé.
 //
-// Architecture fan-out: scan toutes les 4h → enqueue un check par workspace
-// → check des seuils (anomalies, broken tracking, drop > 15pts du health score)
-// → si critique, envoie email + push (à venir).
+// Pour le Lot 0, on couvre uniquement la **détection** des connecteurs qui
+// échouent sans signaler : un connector en `error` depuis > 12 h ou un
+// `active` qui n'a pas syncé depuis > 36 h compte comme silencieux et
+// remonte un log structuré (`connector_health_alert`). L'envoi de
+// notification in-app / email arrivera avec le NotificationCenter (Lot 1).
 
 const { logger } = require('../../lib/logger')
+const connectorService = require('../../services/connectors/connector.service')
+const connectorHealth = require('../../services/connectors/connector-health.service')
 const workspaceService = require('../../services/workspaces/workspace.service')
 
 async function scanAllWorkspaces({ alertsQueue }) {
@@ -27,11 +33,39 @@ async function scanAllWorkspaces({ alertsQueue }) {
 
 async function checkWorkspace(job) {
   const { workspaceId } = job.data
-  logger.info(
-    { event: 'alert_check_stub', workspaceId },
-    'Alert check stub — to be implemented (doc 16b)',
-  )
-  return { workspaceId, stub: true, alertsTriggered: 0 }
+  const summary = await checkConnectorsHealth(workspaceId)
+  return { workspaceId, ...summary }
 }
 
-module.exports = { scanAllWorkspaces, checkWorkspace }
+// Exporté pour pouvoir l'appeler ailleurs (tests, endpoint admin, sync).
+async function checkConnectorsHealth(workspaceId) {
+  const connectors = await connectorService.list(workspaceId)
+  const enriched = connectorHealth.enrichWithHealth(connectors)
+  const alerts = enriched.filter((c) => c.health_state.silent_failure)
+  for (const c of alerts) {
+    logger.warn(
+      {
+        event: 'connector_health_alert',
+        workspaceId,
+        connectorId: c.id,
+        source: c.source,
+        health_state: c.health_state.state,
+        reason: c.health_state.reason,
+        last_synced_at: c.health_state.last_synced_at,
+      },
+      'Connector silent failure detected',
+    )
+  }
+  logger.info(
+    {
+      event: 'connector_health_check_completed',
+      workspaceId,
+      connectorCount: connectors.length,
+      alertsTriggered: alerts.length,
+    },
+    'Connector health check done',
+  )
+  return { connectorCount: connectors.length, alertsTriggered: alerts.length }
+}
+
+module.exports = { scanAllWorkspaces, checkWorkspace, checkConnectorsHealth }

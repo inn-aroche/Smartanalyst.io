@@ -297,6 +297,11 @@ const en = {
   'sources.neverSynced': 'never synced',
   'sources.status.synced': 'Synced',
   'sources.status.expired': 'Expired',
+  'sources.health.healthy': 'Healthy',
+  'sources.health.stale': 'Stale',
+  'sources.health.expired': 'Reconnect needed',
+  'sources.health.failing': 'Sync failing',
+  'sources.health.unknown': 'Pending',
   'sources.empty.connectors':
     'No source connected yet. Plug GA4, Meta Ads or Stripe in a few clicks — your dashboard will fill up automatically.',
   'sources.dropzone.title': 'Drop a file here',
@@ -1186,6 +1191,11 @@ const fr: Record<keyof typeof en, string> = {
   'sources.neverSynced': 'jamais synchronisé',
   'sources.status.synced': 'Synchro',
   'sources.status.expired': 'Expiré',
+  'sources.health.healthy': 'Opérationnel',
+  'sources.health.stale': 'Sync en retard',
+  'sources.health.expired': 'Reconnexion requise',
+  'sources.health.failing': 'Sync en échec',
+  'sources.health.unknown': 'En attente',
   'sources.empty.connectors':
     'Aucune source connectée. Branche GA4, Meta Ads ou Stripe en quelques clics — ton tableau de bord se remplira tout seul.',
   'sources.dropzone.title': 'Dépose un fichier ici',

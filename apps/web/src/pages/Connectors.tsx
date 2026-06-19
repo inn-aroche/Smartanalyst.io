@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
+import SourceHealthBadge from '@/components/connectors/SourceHealthBadge'
 import { SkeletonCardGrid } from '@/components/Skeleton'
 import {
   CATEGORIES,
@@ -12,6 +13,7 @@ import {
 } from '@/lib/connectors'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import type { HealthState } from '@/lib/connector-health'
 import { type StringKey, useT } from '@/lib/i18n'
 import { track } from '@/lib/tracking'
 
@@ -22,6 +24,7 @@ type WorkspaceConnector = {
   account_name: string | null
   last_synced_at: string | null
   status_reason?: string | null
+  health_state?: HealthState
 }
 
 function categoryKey(cat: ConnectorCategory): StringKey {
@@ -406,11 +409,13 @@ function ConnectorCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate font-head text-base font-semibold text-text-1">{def.name}</h3>
-            {isConnected && (
+            {isConnected && connected?.health_state ? (
+              <SourceHealthBadge health={connected.health_state} size="sm" />
+            ) : isConnected ? (
               <span className="rounded-full border border-brand-green/30 bg-brand-green/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-brand-green">
                 {t('connectors.badge.connected')}
               </span>
-            )}
+            ) : null}
             {def.status === 'beta' && (
               <span className="rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-brand-cyan">
                 BETA

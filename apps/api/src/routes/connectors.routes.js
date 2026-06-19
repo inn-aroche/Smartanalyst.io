@@ -14,6 +14,7 @@ const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope, requireRole } = require('../middleware/workspace-scope.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const connectorService = require('../services/connectors/connector.service')
+const connectorHealth = require('../services/connectors/connector-health.service')
 const providersService = require('../services/connectors/providers.service')
 const accountResolver = require('../services/connectors/account-resolver.service')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
@@ -251,7 +252,11 @@ router.get(
   async (req, res, next) => {
     try {
       const items = await connectorService.list(req.workspaceId)
-      res.json({ connectors: items })
+      // Calcule un health_state dérivé pour chaque connecteur (cahier §3
+      // Lot 0). Permet au front d'afficher un badge précis sans dupliquer
+      // la logique de seuils.
+      const enriched = connectorHealth.enrichWithHealth(items)
+      res.json({ connectors: enriched })
     } catch (err) {
       next(err)
     }
