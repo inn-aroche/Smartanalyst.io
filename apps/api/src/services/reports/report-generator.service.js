@@ -41,11 +41,125 @@ function fmtDate(iso) {
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+// KPIs sortis par défaut. Si plus tard on veut un sélecteur par rapport,
+// c'est ici qu'on étendra (le frontend pourrait passer une whitelist).
+const KPI_KEYS = [
+  'revenue_ecommerce',
+  'orders_count',
+  'order_value_average',
+  'sessions_all',
+  'conversions_total',
+  'return_on_investment_paid',
+]
+
+const SNAPSHOT_KPI_RE = /average|return_on_investment|rate|recurring/
+
+/**
+ * Calcule la liste des KPIs (clé → value + kind) sur une plage [start, end],
+ * éventuellement filtrée par un sous-ensemble de sources (GA4 / Meta / etc.).
+ * Si segmentBy='source', renvoie aussi le breakdown par source (mini-table).
+ *
+ * @param {object} args
+ * @param {string} args.workspaceId
+ * @param {string} args.start  YYYY-MM-DD
+ * @param {string} args.end    YYYY-MM-DD
+ * @param {string[]} [args.sources]  filtre — si vide ou undefined, tout
+ * @param {'source'|null} [args.segmentBy]  ventiler le total par source
+ */
+async function computeKpisForRange({ workspaceId, start, end, sources, segmentBy }) {
+  const rows = await canonicalMetrics.query({
+    workspaceId,
+    metricKey: KPI_KEYS,
+    source: sources && sources.length > 0 ? sources : undefined,
+    startDate: start,
+    endDate: end,
+    limit: 5000,
+  })
+
+  const byKey = new Map()
+  for (const r of rows) {
+    if (!byKey.has(r.metric_key)) byKey.set(r.metric_key, [])
+    byKey.get(r.metric_key).push(r)
+  }
+
+  const kpis = []
+  for (const key of KPI_KEYS) {
+    const entries = byKey.get(key) || []
+    if (entries.length === 0) {
+      kpis.push({ key, value: null, kind: 'empty', breakdown: [] })
+      continue
+    }
+    const isSnapshot = SNAPSHOT_KPI_RE.test(key)
+    let value
+    if (isSnapshot) {
+      entries.sort((a, b) => (a.date < b.date ? 1 : -1))
+      value = Number(entries[0].metric_value)
+    } else {
+      value = entries.reduce((s, e) => s + Number(e.metric_value), 0)
+    }
+
+    // Breakdown par source : utile pour segmentation. On l'inclut toujours
+    // (coût marginal nul), le template décide d'afficher ou pas.
+    let breakdown = []
+    if (segmentBy === 'source') {
+      const bySrc = new Map()
+      for (const r of entries) {
+        const cur = bySrc.get(r.source) || []
+        cur.push(r)
+        bySrc.set(r.source, cur)
+      }
+      breakdown = Array.from(bySrc.entries()).map(([src, srcRows]) => {
+        if (isSnapshot) {
+          srcRows.sort((a, b) => (a.date < b.date ? 1 : -1))
+          return { source: src, value: Number(srcRows[0].metric_value) }
+        }
+        return {
+          source: src,
+          value: srcRows.reduce((s, e) => s + Number(e.metric_value), 0),
+        }
+      })
+      breakdown.sort((a, b) => b.value - a.value)
+    }
+    kpis.push({ key, value, kind: isSnapshot ? 'snapshot' : 'sum', breakdown })
+  }
+  return kpis
+}
+
+/**
+ * Calcule la période précédente de même durée que [start, end].
+ * Ex: 2026-06-01 → 2026-06-30 (30j) renvoie 2026-05-02 → 2026-05-31.
+ */
+function previousRange(start, end) {
+  const startMs = new Date(start).getTime()
+  const endMs = new Date(end).getTime()
+  const lenMs = endMs - startMs
+  const prevEndMs = startMs - 86_400_000 // jour précédent
+  const prevStartMs = prevEndMs - lenMs
+  const fmt = (ms) => new Date(ms).toISOString().slice(0, 10)
+  return { start: fmt(prevStartMs), end: fmt(prevEndMs) }
+}
+
 /**
  * Pull les données utilisées par le rapport sur la période [start, end].
+ *
+ * @param {string} workspaceId
+ * @param {string} periodStart YYYY-MM-DD
+ * @param {string} periodEnd   YYYY-MM-DD
+ * @param {object} [opts]
+ * @param {string[]} [opts.sources]
+ *   Sous-ensemble de connecteurs à inclure (ga4, meta_ads, …). [] / undefined = tout.
+ * @param {'source'|null} [opts.segmentBy]
+ *   Active la table de breakdown sous chaque KPI.
+ * @param {boolean} [opts.compareToPreviousPeriod]
+ *   Si true, calcule les KPIs sur la période précédente de même durée
+ *   et expose `kpisPrev` + le delta % côté template.
  */
-async function gatherData(workspaceId, periodStart, periodEnd) {
-  // 1. Workspace
+async function gatherData(
+  workspaceId,
+  periodStart,
+  periodEnd,
+  { sources, segmentBy = null, compareToPreviousPeriod = false } = {},
+) {
   const supabase = getServiceRoleClient()
   const { data: ws } = await supabase
     .from('workspaces')
@@ -53,7 +167,6 @@ async function gatherData(workspaceId, periodStart, periodEnd) {
     .eq('id', workspaceId)
     .maybeSingle()
 
-  // 2. Score actuel
   let score = null
   try {
     score = await healthScore.getScore(workspaceId)
@@ -64,7 +177,6 @@ async function gatherData(workspaceId, periodStart, periodEnd) {
     )
   }
 
-  // 3. Top insights de la période (open + resolved)
   let topInsights = []
   try {
     const openList = await insightsService.listInsights(workspaceId, { status: 'open', limit: 5 })
@@ -73,55 +185,38 @@ async function gatherData(workspaceId, periodStart, periodEnd) {
     logger.warn({ event: 'report_insights_failed', error: err.message }, 'Insights unavailable')
   }
 
-  // 4. KPIs principaux (somme sur la période ou snapshot dernière valeur)
-  const KPI_KEYS = [
-    'revenue_ecommerce',
-    'orders_count',
-    'order_value_average',
-    'sessions_all',
-    'conversions_total',
-    'return_on_investment_paid',
-  ]
-  const kpis = []
+  // KPIs période courante + (optionnel) période précédente pour le delta.
+  let kpis = []
+  let kpisPrev = null
   try {
-    const rows = await canonicalMetrics.query({
+    kpis = await computeKpisForRange({
       workspaceId,
-      metricKey: KPI_KEYS,
-      startDate: periodStart,
-      endDate: periodEnd,
-      limit: 1000,
+      start: periodStart,
+      end: periodEnd,
+      sources,
+      segmentBy,
     })
-    const byKey = new Map()
-    for (const r of rows) {
-      if (!byKey.has(r.metric_key)) byKey.set(r.metric_key, [])
-      byKey.get(r.metric_key).push(r)
-    }
-    for (const key of KPI_KEYS) {
-      const entries = byKey.get(key) || []
-      if (entries.length === 0) {
-        kpis.push({ key, value: null, kind: 'empty' })
-        continue
-      }
-      // snapshot pour AOV/ROAS ; somme pour les flow
-      const isSnapshot = /average|return_on_investment|rate|recurring/.test(key)
-      if (isSnapshot) {
-        entries.sort((a, b) => (a.date < b.date ? 1 : -1))
-        kpis.push({ key, value: Number(entries[0].metric_value), kind: 'snapshot' })
-      } else {
-        const sum = entries.reduce((s, e) => s + Number(e.metric_value), 0)
-        kpis.push({ key, value: sum, kind: 'sum' })
-      }
+    if (compareToPreviousPeriod) {
+      const prev = previousRange(periodStart, periodEnd)
+      kpisPrev = await computeKpisForRange({
+        workspaceId,
+        start: prev.start,
+        end: prev.end,
+        sources,
+        segmentBy: null, // pas de breakdown sur la période précédente
+      })
     }
   } catch (err) {
     logger.warn({ event: 'report_kpis_failed', error: err.message }, 'KPIs unavailable')
   }
 
-  // 5. Série revenue pour le mini-chart en bas du rapport
+  // Série revenue pour le mini-chart en bas du rapport
   let revenueSeries = []
   try {
     const rows = await canonicalMetrics.query({
       workspaceId,
       metricKey: 'revenue_ecommerce',
+      source: sources && sources.length > 0 ? sources : undefined,
       startDate: periodStart,
       endDate: periodEnd,
       limit: 200,
@@ -137,7 +232,16 @@ async function gatherData(workspaceId, periodStart, periodEnd) {
     // silencieux
   }
 
-  return { workspace: ws, score, topInsights, kpis, revenueSeries }
+  return {
+    workspace: ws,
+    score,
+    topInsights,
+    kpis,
+    kpisPrev,
+    revenueSeries,
+    selectedSources: sources && sources.length > 0 ? sources : null,
+    segmentBy,
+  }
 }
 
 const KPI_LABELS = {
@@ -156,6 +260,75 @@ const KPI_UNITS = {
   sessions_all: '',
   conversions_total: '',
   return_on_investment_paid: '',
+}
+
+/**
+ * Délta % entre deux valeurs. null si la précédente est 0 ou null (évite
+ * la division par zéro + un "+∞%" inutile).
+ */
+function computeDeltaPct(curr, prev) {
+  if (prev == null || prev === 0 || curr == null) return null
+  return ((curr - prev) / Math.abs(prev)) * 100
+}
+
+/**
+ * Rend une carte KPI : label + valeur + (optionnel) delta vs période N-1 +
+ * (optionnel) breakdown par source en mini-table.
+ */
+function renderKpiCard(k, kpisPrev, segmentBy) {
+  const label = KPI_LABELS[k.key] || k.key
+  const unit = KPI_UNITS[k.key] || ''
+  const value = k.value == null ? '—' : fmtNumber(k.value) + unit
+
+  // Delta vs période précédente si dispo.
+  let deltaHtml = ''
+  if (kpisPrev && Array.isArray(kpisPrev)) {
+    const prev = kpisPrev.find((p) => p.key === k.key)
+    const pct = prev ? computeDeltaPct(k.value, prev.value) : null
+    if (pct != null && Number.isFinite(pct)) {
+      // Heuristique simple : ratio "lowerIsBetter" pour bounce / churn / failed.
+      const lowerIsBetter = /bounce|churn|failed_/.test(k.key)
+      const isPositive = pct >= 0
+      const isGood = isPositive !== lowerIsBetter
+      const color = isGood ? '#1FA873' : '#E0495C'
+      const sign = isPositive ? '+' : ''
+      deltaHtml = `<div style="font-size:11.5px;font-weight:600;color:${color};margin-top:4px">${sign}${pct.toFixed(1)} % vs préc.</div>`
+    } else if (prev && prev.value != null) {
+      deltaHtml = `<div style="font-size:11.5px;color:#9C9CB4;margin-top:4px">—</div>`
+    }
+  }
+
+  // Mini-table de breakdown par source (segmentation).
+  let breakdownHtml = ''
+  if (segmentBy === 'source' && k.breakdown && k.breakdown.length > 0) {
+    breakdownHtml = `<table style="margin-top:8px;width:100%;border-collapse:collapse;font-size:11px">${k.breakdown
+      .map(
+        (b) => `<tr>
+          <td style="padding:3px 0;color:#5C5C78">${escapeHtml(b.source)}</td>
+          <td style="padding:3px 0;text-align:right;font-variant-numeric:tabular-nums;color:#14142A">${escapeHtml(fmtNumber(b.value) + unit)}</td>
+        </tr>`,
+      )
+      .join('')}</table>`
+  }
+
+  return `
+    <div class="kpi">
+      <div class="label">${escapeHtml(label)}</div>
+      <div class="value">${escapeHtml(value)}</div>
+      ${deltaHtml}
+      ${breakdownHtml}
+    </div>
+  `
+}
+
+/**
+ * Petit tag "Sources : GA4, Meta" affiché au-dessus des KPIs quand l'user
+ * a filtré le rapport sur un sous-ensemble — sinon on ne montre rien.
+ */
+function renderSourceFilterTag(selectedSources) {
+  if (!selectedSources || selectedSources.length === 0) return ''
+  const list = selectedSources.map((s) => escapeHtml(s)).join(', ')
+  return `<div style="font-family:ui-monospace,'DM Mono',monospace;font-size:10.5px;color:#5C5C78;text-transform:uppercase;letter-spacing:0.08em;margin:-4px 0 12px">Filtré : ${list}</div>`
 }
 
 /**
@@ -197,10 +370,13 @@ function renderHtml({
   score,
   topInsights,
   kpis,
+  kpisPrev,
   revenueSeries,
   period,
   analystNote,
   whiteLabel,
+  selectedSources,
+  segmentBy,
 }) {
   const wsName = escapeHtml(workspace?.name ?? '—')
   const scoreNum = score?.has_data && typeof score.score === 'number' ? score.score : null
@@ -281,20 +457,9 @@ function renderHtml({
   <!-- ─── KPIs ─── -->
   <div class="section">
     <h2>KPIs sur la période</h2>
+    ${renderSourceFilterTag(selectedSources)}
     <div class="kpis">
-      ${kpis
-        .map((k) => {
-          const label = KPI_LABELS[k.key] || k.key
-          const unit = KPI_UNITS[k.key] || ''
-          const value = k.value == null ? '—' : fmtNumber(k.value) + unit
-          return `
-            <div class="kpi">
-              <div class="label">${escapeHtml(label)}</div>
-              <div class="value">${escapeHtml(value)}</div>
-            </div>
-          `
-        })
-        .join('')}
+      ${kpis.map((k) => renderKpiCard(k, kpisPrev, segmentBy)).join('')}
     </div>
     ${revenueSeries.length >= 2 ? `<div class="chart"><div style="font-size:11px;color:#5C5C78;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Évolution du chiffre d’affaires</div>${renderSparkline(revenueSeries, 700, 90)}</div>` : ''}
   </div>
@@ -359,6 +524,9 @@ async function generate({
   title,
   userId,
   whiteLabel = false,
+  sources,
+  segmentBy = null,
+  compareToPreviousPeriod = false,
 }) {
   const supabase = getServiceRoleClient()
 
@@ -380,17 +548,24 @@ async function generate({
   if (insErr) throw insErr
 
   try {
-    const data = await gatherData(workspaceId, periodStart, periodEnd)
+    const data = await gatherData(workspaceId, periodStart, periodEnd, {
+      sources,
+      segmentBy,
+      compareToPreviousPeriod,
+    })
     const html = renderHtml({
       title: row.title,
       workspace: data.workspace,
       score: data.score,
       topInsights: data.topInsights,
       kpis: data.kpis,
+      kpisPrev: data.kpisPrev,
       revenueSeries: data.revenueSeries,
       period: { start: periodStart, end: periodEnd },
       analystNote: row.analyst_note,
       whiteLabel: row.white_label,
+      selectedSources: data.selectedSources,
+      segmentBy: data.segmentBy,
     })
 
     const { data: updated, error: updErr } = await supabase
@@ -475,4 +650,6 @@ module.exports = {
   defaultTitle,
   renderHtml,
   escapeHtml,
+  previousRange,
+  computeDeltaPct,
 }
