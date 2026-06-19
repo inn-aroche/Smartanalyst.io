@@ -11,7 +11,8 @@
 //   1. URL site                : input + POST /onboarding/analyze
 //   2. Profil détecté          : confirme/corrige → POST /onboarding/profile
 //   3. Connecter 1re source    : lien /connectors ou skip
-//   4. Loading                 : barre de progression + checklist (animée)
+//   4. Loading                 : progression RÉELLE — score puis insights
+//                                (cahier §3 Lot 0 : pas de faux loading)
 //   5. Premier wow             : ScoreRing + 3 insights réels → ferme l'overlay
 
 import { useEffect, useMemo, useState } from 'react'
@@ -93,6 +94,20 @@ type Insight = {
   actions?: Array<{ title: string }>
 }
 
+// Progression réelle du step 4 (cahier §3 Lot 0 : pas de faux loading).
+// Chaque phase correspond à un appel API observable, pas à un timer.
+type PhaseStatus = 'pending' | 'active' | 'done' | 'error'
+type LoadingPhases = {
+  connection: PhaseStatus
+  score: PhaseStatus
+  insights: PhaseStatus
+}
+
+// Au-delà de ce seuil, on affiche un message rassurant ("plus long que
+// d'habitude") plutôt que de laisser le user dans le silence. Pas un timeout
+// dur : le flow continue, c'est juste un signal honnête.
+const SLOW_THRESHOLD_MS = 30_000
+
 export default function OnboardingFlow() {
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -148,7 +163,12 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [prog, setProg] = useState(0)
+  const [phases, setPhases] = useState<LoadingPhases>({
+    connection: 'pending',
+    score: 'pending',
+    insights: 'pending',
+  })
+  const [slowSignal, setSlowSignal] = useState(false)
   const [finalScore, setFinalScore] = useState<HealthScore | null>(null)
   const [finalInsights, setFinalInsights] = useState<Insight[]>([])
   const [loadWowError, setLoadWowError] = useState<string | null>(null)
@@ -167,21 +187,19 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
     }
   }, [step, url, detected, fallback])
 
-  // Loading animation step 4 — 15s simulés (4 paliers).
+  // Loading step 4 — progression RÉELLE. À l'entrée du step 4, l'OAuth est
+  // déjà passé (sinon l'user serait toujours en step 3 ou aurait skippé) :
+  // on coche "connexion" immédiatement, puis on enchaîne les vrais appels
+  // score → insights. Aucune barre simulée, aucun timer cosmétique.
   useEffect(() => {
     if (step !== 4) return
-    setProg(0)
-    const interval = window.setInterval(() => {
-      setProg((p) => {
-        if (p >= 100) {
-          window.clearInterval(interval)
-          window.setTimeout(() => void loadFinalWow(), 350)
-          return 100
-        }
-        return p + 4
-      })
-    }, 90)
-    return () => window.clearInterval(interval)
+    setPhases({ connection: 'done', score: 'pending', insights: 'pending' })
+    setSlowSignal(false)
+    // Garde-fou honnête : au-delà de ce seuil, on signale au user que c'est
+    // anormalement long, sans interrompre le flow.
+    const slowTimer = window.setTimeout(() => setSlowSignal(true), SLOW_THRESHOLD_MS)
+    void loadFinalWow()
+    return () => window.clearTimeout(slowTimer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
 
@@ -195,21 +213,29 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
       setStep(5)
       return
     }
-    // Best-effort : on tente le score + insights. Si l'API n'a rien, on
-    // affichera l'écran "premier wow" avec un état placeholder.
+    // Phase score — best-effort : si l'API n'a rien, on garde finalScore=null
+    // et la step 5 affiche le placeholder "no data". On marque la phase en
+    // 'error' uniquement (pas en 'done') pour que la checklist reste honnête.
+    setPhases((p) => ({ ...p, score: 'active' }))
     try {
       const score = await apiFetch<HealthScore>(`/api/v1/health-score?workspaceId=${workspace.id}`)
       setFinalScore(score)
+      setPhases((p) => ({ ...p, score: 'done' }))
     } catch {
       setFinalScore(null)
+      setPhases((p) => ({ ...p, score: 'error' }))
     }
+    // Phase insights — même contrat.
+    setPhases((p) => ({ ...p, insights: 'active' }))
     try {
       const ins = await apiFetch<{ insights: Insight[] }>(
         `/api/v1/insights?workspaceId=${workspace.id}&status=open`,
       )
       setFinalInsights((ins.insights ?? []).slice(0, 3))
+      setPhases((p) => ({ ...p, insights: 'done' }))
     } catch {
       setFinalInsights([])
+      setPhases((p) => ({ ...p, insights: 'error' }))
     }
     // Refresh tout — BriefHome se mettra à jour à la fermeture.
     void queryClient.invalidateQueries()
@@ -341,7 +367,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
           {step === 3 && (
             <StepConnect onConnect={handleConnect} onSkip={() => setStep(4)} fallback={fallback} />
           )}
-          {step === 4 && <StepLoading progress={prog} />}
+          {step === 4 && <StepLoading phases={phases} slow={slowSignal} />}
           {step === 5 && (
             <StepWow
               score={finalScore}
@@ -637,49 +663,132 @@ function StepConnect({
 
 // ─── Step 4 : Loading ────────────────────────────────────────────────────
 
-function StepLoading({ progress }: { progress: number }) {
+function StepLoading({ phases, slow }: { phases: LoadingPhases; slow: boolean }) {
   const t = useT()
-  const checks: Array<[string, number]> = [
-    [t('onboarding.s4.check1'), 20],
-    [t('onboarding.s4.check2'), 45],
-    [t('onboarding.s4.check3'), 72],
-    [t('onboarding.s4.check4'), 92],
+  // L'ordre suit la timeline réelle d'exécution : connexion (déjà OK à
+  // l'entrée du step) → score → insights. Pas de palier cosmétique.
+  const checks: Array<{ key: keyof LoadingPhases; label: string }> = [
+    { key: 'connection', label: t('onboarding.s4.check1') },
+    { key: 'score', label: t('onboarding.s4.check2') },
+    { key: 'insights', label: t('onboarding.s4.check3') },
   ]
+  const hasError = phases.score === 'error' || phases.insights === 'error'
   return (
     <div className="text-center">
       <ConnectIllus />
       <h1 className="mb-2.5 mt-6 font-head text-[23px] font-bold tracking-[-0.02em] text-text-1">
         {t('onboarding.s4.title')}
       </h1>
-      <p className="mb-7 text-[14px] text-text-2">{t('onboarding.s4.body')}</p>
-      <div className="mb-4 h-2 overflow-hidden rounded-full bg-bg-3">
-        <div
-          className="h-full rounded-full bg-brand-grad transition-[width] duration-200"
-          style={{ width: `${progress}%` }}
-        />
+      <p className="mb-6 text-[14px] text-text-2">{t('onboarding.s4.body')}</p>
+      <div
+        className="mx-auto mb-6 flex items-center justify-center"
+        role="status"
+        aria-label={t('onboarding.s4.live')}
+      >
+        <Spinner />
       </div>
-      <div className="flex flex-col gap-2 text-left">
-        {checks.map(([label, p]) => (
-          <div
-            key={label}
-            className={[
-              'flex items-center gap-2.5 transition-opacity duration-300',
-              progress >= p ? 'opacity-100' : 'opacity-40',
-            ].join(' ')}
-          >
-            <span
+      <div className="flex flex-col gap-2 text-left" aria-live="polite" aria-atomic="false">
+        {checks.map(({ key, label }) => {
+          const status = phases[key]
+          return (
+            <div
+              key={key}
               className={[
-                'flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full text-[11px] text-white',
-                progress >= p ? 'bg-brand-green' : 'bg-bg-3',
+                'flex items-center gap-2.5 transition-opacity duration-300',
+                status === 'pending' ? 'opacity-40' : 'opacity-100',
               ].join(' ')}
             >
-              {progress >= p ? '✓' : ''}
-            </span>
-            <span className="text-[13px] text-text-2">{label}</span>
-          </div>
-        ))}
+              <PhaseDot status={status} />
+              <span className="text-[13px] text-text-2">{label}</span>
+            </div>
+          )
+        })}
       </div>
+      {slow && !hasError && (
+        <div
+          className="mx-auto mt-5 max-w-[440px] rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-left text-[13px] text-text-1"
+          role="status"
+        >
+          {t('onboarding.s4.slow')}
+        </div>
+      )}
+      {hasError && (
+        <div
+          className="mx-auto mt-5 max-w-[440px] rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-left text-[13px] text-text-1"
+          role="status"
+        >
+          {t('onboarding.s4.error')}
+        </div>
+      )}
     </div>
+  )
+}
+
+function Spinner() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true" className="animate-spin">
+      <circle
+        cx="17"
+        cy="17"
+        r="13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeDasharray="60 20"
+        className="text-brand-blue-deep"
+      />
+    </svg>
+  )
+}
+
+function PhaseDot({ status }: { status: PhaseStatus }) {
+  if (status === 'active') {
+    return (
+      <span
+        className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-brand-blue-deep/15 text-brand-blue-deep"
+        aria-label="active"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="animate-spin">
+          <circle
+            cx="5"
+            cy="5"
+            r="3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeDasharray="14 8"
+          />
+        </svg>
+      </span>
+    )
+  }
+  if (status === 'done') {
+    return (
+      <span
+        className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-brand-green text-[11px] text-white"
+        aria-label="done"
+      >
+        ✓
+      </span>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <span
+        className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-brand-amber text-[11px] text-white"
+        aria-label="error"
+      >
+        !
+      </span>
+    )
+  }
+  return (
+    <span
+      className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-bg-3"
+      aria-label="pending"
+    />
   )
 }
 
