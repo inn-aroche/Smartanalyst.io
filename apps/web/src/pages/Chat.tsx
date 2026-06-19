@@ -281,92 +281,83 @@ export default function ChatPage() {
 
   return (
     <AppLayout>
-      <div className="mx-auto flex h-[calc(100vh-3.5rem)] max-w-3xl flex-col px-6 py-8 md:h-screen md:py-10">
-        <div className="mb-6 flex flex-shrink-0 items-start justify-between gap-4">
-          <div>
+      <div className="flex h-[calc(100vh-3.5rem)] md:h-screen">
+        {/* Sidebar conversations — visible desktop, drawer sur mobile. */}
+        {workspaceId && (
+          <ConversationSidebar
+            workspaceId={workspaceId}
+            currentId={conversationId}
+            onPick={(id) => void loadConversation(id)}
+            onNew={startNewConversation}
+          />
+        )}
+
+        {/* Colonne chat */}
+        <div className="mx-auto flex max-w-3xl flex-1 flex-col px-6 py-8 md:py-10">
+          <div className="mb-6 flex-shrink-0">
             <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
               {t('chat.kicker')}
             </span>
             <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{t('chat.title')}</h1>
           </div>
-          <div className="flex flex-shrink-0 items-center gap-2">
-            {workspaceId && (
-              <ConversationPicker
-                workspaceId={workspaceId}
-                currentId={conversationId}
-                onPick={(id) => void loadConversation(id)}
-              />
-            )}
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={startNewConversation}
-                className="sa-btn !text-xs"
-                title={t('chat.new.title')}
-              >
-                + {t('chat.new.cta')}
-              </button>
+
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-card"
+          >
+            {messages.length === 0 ? (
+              <EmptyState onPick={(s) => void send(s)} suggestions={suggestions} />
+            ) : (
+              <div className="flex flex-col gap-5">
+                {messages.map((m) => (
+                  <MessageBubble key={m.id} message={m} />
+                ))}
+              </div>
             )}
           </div>
-        </div>
 
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-card"
-        >
-          {messages.length === 0 ? (
-            <EmptyState onPick={(s) => void send(s)} suggestions={suggestions} />
-          ) : (
-            <div className="flex flex-col gap-5">
-              {messages.map((m) => (
-                <MessageBubble key={m.id} message={m} />
-              ))}
+          {error && (
+            <div className="mt-3 flex-shrink-0 rounded-lg border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">
+              {error}
             </div>
           )}
-        </div>
 
-        {error && (
-          <div className="mt-3 flex-shrink-0 rounded-lg border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">
-            {error}
-          </div>
-        )}
+          {/* Pastille fichier joint */}
+          {attachedFileId && (
+            <div className="mt-3 flex flex-shrink-0 items-center gap-2 self-start rounded-full border border-brand-blue-deep/30 bg-brand-blue-dim px-3 py-1.5 text-xs">
+              <span className="text-brand-blue-deep">📎</span>
+              <span className="max-w-[260px] truncate font-medium text-text-1">
+                {attachedFileQ.data?.filename ?? t('chat.attachedFile')}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAttachedFileId(null)}
+                aria-label={t('chat.removeAttachment')}
+                className="ml-1 text-text-3 hover:text-brand-red"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
-        {/* Pastille fichier joint — visible quand un fileId est posé (depuis
-            Sources/Files, ou plus tard via le bouton joindre). */}
-        {attachedFileId && (
-          <div className="mt-3 flex flex-shrink-0 items-center gap-2 self-start rounded-full border border-brand-blue-deep/30 bg-brand-blue-dim px-3 py-1.5 text-xs">
-            <span className="text-brand-blue-deep">📎</span>
-            <span className="max-w-[260px] truncate font-medium text-text-1">
-              {attachedFileQ.data?.filename ?? t('chat.attachedFile')}
-            </span>
+          <form onSubmit={handleSubmit} className="mt-4 flex flex-shrink-0 gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t('chat.placeholder')}
+              className="sa-input flex-1"
+              disabled={pending}
+            />
             <button
-              type="button"
-              onClick={() => setAttachedFileId(null)}
-              aria-label={t('chat.removeAttachment')}
-              className="ml-1 text-text-3 hover:text-brand-red"
+              type="submit"
+              disabled={pending || !input.trim()}
+              className="sa-btn sa-btn-primary !px-6 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ✕
+              {pending ? t('chat.thinking') : t('chat.send')}
             </button>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-shrink-0 gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t('chat.placeholder')}
-            className="sa-input flex-1"
-            disabled={pending}
-          />
-          <button
-            type="submit"
-            disabled={pending || !input.trim()}
-            className="sa-btn sa-btn-primary !px-6 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {pending ? t('chat.thinking') : t('chat.send')}
-          </button>
-        </form>
+          </form>
+        </div>
       </div>
     </AppLayout>
   )
@@ -564,9 +555,10 @@ function Dot({ delay }: { delay: string }) {
   )
 }
 
-// ─── Conversation picker — dropdown des fils du workspace ────────────────
-// Pas une sidebar full-page (overkill pour ~10-50 conversations). Un
-// dropdown qui list les 50 plus récents, clic = on charge le fil.
+// ─── Conversation sidebar — panneau gauche style ChatGPT/Claude ─────────
+// 260px desktop, drawer overlay sur mobile (toggle via bouton flottant).
+// Liste les 50 fils les plus récents triés par récence (le backend renvoie
+// déjà DESC sur updated_at).
 
 type ConvSummary = {
   id: string
@@ -575,21 +567,25 @@ type ConvSummary = {
   updated_at: string
 }
 
-function ConversationPicker({
+function ConversationSidebar({
   workspaceId,
   currentId,
   onPick,
+  onNew,
 }: {
   workspaceId: string
   currentId: string | null
   onPick: (id: string) => void
+  onNew: () => void
 }) {
   const t = useT()
   const { locale } = useLocale()
-  const [open, setOpen] = useState(false)
+  // Mobile : drawer ouvert/fermé. Desktop : toujours visible (md:block).
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   const q = useQuery({
     queryKey: ['chat', 'conversations', workspaceId],
-    enabled: Boolean(workspaceId) && open,
+    enabled: Boolean(workspaceId),
     queryFn: () =>
       apiFetch<{ conversations: ConvSummary[] }>(
         `/api/v1/chat/conversations?workspaceId=${workspaceId}`,
@@ -597,70 +593,90 @@ function ConversationPicker({
     staleTime: 30_000,
   })
 
-  // Ferme au clic en dehors. Stratégie simple : on capture le clic global
-  // quand le menu est ouvert ; si la cible n'est pas dans notre ref, on
-  // ferme. Pas besoin d'une lib pour ça.
-  const ref = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (!open) return
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    window.addEventListener('mousedown', onClickOutside)
-    return () => window.removeEventListener('mousedown', onClickOutside)
-  }, [open])
-
   const conversations = q.data?.conversations ?? []
 
+  // Le panneau lui-même : utilisé pour desktop ET mobile drawer.
+  const panel = (
+    <aside className="flex h-full w-[260px] flex-shrink-0 flex-col border-r border-border bg-bg-2">
+      <div className="flex flex-shrink-0 items-center gap-2 border-b border-border p-3">
+        <button
+          type="button"
+          onClick={() => {
+            onNew()
+            setMobileOpen(false)
+          }}
+          className="sa-btn sa-btn-primary flex-1 !text-[12.5px]"
+          title={t('chat.new.title')}
+        >
+          + {t('chat.new.cta')}
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {q.isLoading && (
+          <div className="px-3 py-3 text-xs text-text-3">{t('chat.history.loading')}</div>
+        )}
+        {!q.isLoading && conversations.length === 0 && (
+          <div className="px-3 py-3 text-xs text-text-3">{t('chat.history.empty')}</div>
+        )}
+        {!q.isLoading && conversations.length > 0 && (
+          <ul role="listbox" className="py-1">
+            {conversations.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPick(c.id)
+                    setMobileOpen(false)
+                  }}
+                  aria-selected={c.id === currentId}
+                  className={[
+                    'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors',
+                    c.id === currentId
+                      ? 'bg-brand-blue-dim text-text-1'
+                      : 'text-text-2 hover:bg-card hover:text-text-1',
+                  ].join(' ')}
+                >
+                  <span className="line-clamp-1 w-full text-[13px] font-semibold">{c.title}</span>
+                  <span className="font-mono text-[10px] text-text-3">
+                    {formatRelative(c.updated_at, locale)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </aside>
+  )
+
   return (
-    <div ref={ref} className="relative">
+    <>
+      {/* Desktop : sidebar inline dans le flex parent */}
+      <div className="hidden md:flex">{panel}</div>
+
+      {/* Mobile : bouton flottant pour ouvrir le drawer */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="sa-btn !text-xs"
-        aria-haspopup="listbox"
-        aria-expanded={open}
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-[4.25rem] z-30 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-text-1 shadow-card md:hidden"
+        aria-label={t('chat.history.cta')}
       >
-        {t('chat.history.cta')} ▾
+        ☰ {t('chat.history.cta')}
       </button>
-      {open && (
-        <div className="absolute right-0 top-full z-30 mt-1.5 w-[300px] max-h-[60vh] overflow-y-auto rounded-brief border border-border bg-card shadow-float">
-          {q.isLoading && (
-            <div className="px-3 py-3 text-xs text-text-3">{t('chat.history.loading')}</div>
-          )}
-          {!q.isLoading && conversations.length === 0 && (
-            <div className="px-3 py-3 text-xs text-text-3">{t('chat.history.empty')}</div>
-          )}
-          {!q.isLoading && conversations.length > 0 && (
-            <ul role="listbox" className="py-1">
-              {conversations.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onPick(c.id)
-                      setOpen(false)
-                    }}
-                    aria-selected={c.id === currentId}
-                    className={[
-                      'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors',
-                      c.id === currentId
-                        ? 'bg-brand-blue-dim text-text-1'
-                        : 'text-text-2 hover:bg-bg-2 hover:text-text-1',
-                    ].join(' ')}
-                  >
-                    <span className="line-clamp-1 text-[13px] font-semibold">{c.title}</span>
-                    <span className="font-mono text-[10px] text-text-3">
-                      {formatRelative(c.updated_at, locale)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 flex md:hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setMobileOpen(false)
+          }}
+        >
+          <div className="h-full">{panel}</div>
+          <div className="flex-1 bg-text-1/40" />
         </div>
       )}
-    </div>
+    </>
   )
 }
 
