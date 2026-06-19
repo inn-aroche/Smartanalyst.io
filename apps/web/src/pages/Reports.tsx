@@ -273,6 +273,12 @@ function ReportPreview({ workspaceId, reportId }: { workspaceId: string; reportI
 
 // ─── Modale de génération ───────────────────────────────────────────────
 
+type ConnectorRow = {
+  id: string
+  source: string
+  status: 'active' | 'expired' | 'error' | 'disconnected'
+}
+
 function ReportGenModal({
   wsId,
   onClose,
@@ -291,12 +297,43 @@ function ReportGenModal({
   const [periodEnd, setPeriodEnd] = useState(lastOfMonth(now))
   const [kind, setKind] = useState<'monthly' | 'quarterly' | 'custom'>('monthly')
   const [whiteLabel, setWhiteLabel] = useState(false)
+  // Personnalisation : sources (vide = toutes), segmentation, comparaison N-1.
+  const [selectedSources, setSelectedSources] = useState<string[]>([])
+  const [segmentBy, setSegmentBy] = useState<'none' | 'source'>('none')
+  const [compareToPrev, setCompareToPrev] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+
+  // Liste des connecteurs actifs pour le multi-select sources.
+  const connectorsQ = useQuery({
+    queryKey: ['connectors', 'list', wsId],
+    enabled: !!wsId,
+    queryFn: () =>
+      apiFetch<{ connectors: ConnectorRow[] }>(`/api/v1/connectors?workspaceId=${wsId}`),
+    staleTime: 5 * 60_000,
+  })
+  const availableSources = useMemo(
+    () =>
+      (connectorsQ.data?.connectors ?? [])
+        .filter((c) => c.status === 'active')
+        .map((c) => c.source),
+    [connectorsQ.data],
+  )
 
   const mutation = useMutation({
     mutationFn: async () =>
       apiFetch<{ id: string }>('/api/v1/reports/generate', {
         method: 'POST',
-        body: { workspaceId: wsId, periodStart, periodEnd, kind, whiteLabel },
+        body: {
+          workspaceId: wsId,
+          periodStart,
+          periodEnd,
+          kind,
+          whiteLabel,
+          // Si l'user n'a rien coché côté sources, on omet → backend = "toutes"
+          ...(selectedSources.length > 0 ? { sources: selectedSources } : {}),
+          ...(segmentBy === 'source' ? { segmentBy: 'source' } : {}),
+          compareToPreviousPeriod: compareToPrev,
+        },
       }),
     onSuccess: (res) => {
       void queryClient.invalidateQueries({ queryKey: ['reports', 'list', wsId] })
@@ -307,6 +344,12 @@ function ReportGenModal({
       toast.push(err instanceof Error ? err.message : t('reports.toast.failed'))
     },
   })
+
+  function toggleSource(src: string) {
+    setSelectedSources((prev) =>
+      prev.includes(src) ? prev.filter((s) => s !== src) : [...prev, src],
+    )
+  }
 
   return (
     <div
@@ -368,6 +411,71 @@ function ReportGenModal({
             />
             <span className="text-sm text-text-1">{t('reports.gen.whiteLabel')}</span>
           </label>
+
+          {/* Section avancée : repliée par défaut pour ne pas effrayer un
+              user qui veut juste un rapport rapide. Click → déroule sources
+              + segmentation + comparaison. */}
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="-mb-2 mt-1 flex items-center justify-between text-left text-[12.5px] font-semibold text-text-2 hover:text-text-1"
+          >
+            <span>{t('reports.gen.advanced')}</span>
+            <span className="font-mono text-[11px]">{advancedOpen ? '−' : '+'}</span>
+          </button>
+          {advancedOpen && (
+            <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-2 p-3.5">
+              <div>
+                <div className="sa-label">{t('reports.gen.sources')}</div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {availableSources.length === 0 ? (
+                    <span className="text-[12px] text-text-3">{t('reports.gen.sourcesNone')}</span>
+                  ) : (
+                    availableSources.map((s) => {
+                      const checked = selectedSources.includes(s)
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => toggleSource(s)}
+                          className={[
+                            'rounded-full border px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors',
+                            checked
+                              ? 'border-brand-blue-deep bg-brand-blue-dim text-brand-blue-deep'
+                              : 'border-border bg-card text-text-3 hover:border-border-bright hover:text-text-1',
+                          ].join(' ')}
+                          aria-pressed={checked}
+                        >
+                          {s}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="mt-1.5 text-[11px] text-text-3">{t('reports.gen.sourcesHint')}</div>
+              </div>
+              <div>
+                <div className="sa-label">{t('reports.gen.segmentBy')}</div>
+                <select
+                  value={segmentBy}
+                  onChange={(e) => setSegmentBy(e.target.value as 'none' | 'source')}
+                  className="sa-input !py-2"
+                >
+                  <option value="none">{t('reports.gen.segmentNone')}</option>
+                  <option value="source">{t('reports.gen.segmentSource')}</option>
+                </select>
+              </div>
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-border bg-card px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={compareToPrev}
+                  onChange={(e) => setCompareToPrev(e.target.checked)}
+                  className="accent-brand-blue-deep"
+                />
+                <span className="text-[13px] text-text-1">{t('reports.gen.compare')}</span>
+              </label>
+            </div>
+          )}
         </div>
         <footer className="flex items-center gap-2.5 border-t border-border bg-bg-2 px-5 py-3">
           <button type="button" onClick={onClose} className="sa-btn !text-sm">

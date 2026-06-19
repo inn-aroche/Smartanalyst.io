@@ -38,6 +38,14 @@ router.post(
     body('kind').optional().isIn(['monthly', 'quarterly', 'custom']),
     body('title').optional().isString().isLength({ max: 200 }),
     body('whiteLabel').optional().isBoolean(),
+    // Personnalisation : sources, segmentation, comparaison période N-1.
+    body('sources').optional({ nullable: true }).isArray({ max: 10 }),
+    body('sources.*').optional().isString().isLength({ min: 2, max: 40 }),
+    body('segmentBy')
+      .optional({ nullable: true, checkFalsy: false })
+      .isIn(['source'])
+      .withMessage('segmentBy must be "source" or null.'),
+    body('compareToPreviousPeriod').optional().isBoolean(),
   ],
   runValidation,
   workspaceScope,
@@ -53,6 +61,9 @@ router.post(
         title: req.body.title,
         whiteLabel: req.body.whiteLabel,
         userId: req.user?.id,
+        sources: Array.isArray(req.body.sources) ? req.body.sources : undefined,
+        segmentBy: req.body.segmentBy || null,
+        compareToPreviousPeriod: !!req.body.compareToPreviousPeriod,
       })
       res.status(201).json({ id: result.id })
     } catch (err) {

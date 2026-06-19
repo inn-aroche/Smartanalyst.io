@@ -51,12 +51,10 @@ async function ingest({ workspaceId, source, connectorId = null, rows }) {
     timezone_source: r.timezoneSource || null,
   }))
 
-  const { error, count } = await supabase
-    .from(TABLE)
-    .upsert(payload, {
-      onConflict: 'workspace_id,date,metric_key,source',
-      count: 'exact',
-    })
+  const { error, count } = await supabase.from(TABLE).upsert(payload, {
+    onConflict: 'workspace_id,date,metric_key,source',
+    count: 'exact',
+  })
 
   if (error) {
     logger.error(
@@ -114,7 +112,14 @@ async function query({ workspaceId, metricKey, source, startDate, endDate, limit
     if (Array.isArray(metricKey)) q = q.in('metric_key', metricKey)
     else q = q.eq('metric_key', metricKey)
   }
-  if (source) q = q.eq('source', source)
+  if (source) {
+    // string OU array : filtre simple (1 source) vs IN clause (plusieurs).
+    if (Array.isArray(source)) {
+      if (source.length > 0) q = q.in('source', source)
+    } else {
+      q = q.eq('source', source)
+    }
+  }
   if (startDate) q = q.gte('date', startDate)
   if (endDate) q = q.lte('date', endDate)
 
