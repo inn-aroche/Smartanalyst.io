@@ -44,6 +44,22 @@ type AskResponse = {
   model: string
   sources?: Source[]
   highlights?: Highlight[]
+  // ID du fil de discussion — créé par le backend au 1er tour, à renvoyer
+  // tel quel ensuite pour que l'historique s'accumule. null en cas de
+  // workspace absent (fallback exceptionnel).
+  conversationId: string | null
+}
+
+type ConversationDetail = {
+  conversation: { id: string; title: string; created_at: string; updated_at: string }
+  messages: Array<{
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    sources: Source[]
+    highlights: Highlight[]
+    created_at: string
+  }>
 }
 
 type WorkspaceConnector = {
@@ -56,11 +72,21 @@ function nextId() {
   return Math.random().toString(36).slice(2, 10)
 }
 
+// localStorage key — la conversation en cours, par workspace, pour qu'un
+// refresh / retour sur /chat reprenne là où on en était. On stocke par
+// workspace pour ne pas mélanger des conversations entre clients d'une
+// agence.
+function lastConversationKey(wsId: string | undefined): string | null {
+  if (!wsId) return null
+  return `sa-chat:last-conversation:${wsId}`
+}
+
 export default function ChatPage() {
   const { state } = useAuth()
   const { locale } = useLocale()
   const t = useT()
   const [messages, setMessages] = useState<Message[]>([])
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   // Fichier joint à la prochaine requête. Persiste tant que l'user ne
@@ -70,6 +96,51 @@ export default function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const workspaceId = state.workspaces[0]?.id
+
+  // Reprise du fil précédent : au mount, on regarde localStorage pour la
+  // dernière conversation de ce workspace. Si elle existe, on la fetch et
+  // on hydrate l'historique. Best-effort : si elle a été supprimée côté
+  // backend, on tombe sur un 404 silencieux et on repart d'une nouvelle.
+  useEffect(() => {
+    if (!workspaceId) return
+    const key = lastConversationKey(workspaceId)
+    if (!key) return
+    const lastId = window.localStorage.getItem(key)
+    if (!lastId) return
+    void (async () => {
+      try {
+        const data = await apiFetch<ConversationDetail>(
+          `/api/v1/chat/conversations/${lastId}?workspaceId=${workspaceId}`,
+        )
+        setConversationId(data.conversation.id)
+        const hydrated: Message[] = data.messages.map((m) =>
+          m.role === 'user'
+            ? { id: m.id, role: 'user', text: m.content }
+            : {
+                id: m.id,
+                role: 'assistant',
+                text: m.content,
+                sources: m.sources,
+                highlights: m.highlights,
+              },
+        )
+        setMessages(hydrated)
+      } catch {
+        // 404 (conv supprimée) ou autre : on clear et on repart fresh.
+        window.localStorage.removeItem(key)
+      }
+    })()
+  }, [workspaceId])
+
+  function startNewConversation() {
+    setConversationId(null)
+    setMessages([])
+    setError(null)
+    if (workspaceId) {
+      const key = lastConversationKey(workspaceId)
+      if (key) window.localStorage.removeItem(key)
+    }
+  }
 
   // Préfill depuis l'URL — `?q=<question>` posé par Veille, BriefHome…
   // `?file=<id>` posé par Sources/Files. Cleaned aussitôt lu pour éviter
@@ -160,8 +231,18 @@ export default function ChatPage() {
           workspaceId,
           locale,
           fileIds: attachedFileId ? [attachedFileId] : undefined,
+          // null au 1er tour → le backend crée le fil et renvoie son ID
+          // qu'on persiste localement pour les tours suivants.
+          conversationId,
         },
       })
+      if (res.conversationId && res.conversationId !== conversationId) {
+        setConversationId(res.conversationId)
+        if (workspaceId) {
+          const key = lastConversationKey(workspaceId)
+          if (key) window.localStorage.setItem(key, res.conversationId)
+        }
+      }
       setMessages((m) =>
         m.map((msg) =>
           msg.id === pendingMsg.id
@@ -189,11 +270,26 @@ export default function ChatPage() {
   return (
     <AppLayout>
       <div className="mx-auto flex h-[calc(100vh-3.5rem)] max-w-3xl flex-col px-6 py-8 md:h-screen md:py-10">
-        <div className="mb-6 flex-shrink-0">
-          <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
-            {t('chat.kicker')}
-          </span>
-          <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{t('chat.title')}</h1>
+        <div className="mb-6 flex flex-shrink-0 items-start justify-between gap-4">
+          <div>
+            <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
+              {t('chat.kicker')}
+            </span>
+            <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{t('chat.title')}</h1>
+          </div>
+          {/* Bouton "Nouvelle conversation" : visible dès qu'on a au moins
+              un message (sinon on est déjà sur du frais). Reset le state +
+              clear le localStorage du workspace. */}
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={startNewConversation}
+              className="sa-btn !text-xs"
+              title={t('chat.new.title')}
+            >
+              + {t('chat.new.cta')}
+            </button>
+          )}
         </div>
 
         <div
