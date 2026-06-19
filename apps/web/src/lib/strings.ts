@@ -170,6 +170,17 @@ const en = {
   'veille.empty.allClear':
     "All quiet on the watch front — I'll surface anything new the moment I spot it.",
   'veille.empty.resolved': 'Nothing handled yet.',
+  // Watches list (mes veilles : toggle on/off + delete)
+  'veille.watchesList.title': 'My watches',
+  'veille.watchesList.activeSuffix': 'active',
+  'veille.watchesList.disable': 'Pause this watch',
+  'veille.watchesList.enable': 'Resume this watch',
+  'veille.watchesList.delete': 'Delete this watch',
+  'veille.watchesList.deleteConfirm': 'Delete this watch? This cannot be undone.',
+  'veille.watchesList.deleted': 'Watch deleted.',
+  'veille.watchesList.deleteError': "Couldn't delete this watch.",
+  'veille.watchesList.toggleError': "Couldn't update this watch.",
+  'veille.watchesList.triggered': 'fired',
   // First-run state (no canonical_metrics yet)
   'veille.firstRun.eyebrow': 'WATCH',
   'veille.firstRun.title': 'Tell me what to keep an eye on.',
@@ -1041,6 +1052,17 @@ const fr: Record<keyof typeof en, string> = {
   'veille.firstRun.template.churn': 'Surveiller le churn qui spike',
   'veille.firstRun.template.churnSub': '« Alerte-moi quand mon churn mensuel dépasse 5 % »',
   'veille.empty.resolved': 'Aucun insight traité pour le moment.',
+  // Watches list (mes veilles : toggle on/off + delete)
+  'veille.watchesList.title': 'Mes veilles',
+  'veille.watchesList.activeSuffix': 'actives',
+  'veille.watchesList.disable': 'Mettre en pause',
+  'veille.watchesList.enable': 'Réactiver',
+  'veille.watchesList.delete': 'Supprimer cette veille',
+  'veille.watchesList.deleteConfirm': 'Supprimer cette veille ? Cette action est irréversible.',
+  'veille.watchesList.deleted': 'Veille supprimée.',
+  'veille.watchesList.deleteError': 'Impossible de supprimer cette veille.',
+  'veille.watchesList.toggleError': 'Impossible de mettre à jour cette veille.',
+  'veille.watchesList.triggered': 'déclenchée(s)',
 
   // ━━━ Watch modal (App v2 — création d'alerte custom §3.3) ━━━
   'watchModal.title': 'Créer une alerte',
