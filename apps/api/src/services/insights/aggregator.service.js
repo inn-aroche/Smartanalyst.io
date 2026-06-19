@@ -10,6 +10,8 @@
 // tous les chiffres viennent d'ici.
 
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
+const connectorService = require('../connectors/connector.service')
+const connectorHealth = require('../connectors/connector-health.service')
 const tracking = require('../tracking/ingestion.service')
 
 // Métriques "snapshot" (état à un instant) vs "flux" (cumulables). Pour un
@@ -86,7 +88,12 @@ async function buildContext(workspaceId, { windowDays = 30 } = {}) {
   let prevRows = []
   try {
     ;[curRows, prevRows] = await Promise.all([
-      canonicalMetrics.query({ workspaceId, startDate: period.start, endDate: period.end, limit: 2000 }),
+      canonicalMetrics.query({
+        workspaceId,
+        startDate: period.start,
+        endDate: period.end,
+        limit: 2000,
+      }),
       canonicalMetrics.query({
         workspaceId,
         startDate: period.comparison_start,
@@ -152,12 +159,45 @@ async function buildContext(workspaceId, { windowDays = 30 } = {}) {
     })
   }
 
+  // ── Source states (cahier §3 Lot 0 — jamais de chiffre nu suspect) ──
+  // On distingue explicitement : producing_data / connected_no_data /
+  // failing / expired / not_connected. Le LLM doit savoir si un "0 €" est
+  // un vrai zéro ou une absence de connecteur.
+  let sourceStates = []
+  try {
+    const connectors = await connectorService.list(workspaceId)
+    const enriched = connectorHealth.enrichWithHealth(connectors)
+    const sourcesWithData = new Set(metrics.map((m) => m.source))
+    sourceStates = enriched.map((c) => {
+      const state = sourcesWithData.has(c.source)
+        ? 'producing_data'
+        : c.health_state.state === 'expired'
+          ? 'expired'
+          : c.health_state.state === 'failing' || c.health_state.silent_failure
+            ? 'failing'
+            : 'connected_no_data'
+      return {
+        source: c.source,
+        state,
+        health: c.health_state.state,
+        reason: c.health_state.reason,
+        last_synced_at: c.last_synced_at || null,
+      }
+    })
+  } catch (err) {
+    // Best-effort : si on ne peut pas lire la table connectors, on continue
+    // sans source_states — le LLM perdra le contexte de causalité mais
+    // aura toujours les métriques. On loggue silencieusement.
+    sourceStates = []
+  }
+
   // Aucune donnée nulle part → rien à analyser.
   if (metrics.length === 0 && smarttag.length === 0) return null
 
   return {
     period,
     connected_sources: Array.from(new Set(metrics.map((m) => m.source))),
+    source_states: sourceStates,
     smarttag_active: smarttag.length > 0,
     metrics,
     smarttag,
