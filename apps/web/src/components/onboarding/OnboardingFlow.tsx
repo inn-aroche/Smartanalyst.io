@@ -15,7 +15,7 @@
 //                                (cahier §3 Lot 0 : pas de faux loading)
 //   5. Premier wow             : ScoreRing + 3 insights réels → ferme l'overlay
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
@@ -23,6 +23,7 @@ import ScoreRing from '@/components/charts/ScoreRing'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
+import { track } from '@/lib/tracking'
 
 export const ONBOARDING_OPEN_EVENT = 'sa-onboarding:open'
 
@@ -172,6 +173,30 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
   const [finalScore, setFinalScore] = useState<HealthScore | null>(null)
   const [finalInsights, setFinalInsights] = useState<Insight[]>([])
   const [loadWowError, setLoadWowError] = useState<string | null>(null)
+  // Mesure latence step 4 → first_insight_shown (cahier §6 measurement plan).
+  const step4StartedAt = useRef<number | null>(null)
+  // Garde-fou : tracker `first_insight_shown` une seule fois par flow,
+  // même si la step 5 re-render.
+  const firstInsightTracked = useRef(false)
+
+  // Event onboarding_step_viewed à chaque changement de step (cahier §6).
+  useEffect(() => {
+    track('onboarding_step_viewed', { step })
+  }, [step])
+
+  // Event first_insight_shown à l'arrivée step 5 si on a effectivement un
+  // insight à montrer (sinon l'event mentirait sur le vrai "premier wow").
+  useEffect(() => {
+    if (step !== 5) return
+    if (firstInsightTracked.current) return
+    if (finalInsights.length === 0) return
+    const latencyMs =
+      step4StartedAt.current !== null
+        ? Math.round(performance.now() - step4StartedAt.current)
+        : null
+    track('first_insight_shown', { latency_ms: latencyMs, count: finalInsights.length })
+    firstInsightTracked.current = true
+  }, [step, finalInsights])
 
   // Persiste le state critique à chaque changement utile (step / URL /
   // profil détecté / flag fallback). Step 5 n'est pas persisté : si le user
@@ -195,6 +220,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
     if (step !== 4) return
     setPhases({ connection: 'done', score: 'pending', insights: 'pending' })
     setSlowSignal(false)
+    step4StartedAt.current = performance.now()
     // Garde-fou honnête : au-delà de ce seuil, on signale au user que c'est
     // anormalement long, sans interrompre le flow.
     const slowTimer = window.setTimeout(() => setSlowSignal(true), SLOW_THRESHOLD_MS)
@@ -255,6 +281,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
         method: 'POST',
         body: { url: cleaned },
       })
+      track('url_submitted', { fallback: res.fallback })
       if (res.fallback) {
         // Fallback : on saute l'écran "profil détecté" et on va direct à la
         // connexion. On flag explicitement le mode dégradé pour que la
@@ -306,6 +333,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
           confidence_score: detected.confidence_score ?? undefined,
         },
       })
+      track('profile_confirmed')
       setStep(3)
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : t('onboarding.error.generic'))
@@ -315,10 +343,16 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
   }
 
   function handleClose() {
-    if (window.confirm(t('onboarding.exit.confirm'))) onClose()
+    if (window.confirm(t('onboarding.exit.confirm'))) {
+      // L'event onboarding_dropped n'a de sens que si l'user abandonne en
+      // cours de flow — pas s'il est déjà arrivé au wow (step 5).
+      if (step < 5) track('onboarding_dropped', { step })
+      onClose()
+    }
   }
 
   function handleConnect() {
+    track('connector_connect_started', { source: 'shopify' })
     // L'OAuth d'un connecteur sort de l'app (window.location.href = ...),
     // donc le state React est perdu. On force-sauve l'état actuel en
     // sessionStorage avec step=3 (pour que l'auto-open au retour rouvre
@@ -358,7 +392,10 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
           {step === 2 && detected && (
             <StepProfile
               profile={detected}
-              onCorrect={() => setStep(1)}
+              onCorrect={() => {
+                track('profile_corrected')
+                setStep(1)
+              }}
               onConfirm={handleSaveProfile}
               saving={saving}
               error={analyzeError}
@@ -375,6 +412,10 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
               firstName={(state.user?.full_name ?? '').split(' ')[0] || ''}
               loadError={loadWowError}
               onDone={() => {
+                track('onboarding_completed', {
+                  has_score: finalScore?.has_data ?? false,
+                  insights_count: finalInsights.length,
+                })
                 onClose()
                 navigate('/')
               }}

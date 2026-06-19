@@ -11,6 +11,7 @@
 // Tous les blocs ont un fallback élégant en cas d'absence de données ou
 // d'erreur API — la home reste utilisable même sur un workspace vide.
 
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -22,6 +23,7 @@ import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
+import { track } from '@/lib/tracking'
 
 type HealthScore = {
   score: number
@@ -66,6 +68,13 @@ export default function BriefHomePage() {
   const { state } = useAuth()
   const workspace = state.workspaces[0]
   const wsId = workspace?.id
+
+  // Event brief_viewed (cahier §6 — engagement / boucle). On l'émet au
+  // premier mount avec le workspace résolu, pas à chaque refetch.
+  useEffect(() => {
+    if (!wsId) return
+    track('brief_viewed')
+  }, [wsId])
 
   // 4 queries en parallèle (React Query déduplique + cache).
   const scoreQ = useQuery({

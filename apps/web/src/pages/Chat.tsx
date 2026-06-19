@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth'
 import { pickSuggestions } from '@/lib/chat-suggestions'
 import { useLocale, useT } from '@/lib/i18n'
 import { renderMarkdown } from '@/lib/markdown'
+import { track } from '@/lib/tracking'
 
 type SaFile = {
   id: string
@@ -232,6 +233,11 @@ export default function ChatPage() {
     const userMsg: Message = { id: nextId(), role: 'user', text: trimmed }
     const pendingMsg: Message = { id: nextId(), role: 'assistant', pending: true }
     setMessages((m) => [...m, userMsg, pendingMsg])
+    // Event chat_message_sent (cahier §6 — engagement / boucle).
+    track('chat_message_sent', {
+      length: trimmed.length,
+      has_file: Boolean(attachedFileId),
+    })
 
     try {
       const res = await apiFetch<AskResponse>('/api/v1/chat/ask', {
