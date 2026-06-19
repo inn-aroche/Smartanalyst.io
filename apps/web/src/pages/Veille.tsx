@@ -12,19 +12,34 @@
 // Données : /api/v1/insights — filtré côté client par sévérité.
 
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
-import AppLayout, { Topbar } from '@/components/AppLayout'
+import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
 import InsightCard from '@/components/insights/InsightCard'
 import WatchModal from '@/components/insights/WatchModal'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
 import type { Insight } from '@/lib/insights-types'
 
 type HealthScore = { score: number; delta: number | null; has_data: boolean }
+
+type Watch = {
+  id: string
+  description: string
+  metric_key: string
+  source: string | null
+  operator: 'drops_below' | 'rises_above' | 'changes_by_pct' | 'any_change'
+  threshold: number | null
+  notify_in_app: boolean
+  notify_email: boolean
+  enabled: boolean
+  triggered_count: number
+  last_triggered_at: string | null
+  created_at: string
+}
 
 type FilterId = 'all' | 'critical' | 'warning' | 'opportunity' | 'resolved'
 
@@ -63,6 +78,15 @@ export default function VeillePage() {
     enabled: !!wsId,
     queryFn: () => apiFetch<HealthScore>(`/api/v1/health-score?workspaceId=${wsId}`),
     staleTime: 60_000,
+  })
+  // Liste des veilles actives — pour qu'on voie ce qu'on a créé et puisse
+  // toggle / supprimer. Avant : aucune visibilité, l'user créait dans le
+  // vide sans confirmation et sans moyen de revenir dessus.
+  const watchesQ = useQuery({
+    queryKey: ['watches', wsId],
+    enabled: !!wsId,
+    queryFn: () => apiFetch<{ watches: Watch[] }>(`/api/v1/watches?workspaceId=${wsId}`),
+    staleTime: 30_000,
   })
 
   const list = useMemo<Insight[]>(() => {
@@ -129,6 +153,13 @@ export default function VeillePage() {
 
           {/* Bandeau résumé hebdo (gradient brand) */}
           <WeeklyRecap counts={counts} />
+
+          {/* Mes veilles : liste des watches actives + toggle / supprimer.
+              Affiché uniquement s'il y en a au moins 1, sinon ça surcharge
+              l'écran pour rien (le first-run state s'occupe du cas vide). */}
+          {(watchesQ.data?.watches?.length ?? 0) > 0 && (
+            <WatchesList watches={watchesQ.data?.watches ?? []} workspaceId={wsId ?? ''} />
+          )}
 
           {/* Filtres */}
           <div className="mb-4 flex flex-wrap gap-2">
@@ -319,6 +350,156 @@ function EmptyState({ filter }: { filter: FilterId }) {
       </p>
     </div>
   )
+}
+
+// ─── Mes veilles : liste + toggle on/off + delete ────────────────────────
+
+function WatchesList({ watches, workspaceId }: { watches: Watch[]; workspaceId: string }) {
+  const t = useT()
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  // Toggle enabled (PATCH). Optimistic update — on flip le state local pour
+  // un retour visuel instantané, rollback côté onError.
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) =>
+      apiFetch(`/api/v1/watches/${id}`, {
+        method: 'PATCH',
+        body: { workspaceId, enabled },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['watches', workspaceId] })
+    },
+    onError: (err: unknown) => {
+      toast.push(err instanceof ApiError ? err.message : t('veille.watchesList.toggleError'))
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiFetch(`/api/v1/watches/${id}?workspaceId=${workspaceId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['watches', workspaceId] })
+      toast.push(t('veille.watchesList.deleted'))
+    },
+    onError: (err: unknown) => {
+      toast.push(err instanceof ApiError ? err.message : t('veille.watchesList.deleteError'))
+    },
+  })
+
+  const activeCount = watches.filter((w) => w.enabled).length
+
+  return (
+    <section className="mb-6">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h3 className="font-head text-base font-bold tracking-[-0.01em] text-text-1">
+          {t('veille.watchesList.title')}
+        </h3>
+        <span className="font-mono text-[11px] text-text-3">
+          {activeCount}/{watches.length} {t('veille.watchesList.activeSuffix')}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {watches.map((w) => (
+          <WatchRow
+            key={w.id}
+            watch={w}
+            onToggle={() => toggleMutation.mutate({ id: w.id, enabled: !w.enabled })}
+            onDelete={() => {
+              if (window.confirm(t('veille.watchesList.deleteConfirm'))) {
+                deleteMutation.mutate(w.id)
+              }
+            }}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function WatchRow({
+  watch,
+  onToggle,
+  onDelete,
+}: {
+  watch: Watch
+  onToggle: () => void
+  onDelete: () => void
+}) {
+  const t = useT()
+  const op = formatOperator(watch)
+  return (
+    <div className="flex items-start gap-3 rounded-brief border border-border bg-card p-3.5 shadow-card">
+      <button
+        type="button"
+        onClick={onToggle}
+        role="switch"
+        aria-checked={watch.enabled}
+        title={watch.enabled ? t('veille.watchesList.disable') : t('veille.watchesList.enable')}
+        className={[
+          'mt-0.5 flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors',
+          watch.enabled ? 'bg-brand-green' : 'bg-bg-3',
+        ].join(' ')}
+      >
+        <span
+          className={[
+            'h-4 w-4 rounded-full bg-white transition-transform',
+            watch.enabled ? 'translate-x-4' : 'translate-x-0.5',
+          ].join(' ')}
+        />
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13.5px] font-semibold leading-tight text-text-1">
+          {watch.description}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] text-text-3">
+          <span className="font-mono">{watch.metric_key}</span>
+          <span className="text-text-2">{op}</span>
+          {watch.notify_email && <span>· email</span>}
+          {watch.notify_in_app && <span>· in-app</span>}
+          {watch.triggered_count > 0 && (
+            <span className="text-brand-red">
+              · {watch.triggered_count}× {t('veille.watchesList.triggered')}
+            </span>
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={t('veille.watchesList.delete')}
+        title={t('veille.watchesList.delete')}
+        className="mt-0.5 flex-shrink-0 text-text-3 hover:text-brand-red"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path
+            d="M3 4h8m-1 0v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4m1.5 0V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+function formatOperator(w: Watch): string {
+  const t = w.threshold
+  switch (w.operator) {
+    case 'drops_below':
+      return `< ${t ?? '—'}`
+    case 'rises_above':
+      return `> ${t ?? '—'}`
+    case 'changes_by_pct':
+      return `Δ ≥ ${t ?? '—'} %`
+    case 'any_change':
+      return '∗ tout changement'
+    default:
+      return ''
+  }
 }
 
 // Illustration géométrique "watch" (handoff §Illustrations) : strokes 2.5–3px,
