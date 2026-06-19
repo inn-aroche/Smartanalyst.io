@@ -302,6 +302,29 @@ const en = {
   'sources.health.expired': 'Reconnect needed',
   'sources.health.failing': 'Sync failing',
   'sources.health.unknown': 'Pending',
+  // ─── Activation error states (cahier §3 Lot 0 / §4.1 / §4.7) ────────
+  'activation.error.oauth_error.title': "Couldn't finish connecting {{source}}",
+  'activation.error.oauth_error.body':
+    'The provider returned an error during the OAuth handshake. Nothing was saved — you can try again.',
+  'activation.error.oauth_provider_denied.title': 'Access wasn’t granted',
+  'activation.error.oauth_provider_denied.body':
+    'You — or someone in your account — declined the permission request. We need it to read your data; pick another account or grant access to retry.',
+  'activation.error.scope_mismatch.title': 'Partial permissions granted on {{source}}',
+  'activation.error.scope_mismatch.body':
+    'Some metrics will stay empty until full access is given. Reconnect to fix it — or keep going with what we have.',
+  'activation.error.insufficient_data.title': 'Not enough data yet',
+  'activation.error.insufficient_data.body':
+    'Your account is connected, but there’s less than 7 days of data to learn from. We’ll start producing insights as soon as we have enough.',
+  'activation.error.workspace_not_ready.title': 'Your workspace isn’t ready yet',
+  'activation.error.workspace_not_ready.body':
+    'We’re finishing your account setup. Refresh in a minute — if it persists, contact support.',
+  'activation.error.unknown.title': 'Something didn’t go through',
+  'activation.error.unknown.body':
+    'We weren’t able to confirm what happened. You can try again or come back later — nothing is broken on your side.',
+  'activation.cta.retry': 'Try again',
+  'activation.cta.reconnect': 'Reconnect',
+  'activation.cta.dismiss': 'Dismiss',
+  'activation.cta.contactSupport': 'Contact support',
   'sources.empty.connectors':
     'No source connected yet. Plug GA4, Meta Ads or Stripe in a few clicks — your dashboard will fill up automatically.',
   'sources.dropzone.title': 'Drop a file here',
@@ -1196,6 +1219,29 @@ const fr: Record<keyof typeof en, string> = {
   'sources.health.expired': 'Reconnexion requise',
   'sources.health.failing': 'Sync en échec',
   'sources.health.unknown': 'En attente',
+  // ─── États d'échec d'activation (cahier §3 Lot 0 / §4.1 / §4.7) ─────
+  'activation.error.oauth_error.title': 'Impossible de finaliser la connexion {{source}}',
+  'activation.error.oauth_error.body':
+    "Le provider a renvoyé une erreur pendant le handshake OAuth. Rien n'a été enregistré — tu peux retenter.",
+  'activation.error.oauth_provider_denied.title': "L'accès n'a pas été accordé",
+  'activation.error.oauth_provider_denied.body':
+    "Toi — ou quelqu'un sur le compte — as refusé la permission. On en a besoin pour lire tes données ; choisis un autre compte ou redonne l'accès pour retenter.",
+  'activation.error.scope_mismatch.title': 'Permissions partielles accordées sur {{source}}',
+  'activation.error.scope_mismatch.body':
+    "Certaines métriques resteront vides tant que l'accès complet n'est pas donné. Reconnecte pour corriger — ou continue avec ce qu'on a.",
+  'activation.error.insufficient_data.title': 'Pas encore assez de données',
+  'activation.error.insufficient_data.body':
+    "Ton compte est connecté, mais il y a moins de 7 jours de données exploitables. On commence à produire des insights dès qu'on en a assez.",
+  'activation.error.workspace_not_ready.title': "Ton workspace n'est pas tout à fait prêt",
+  'activation.error.workspace_not_ready.body':
+    'On finit la mise en place de ton compte. Rafraîchis dans une minute — si ça persiste, contacte le support.',
+  'activation.error.unknown.title': "Quelque chose n'est pas passé",
+  'activation.error.unknown.body':
+    "On n'a pas pu confirmer ce qui s'est joué. Tu peux retenter ou revenir plus tard — rien n'est cassé de ton côté.",
+  'activation.cta.retry': 'Retenter',
+  'activation.cta.reconnect': 'Reconnecter',
+  'activation.cta.dismiss': 'Fermer',
+  'activation.cta.contactSupport': 'Contacter le support',
   'sources.empty.connectors':
     'Aucune source connectée. Branche GA4, Meta Ads ou Stripe en quelques clics — ton tableau de bord se remplira tout seul.',
   'sources.dropzone.title': 'Dépose un fichier ici',

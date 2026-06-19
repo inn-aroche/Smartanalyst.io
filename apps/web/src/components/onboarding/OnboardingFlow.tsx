@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import ScoreRing from '@/components/charts/ScoreRing'
+import ActivationErrorState from '@/components/connectors/ActivationErrorState'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
@@ -850,6 +851,10 @@ function StepWow({
 }) {
   const t = useT()
   const hasScore = score?.has_data && typeof score.score === 'number'
+  // Compte tenu de l'audit Lot 0 : si on n'a ni score ni insight, on doit
+  // dire au user que c'est par manque de données (et pas crier "Voici ce
+  // que j'ai repéré" sur du vide).
+  const insufficient = !loadError && !hasScore && insights.length === 0
   return (
     <>
       <div className="mb-6 text-center">
@@ -861,12 +866,18 @@ function StepWow({
           {t('onboarding.s5.title')}
         </h1>
         <p className="text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s5.body')}</p>
-        {loadError && (
-          <div className="mx-auto mt-4 max-w-[440px] rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-left text-[13px] text-text-1">
-            {loadError}
-          </div>
-        )}
       </div>
+
+      {loadError && (
+        <div className="mx-auto max-w-[440px]">
+          <ActivationErrorState kind="workspace_not_ready" />
+        </div>
+      )}
+      {insufficient && (
+        <div className="mx-auto max-w-[440px]">
+          <ActivationErrorState kind="insufficient_data" />
+        </div>
+      )}
 
       <div className="sa-card mb-3.5">
         <div className="flex items-center gap-6">

@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
+import ActivationErrorState, {
+  type ActivationErrorKind,
+} from '@/components/connectors/ActivationErrorState'
 import SourceHealthBadge from '@/components/connectors/SourceHealthBadge'
 import { SkeletonCardGrid } from '@/components/Skeleton'
 import {
@@ -38,28 +41,57 @@ export default function ConnectorsPage() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<ConnectorCategory | 'All'>('All')
   const [searchParams, setSearchParams] = useSearchParams()
+  // État du panneau d'erreur/avertissement persistant après nettoyage de
+  // l'URL. Le user voit un message clair tant qu'il ne le ferme pas (cahier
+  // §3 Lot 0 — pas de happy-path optimiste sur les échecs d'activation).
+  const [activationFeedback, setActivationFeedback] = useState<{
+    kind: ActivationErrorKind
+    source: string | null
+    detail: string | null
+  } | null>(null)
 
   // Reprise post-callback OAuth — le backend redirige vers /connectors avec
-  // ?status=connected&source=X ou ?status=error&reason=X (cf.
+  // ?status=connected&source=X (optionnel warning=scope_mismatch &
+  // missing_scopes=...) ou ?status=error&reason=X (cf.
   // apps/api/src/routes/connectors.routes.js). On en profite pour tracker
   // l'event activation (measurement plan §6) et nettoyer l'URL.
   useEffect(() => {
     const status = searchParams.get('status')
     const source = searchParams.get('source')
     const reason = searchParams.get('reason')
+    const warning = searchParams.get('warning')
+    const missingScopes = searchParams.get('missing_scopes')
     if (!status) return
     if (status === 'connected' && source) {
       track('connector_connect_succeeded', { source })
+      if (warning === 'scope_mismatch') {
+        setActivationFeedback({
+          kind: 'scope_mismatch',
+          source,
+          detail: missingScopes ?? null,
+        })
+      }
     } else if (status === 'error') {
       track('connector_connect_failed', {
         source: source ?? null,
         reason: reason ?? null,
+      })
+      // Mapping reason backend → kind UI. Tout reason non reconnu retombe
+      // sur 'oauth_error' pour conserver un message exploitable.
+      const denied =
+        reason === 'access_denied' || reason === 'consent_required' || reason === 'user_denied'
+      setActivationFeedback({
+        kind: denied ? 'oauth_provider_denied' : 'oauth_error',
+        source: source ?? null,
+        detail: reason ?? null,
       })
     }
     const next = new URLSearchParams(searchParams)
     next.delete('status')
     next.delete('source')
     next.delete('reason')
+    next.delete('warning')
+    next.delete('missing_scopes')
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
 
@@ -128,6 +160,28 @@ export default function ConnectorsPage() {
             .
           </p>
         </div>
+
+        {activationFeedback && (
+          <ActivationErrorState
+            kind={activationFeedback.kind}
+            source={activationFeedback.source}
+            detail={activationFeedback.detail}
+            onPrimary={
+              activationFeedback.kind === 'scope_mismatch' ||
+              activationFeedback.kind === 'oauth_error' ||
+              activationFeedback.kind === 'oauth_provider_denied'
+                ? () => setActivationFeedback(null)
+                : undefined
+            }
+            primaryLabel={
+              activationFeedback.kind === 'scope_mismatch'
+                ? t('activation.cta.dismiss')
+                : t('activation.cta.retry')
+            }
+            onSecondary={() => setActivationFeedback(null)}
+            secondaryLabel={t('activation.cta.dismiss')}
+          />
+        )}
 
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
