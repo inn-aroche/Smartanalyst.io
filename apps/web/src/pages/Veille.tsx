@@ -43,6 +43,11 @@ type Watch = {
 
 type FilterId = 'all' | 'critical' | 'warning' | 'opportunity' | 'resolved'
 
+// Sous-onglet : on sépare ce que l'IA a remonté (insights) de ce que l'user
+// a programmé manuellement (watches). Ce sont 2 sujets cognitifs distincts
+// — les mélanger dans une seule liste pollue l'esprit.
+type TopTab = 'insights' | 'watches'
+
 export default function VeillePage() {
   const t = useT()
   const { locale } = useLocale()
@@ -50,6 +55,7 @@ export default function VeillePage() {
   const { state } = useAuth()
   const workspace = state.workspaces[0]
   const wsId = workspace?.id
+  const [topTab, setTopTab] = useState<TopTab>('insights')
   const [filter, setFilter] = useState<FilterId>('all')
   const [watchModalOpen, setWatchModalOpen] = useState(false)
 
@@ -154,78 +160,148 @@ export default function VeillePage() {
           {/* Bandeau résumé hebdo (gradient brand) */}
           <WeeklyRecap counts={counts} />
 
-          {/* Mes veilles : liste des watches actives + toggle / supprimer.
-              Affiché uniquement s'il y en a au moins 1, sinon ça surcharge
-              l'écran pour rien (le first-run state s'occupe du cas vide). */}
-          {(watchesQ.data?.watches?.length ?? 0) > 0 && (
-            <WatchesList watches={watchesQ.data?.watches ?? []} workspaceId={wsId ?? ''} />
-          )}
-
-          {/* Filtres */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            <FilterChip
-              active={filter === 'all'}
-              onClick={() => setFilter('all')}
-              label={t('veille.filter.all')}
+          {/* Top tabs : Insights (ce que l'IA remonte) vs Mes veilles (ce
+              que l'user a programmé). Cognitive split — c'est pas la même
+              chose et ça ne devrait pas vivre dans la même liste. */}
+          <div className="mb-4 flex border-b border-border">
+            <TopTabButton
+              active={topTab === 'insights'}
+              onClick={() => setTopTab('insights')}
+              label={t('veille.tab.insights')}
               count={counts.all}
             />
-            <FilterChip
-              active={filter === 'critical'}
-              onClick={() => setFilter('critical')}
-              label={t('veille.filter.critical')}
-              count={counts.critical}
-            />
-            <FilterChip
-              active={filter === 'warning'}
-              onClick={() => setFilter('warning')}
-              label={t('veille.filter.warning')}
-              count={counts.warning}
-            />
-            <FilterChip
-              active={filter === 'opportunity'}
-              onClick={() => setFilter('opportunity')}
-              label={t('veille.filter.opportunity')}
-              count={counts.opportunity}
-            />
-            <FilterChip
-              active={filter === 'resolved'}
-              onClick={() => setFilter('resolved')}
-              label={t('veille.filter.resolved')}
-              count={counts.resolved}
+            <TopTabButton
+              active={topTab === 'watches'}
+              onClick={() => setTopTab('watches')}
+              label={t('veille.tab.watches')}
+              count={watchesQ.data?.watches?.length ?? null}
             />
           </div>
 
-          {/* Liste */}
-          {loading ? (
-            <div className="flex flex-col gap-3.5">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-[180px] animate-pulse rounded-brief border border-border bg-card"
+          {/* Onglet "Mes veilles" : on remonte la liste + cas vide dédié */}
+          {topTab === 'watches' && (
+            <>
+              {(watchesQ.data?.watches?.length ?? 0) > 0 ? (
+                <WatchesList watches={watchesQ.data?.watches ?? []} workspaceId={wsId ?? ''} />
+              ) : (
+                <div className="rounded-brief border border-dashed border-border bg-card/60 p-8 text-center">
+                  <p className="mb-4 text-sm text-text-2">{t('veille.watchesList.empty')}</p>
+                  <button
+                    type="button"
+                    onClick={() => setWatchModalOpen(true)}
+                    className="sa-btn sa-btn-primary !text-[13px]"
+                  >
+                    + {t('veille.createAlert')}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Onglet "Insights" : filtres + liste comme avant */}
+          {topTab === 'insights' && (
+            <>
+              {/* Filtres */}
+              <div className="mb-4 flex flex-wrap gap-2">
+                <FilterChip
+                  active={filter === 'all'}
+                  onClick={() => setFilter('all')}
+                  label={t('veille.filter.all')}
+                  count={counts.all}
                 />
-              ))}
-            </div>
-          ) : list.length === 0 ? (
-            // Vraie première utilisation (pas de canonical_metrics) vs "all
-            // clear" (workspace branché mais rien à signaler) : on bascule sur
-            // FirstRunBlock dans le 1er cas pour donner une vraie direction
-            // à l'utilisateur.
-            filter === 'all' && !scoreQ.isLoading && !scoreQ.data?.has_data ? (
-              <VeilleFirstRun onOpenWatchModal={() => setWatchModalOpen(true)} />
-            ) : (
-              <EmptyState filter={filter} />
-            )
-          ) : (
-            <div className="flex flex-col gap-3.5">
-              {list.map((i) => (
-                <InsightCard key={i.id} insight={i} workspaceId={wsId ?? ''} locale={locale} />
-              ))}
-            </div>
+                <FilterChip
+                  active={filter === 'critical'}
+                  onClick={() => setFilter('critical')}
+                  label={t('veille.filter.critical')}
+                  count={counts.critical}
+                />
+                <FilterChip
+                  active={filter === 'warning'}
+                  onClick={() => setFilter('warning')}
+                  label={t('veille.filter.warning')}
+                  count={counts.warning}
+                />
+                <FilterChip
+                  active={filter === 'opportunity'}
+                  onClick={() => setFilter('opportunity')}
+                  label={t('veille.filter.opportunity')}
+                  count={counts.opportunity}
+                />
+                <FilterChip
+                  active={filter === 'resolved'}
+                  onClick={() => setFilter('resolved')}
+                  label={t('veille.filter.resolved')}
+                  count={counts.resolved}
+                />
+              </div>
+
+              {/* Liste */}
+              {loading ? (
+                <div className="flex flex-col gap-3.5">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="h-[180px] animate-pulse rounded-brief border border-border bg-card"
+                    />
+                  ))}
+                </div>
+              ) : list.length === 0 ? (
+                // Vraie première utilisation (pas de canonical_metrics) vs "all
+                // clear" (workspace branché mais rien à signaler) : on bascule sur
+                // FirstRunBlock dans le 1er cas pour donner une vraie direction
+                // à l'utilisateur.
+                filter === 'all' && !scoreQ.isLoading && !scoreQ.data?.has_data ? (
+                  <VeilleFirstRun onOpenWatchModal={() => setWatchModalOpen(true)} />
+                ) : (
+                  <EmptyState filter={filter} />
+                )
+              ) : (
+                <div className="flex flex-col gap-3.5">
+                  {list.map((i) => (
+                    <InsightCard key={i.id} insight={i} workspaceId={wsId ?? ''} locale={locale} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
       {watchModalOpen && <WatchModal onClose={() => setWatchModalOpen(false)} />}
     </AppLayout>
+  )
+}
+
+function TopTabButton({
+  active,
+  onClick,
+  label,
+  count,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  count: number | null
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        '-mb-px border-b-2 px-4 py-2.5 text-[13.5px] font-semibold transition-colors',
+        active
+          ? 'border-brand-blue-deep text-text-1'
+          : 'border-transparent text-text-3 hover:text-text-1',
+      ].join(' ')}
+    >
+      {label}
+      {count != null && count > 0 && (
+        <span
+          className={`ml-1.5 font-mono text-[11px] ${active ? 'text-brand-blue-deep' : 'text-text-3'}`}
+        >
+          {count}
+        </span>
+      )}
+    </button>
   )
 }
 
