@@ -231,9 +231,11 @@ export default function ChatPage() {
           workspaceId,
           locale,
           fileIds: attachedFileId ? [attachedFileId] : undefined,
-          // null au 1er tour → le backend crée le fil et renvoie son ID
-          // qu'on persiste localement pour les tours suivants.
-          conversationId,
+          // Au 1er tour conversationId est null — on OMET la clé du payload
+          // pour qu'express-validator ne tente pas de valider `null` comme
+          // un UUID (validation côté API stricte). Backend crée le fil et
+          // renvoie son ID qu'on persiste pour les tours suivants.
+          ...(conversationId ? { conversationId } : {}),
         },
       })
       if (res.conversationId && res.conversationId !== conversationId) {
