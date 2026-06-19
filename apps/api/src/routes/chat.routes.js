@@ -45,7 +45,13 @@ router.post(
     body('fileIds.*').optional().isUUID().withMessage('fileId invalide.'),
     // Mémoire de conversation (migration 031) : si fourni, on charge
     // l'historique du fil. Sinon on en crée un nouveau.
-    body('conversationId').optional().isUUID().withMessage('conversationId invalide.'),
+    // `nullable: true` : le frontend peut envoyer `null` explicite au 1er
+    // tour (avant qu'un fil ait été créé). Sans ce flag, express-validator
+    // appellerait isUUID() sur null et rejetterait.
+    body('conversationId')
+      .optional({ nullable: true, checkFalsy: false })
+      .isUUID()
+      .withMessage('conversationId invalide.'),
   ],
   runValidation,
   async (req, res, next) => {
