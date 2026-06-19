@@ -8,6 +8,7 @@ import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { pickSuggestions } from '@/lib/chat-suggestions'
 import { useLocale, useT } from '@/lib/i18n'
+import { renderMarkdown } from '@/lib/markdown'
 
 type SaFile = {
   id: string
@@ -97,39 +98,48 @@ export default function ChatPage() {
 
   const workspaceId = state.workspaces[0]?.id
 
+  // Charge une conversation par id : fetch + hydrate state + met à jour le
+  // localStorage. Utilisé par (a) la reprise auto au mount et (b) la
+  // sidebar ConversationPicker qui permet de switcher de fil.
+  async function loadConversation(convId: string): Promise<void> {
+    if (!workspaceId || !convId) return
+    setError(null)
+    try {
+      const data = await apiFetch<ConversationDetail>(
+        `/api/v1/chat/conversations/${convId}?workspaceId=${workspaceId}`,
+      )
+      setConversationId(data.conversation.id)
+      const hydrated: Message[] = data.messages.map((m) =>
+        m.role === 'user'
+          ? { id: m.id, role: 'user', text: m.content }
+          : {
+              id: m.id,
+              role: 'assistant',
+              text: m.content,
+              sources: m.sources,
+              highlights: m.highlights,
+            },
+      )
+      setMessages(hydrated)
+      const key = lastConversationKey(workspaceId)
+      if (key) window.localStorage.setItem(key, data.conversation.id)
+    } catch {
+      // 404 (conv supprimée) ou autre : on clear et on repart fresh.
+      const key = lastConversationKey(workspaceId)
+      if (key) window.localStorage.removeItem(key)
+    }
+  }
+
   // Reprise du fil précédent : au mount, on regarde localStorage pour la
-  // dernière conversation de ce workspace. Si elle existe, on la fetch et
-  // on hydrate l'historique. Best-effort : si elle a été supprimée côté
-  // backend, on tombe sur un 404 silencieux et on repart d'une nouvelle.
+  // dernière conversation de ce workspace. Best-effort.
   useEffect(() => {
     if (!workspaceId) return
     const key = lastConversationKey(workspaceId)
     if (!key) return
     const lastId = window.localStorage.getItem(key)
     if (!lastId) return
-    void (async () => {
-      try {
-        const data = await apiFetch<ConversationDetail>(
-          `/api/v1/chat/conversations/${lastId}?workspaceId=${workspaceId}`,
-        )
-        setConversationId(data.conversation.id)
-        const hydrated: Message[] = data.messages.map((m) =>
-          m.role === 'user'
-            ? { id: m.id, role: 'user', text: m.content }
-            : {
-                id: m.id,
-                role: 'assistant',
-                text: m.content,
-                sources: m.sources,
-                highlights: m.highlights,
-              },
-        )
-        setMessages(hydrated)
-      } catch {
-        // 404 (conv supprimée) ou autre : on clear et on repart fresh.
-        window.localStorage.removeItem(key)
-      }
-    })()
+    void loadConversation(lastId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId])
 
   function startNewConversation() {
@@ -279,19 +289,25 @@ export default function ChatPage() {
             </span>
             <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{t('chat.title')}</h1>
           </div>
-          {/* Bouton "Nouvelle conversation" : visible dès qu'on a au moins
-              un message (sinon on est déjà sur du frais). Reset le state +
-              clear le localStorage du workspace. */}
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={startNewConversation}
-              className="sa-btn !text-xs"
-              title={t('chat.new.title')}
-            >
-              + {t('chat.new.cta')}
-            </button>
-          )}
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {workspaceId && (
+              <ConversationPicker
+                workspaceId={workspaceId}
+                currentId={conversationId}
+                onPick={(id) => void loadConversation(id)}
+              />
+            )}
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={startNewConversation}
+                className="sa-btn !text-xs"
+                title={t('chat.new.title')}
+              >
+                + {t('chat.new.cta')}
+              </button>
+            )}
+          </div>
         </div>
 
         <div
@@ -429,8 +445,8 @@ function MessageBubble({ message }: { message: Message }) {
         <div className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-text-3">
           {t('chat.assistant')}
         </div>
-        <div className="whitespace-pre-wrap rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm leading-relaxed text-text-1">
-          {renderWithCitations(text, byId)}
+        <div className="rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm text-text-1">
+          {renderMarkdown(text, (id, key) => renderCitation(id, key, byId))}
         </div>
         {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini. */}
         <HighlightStack highlights={highlights} />
@@ -484,60 +500,39 @@ function mapErrorToMessage(err: unknown, t: ReturnType<typeof useT>): string {
 }
 
 /**
- * Découpe le texte autour des marqueurs [N] et remplace chaque marqueur par
- * un span superscript cliquable qui scroll vers la pilule source en dessous.
- * Si l'ID est inconnu (modèle a fabriqué un marqueur), on laisse en clair.
+ * Rend un marqueur de citation [N] :
+ *   - bouton cliquable qui scroll vers la pilule source (cas normal)
+ *   - span grisé si l'ID ne correspond à rien (modèle a fabriqué le marqueur)
+ *
+ * Appelé par renderMarkdown au fil de la prose (le markdown s'occupe du
+ * **gras**, italique et bullets, on s'occupe juste des [N]).
  */
-function renderWithCitations(text: string, byId: Map<number, Source>) {
-  const parts: Array<string | { id: number; key: string }> = []
-  const re = /\[(\d+)\](?!\w)/g
-  let lastIndex = 0
-  let m
-  let k = 0
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index))
-    const id = Number(m[1])
-    parts.push({ id, key: `cite-${k++}-${m.index}` })
-    lastIndex = m.index + m[0].length
+function renderCitation(id: number, key: string, byId: Map<number, Source>) {
+  const src = byId.get(id)
+  if (!src) {
+    return (
+      <span key={key} className="text-text-3">
+        [{id}]
+      </span>
+    )
   }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
-
   return (
-    <>
-      {parts.map((p, i) => {
-        if (typeof p === 'string') return <span key={i}>{p}</span>
-        const src = byId.get(p.id)
-        if (!src) {
-          // ID fabriqué → on garde le marqueur tel quel (signale au user que ce n'est pas une vraie source)
-          return (
-            <span key={p.key} className="text-text-3">
-              [{p.id}]
-            </span>
-          )
-        }
-        return (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => {
-              const el = document.getElementById(`source-${p.id}`)
-              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-              el?.animate(
-                [
-                  { boxShadow: '0 0 0 2px var(--brand-cyan)' },
-                  { boxShadow: '0 0 0 0 transparent' },
-                ],
-                { duration: 1200 },
-              )
-            }}
-            className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-brand-cyan/40 bg-brand-cyan/10 px-1 align-super font-mono text-[9px] font-semibold text-brand-cyan transition hover:bg-brand-cyan/20"
-            title={`${src.label}: ${src.formattedValue} (${src.providers.join(', ')})`}
-          >
-            {p.id}
-          </button>
+    <button
+      key={key}
+      type="button"
+      onClick={() => {
+        const el = document.getElementById(`source-${id}`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        el?.animate(
+          [{ boxShadow: '0 0 0 2px var(--brand-cyan)' }, { boxShadow: '0 0 0 0 transparent' }],
+          { duration: 1200 },
         )
-      })}
-    </>
+      }}
+      className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-brand-cyan/40 bg-brand-cyan/10 px-1 align-super font-mono text-[9px] font-semibold text-brand-cyan transition hover:bg-brand-cyan/20"
+      title={`${src.label}: ${src.formattedValue} (${src.providers.join(', ')})`}
+    >
+      {id}
+    </button>
   )
 }
 
@@ -567,4 +562,120 @@ function Dot({ delay }: { delay: string }) {
       style={{ animationDelay: delay, animationDuration: '1.2s' }}
     />
   )
+}
+
+// ─── Conversation picker — dropdown des fils du workspace ────────────────
+// Pas une sidebar full-page (overkill pour ~10-50 conversations). Un
+// dropdown qui list les 50 plus récents, clic = on charge le fil.
+
+type ConvSummary = {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+function ConversationPicker({
+  workspaceId,
+  currentId,
+  onPick,
+}: {
+  workspaceId: string
+  currentId: string | null
+  onPick: (id: string) => void
+}) {
+  const t = useT()
+  const { locale } = useLocale()
+  const [open, setOpen] = useState(false)
+  const q = useQuery({
+    queryKey: ['chat', 'conversations', workspaceId],
+    enabled: Boolean(workspaceId) && open,
+    queryFn: () =>
+      apiFetch<{ conversations: ConvSummary[] }>(
+        `/api/v1/chat/conversations?workspaceId=${workspaceId}`,
+      ),
+    staleTime: 30_000,
+  })
+
+  // Ferme au clic en dehors. Stratégie simple : on capture le clic global
+  // quand le menu est ouvert ; si la cible n'est pas dans notre ref, on
+  // ferme. Pas besoin d'une lib pour ça.
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    window.addEventListener('mousedown', onClickOutside)
+    return () => window.removeEventListener('mousedown', onClickOutside)
+  }, [open])
+
+  const conversations = q.data?.conversations ?? []
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="sa-btn !text-xs"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        {t('chat.history.cta')} ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1.5 w-[300px] max-h-[60vh] overflow-y-auto rounded-brief border border-border bg-card shadow-float">
+          {q.isLoading && (
+            <div className="px-3 py-3 text-xs text-text-3">{t('chat.history.loading')}</div>
+          )}
+          {!q.isLoading && conversations.length === 0 && (
+            <div className="px-3 py-3 text-xs text-text-3">{t('chat.history.empty')}</div>
+          )}
+          {!q.isLoading && conversations.length > 0 && (
+            <ul role="listbox" className="py-1">
+              {conversations.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPick(c.id)
+                      setOpen(false)
+                    }}
+                    aria-selected={c.id === currentId}
+                    className={[
+                      'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors',
+                      c.id === currentId
+                        ? 'bg-brand-blue-dim text-text-1'
+                        : 'text-text-2 hover:bg-bg-2 hover:text-text-1',
+                    ].join(' ')}
+                  >
+                    <span className="line-clamp-1 text-[13px] font-semibold">{c.title}</span>
+                    <span className="font-mono text-[10px] text-text-3">
+                      {formatRelative(c.updated_at, locale)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatRelative(iso: string, locale: string): string {
+  const d = new Date(iso)
+  const diffMs = Date.now() - d.getTime()
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 1) return locale === 'fr' ? "à l'instant" : 'just now'
+  if (minutes < 60) return locale === 'fr' ? `il y a ${minutes} min` : `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return locale === 'fr' ? `il y a ${hours} h` : `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return locale === 'fr' ? `il y a ${days} j` : `${days}d ago`
+  return d.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+  })
 }

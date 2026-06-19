@@ -171,8 +171,12 @@ const en = {
     "All quiet on the watch front — I'll surface anything new the moment I spot it.",
   'veille.empty.resolved': 'Nothing handled yet.',
   // Watches list (mes veilles : toggle on/off + delete)
+  'veille.tab.insights': 'Insights',
+  'veille.tab.watches': 'My watches',
   'veille.watchesList.title': 'My watches',
   'veille.watchesList.activeSuffix': 'active',
+  'veille.watchesList.empty':
+    "You haven't programmed any watch yet. Create one to get pinged when a metric moves.",
   'veille.watchesList.disable': 'Pause this watch',
   'veille.watchesList.enable': 'Resume this watch',
   'veille.watchesList.delete': 'Delete this watch',
@@ -321,6 +325,9 @@ const en = {
   'chat.removeAttachment': 'Remove attachment',
   'chat.new.cta': 'New conversation',
   'chat.new.title': 'Start a fresh conversation — current one stays saved.',
+  'chat.history.cta': 'My conversations',
+  'chat.history.loading': 'Loading…',
+  'chat.history.empty': 'No saved conversations yet.',
   'chatWidget.open': 'Open AI assistant',
   'chatWidget.close': 'Close',
   'chatWidget.title': 'Ask SmartAnalyst',
@@ -1052,9 +1059,14 @@ const fr: Record<keyof typeof en, string> = {
   'veille.firstRun.template.churn': 'Surveiller le churn qui spike',
   'veille.firstRun.template.churnSub': '« Alerte-moi quand mon churn mensuel dépasse 5 % »',
   'veille.empty.resolved': 'Aucun insight traité pour le moment.',
+  // Onglets top : insights IA vs veilles programmées
+  'veille.tab.insights': 'Insights',
+  'veille.tab.watches': 'Mes veilles',
   // Watches list (mes veilles : toggle on/off + delete)
   'veille.watchesList.title': 'Mes veilles',
   'veille.watchesList.activeSuffix': 'actives',
+  'veille.watchesList.empty':
+    "Tu n'as pas encore programmé de veille. Crées-en une pour être prévenu quand une métrique bouge.",
   'veille.watchesList.disable': 'Mettre en pause',
   'veille.watchesList.enable': 'Réactiver',
   'veille.watchesList.delete': 'Supprimer cette veille',
@@ -1193,6 +1205,9 @@ const fr: Record<keyof typeof en, string> = {
   'chat.removeAttachment': 'Retirer le fichier',
   'chat.new.cta': 'Nouvelle conversation',
   'chat.new.title': "Démarrer un nouveau fil — l'actuel reste sauvegardé.",
+  'chat.history.cta': 'Mes conversations',
+  'chat.history.loading': 'Chargement…',
+  'chat.history.empty': "Aucune conversation sauvegardée pour l'instant.",
   'chatWidget.open': 'Ouvrir l’assistant IA',
   'chatWidget.close': 'Fermer',
   'chatWidget.title': 'Demande à SmartAnalyst',
