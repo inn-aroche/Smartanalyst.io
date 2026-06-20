@@ -214,6 +214,9 @@ router.post(
       } else if (err && err.code === 'CLAUDE_NOT_CONFIGURED') {
         code = 'AI_NOT_CONFIGURED'
         message = "Le mode Approfondi n'est pas encore configuré côté serveur."
+      } else if (err && err.code === 'AI_CREDIT_DEPLETED') {
+        code = 'AI_CREDIT_DEPLETED'
+        message = 'Le mode Approfondi est temporairement indisponible. Réessaie en mode Rapide.'
       } else {
         // Erreur non classifiée : on logue côté serveur pour investigation,
         // on n'expose pas le détail au client.

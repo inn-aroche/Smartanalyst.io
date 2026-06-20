@@ -379,6 +379,8 @@ const en = {
     'Too many questions at once — the AI is saturated. Give it a few seconds and try again.',
   'chat.error.timeout': 'That took too long. Try again — sometimes the second pass is faster.',
   'chat.error.providerDown': 'The AI is temporarily unavailable. Try again in a minute.',
+  'chat.error.creditDepleted':
+    'Deep mode is temporarily unavailable. Switch back to Quick mode to keep going.',
   'chat.you': 'You',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',
@@ -1344,6 +1346,8 @@ const fr: Record<keyof typeof en, string> = {
   'chat.error.timeout':
     'La réponse a mis trop de temps. Réessaie, parfois la 2e passe est plus rapide.',
   'chat.error.providerDown': "L'IA est temporairement indisponible. Réessaie dans une minute.",
+  'chat.error.creditDepleted':
+    'Le mode Approfondi est temporairement indisponible. Repasse en mode Rapide pour continuer.',
   'chat.you': 'Toi',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',

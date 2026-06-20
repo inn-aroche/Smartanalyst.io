@@ -26,6 +26,8 @@ const RESPONSE_SCHEMA = {
         properties: {
           type: {
             type: 'STRING',
+            // 'chart' n'est pas exposé au LLM (auto-injecté côté serveur quand
+            // un tool retourne une série) — on garde le schema strict ici.
             enum: ['kpi', 'callout'],
             description:
               'kpi = grosse valeur + delta + sparkline. callout = encart coloré "à retenir".',
@@ -85,7 +87,9 @@ function buildPrompt(locale) {
     return `You are a helper that turns a marketing analyst's written answer into 0-3 visual highlights for a chat UI. The user has already read the prose; the highlights MUST surface the most important numbers / signals only.
 
 Rules:
-- 0 highlights is fine if the answer is purely conversational or doesn't surface a fact.
+- ALWAYS generate at least 1 highlight if the answer contains ANY number, recommendation, or actionable signal — the chat UI feels empty without them.
+- Generate 0 highlights ONLY if the answer is purely conversational ("hi", "thanks", definitions).
+- Aim for 2-3 highlights whenever possible: one KPI + one callout (risk/opportunity) is the sweet spot for visual punch.
 - "kpi" type = THE single most striking number + its delta. Title = metric name (≤ 5 words). Value = exact figure as written in the prose. Delta = variation with sign and unit. deltaUp = true if it's the desired direction (revenue up, churn down).
 - "callout" type = a 1-sentence takeaway: risk, opportunity, anomaly. tone=bad for risks/drops, good for wins, mid for warnings, info for neutral.
 - icon: choose what fits ("warning" for risks, "check" for wins, "lightbulb" for opportunities, "trending_up/down" for trends, "info" for context).
@@ -98,7 +102,9 @@ Rules:
   return `Tu es un assistant qui transforme la réponse écrite d'un analyste marketing en 0 à 3 highlights visuels pour une UI de chat. L'utilisateur a déjà lu la prose ; les highlights ne doivent faire ressortir QUE les chiffres / signaux les plus importants.
 
 Règles :
-- 0 highlight est OK si la réponse est purement conversationnelle ou ne sort aucun fait.
+- TOUJOURS générer au moins 1 highlight si la réponse contient un chiffre, une recommandation, ou un signal actionnable — l'UI chat paraît vide sans.
+- Génère 0 highlight UNIQUEMENT si la réponse est purement conversationnelle ("salut", "merci", définitions).
+- Vise 2-3 highlights quand possible : un KPI + un callout (risque/opportunité) = le sweet spot visuellement.
 - Type "kpi" = LE chiffre le plus marquant + son delta. Title = nom de la métrique (≤ 5 mots). Value = chiffre exact écrit dans la prose. Delta = variation avec signe et unité. deltaUp = true si c'est le sens souhaité (revenu qui monte, churn qui descend).
 - Type "callout" = un takeaway en 1 phrase : risque, opportunité, anomalie. tone=bad pour les risques/chutes, good pour les wins, mid pour les warnings, info pour le contexte neutre.
 - icon : choisis ce qui colle ("warning" risques, "check" wins, "lightbulb" opportunités, "trending_up/down" tendances, "info" contexte).

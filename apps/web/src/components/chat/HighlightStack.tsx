@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 import Sparkline from '@/components/charts/Sparkline'
 
 export type Highlight = {
-  type: 'kpi' | 'callout'
+  type: 'kpi' | 'callout' | 'chart'
   title: string
   value?: string | null
   delta?: string | null
@@ -21,17 +21,125 @@ export type Highlight = {
   sourceIds?: number[]
   sparkline?: number[] | null
   cta?: { href: string; label: string } | null
+  // Pour type='chart' (auto-injecté backend quand un tool retourne une série
+  // temporelle) : série complète + labels x. Permet un vrai histogramme/courbe
+  // pleine largeur dans la réponse.
+  series?: Array<{ date: string; value: number }> | null
+  chartKind?: 'bar' | 'line' | null
+  unit?: string | null
 }
 
 export default function HighlightStack({ highlights }: { highlights: Highlight[] }) {
   if (!highlights || highlights.length === 0) return null
   return (
     <div className="mt-3 flex flex-col gap-2.5">
-      {highlights.map((h, i) =>
-        h.type === 'kpi' ? <KpiHighlight key={i} h={h} /> : <CalloutHighlight key={i} h={h} />,
-      )}
+      {highlights.map((h, i) => {
+        if (h.type === 'chart') return <ChartHighlight key={i} h={h} />
+        if (h.type === 'kpi') return <KpiHighlight key={i} h={h} />
+        return <CalloutHighlight key={i} h={h} />
+      })}
     </div>
   )
+}
+
+// ─── Chart (auto-injecté quand un tool retourne une série temporelle) ────
+// Pleine largeur, axe x = dates abrégées, axe y = max auto. Bar par défaut
+// (plus lisible pour les daily breakdowns courts) ; line si chartKind='line'.
+
+function ChartHighlight({ h }: { h: Highlight }) {
+  const data = h.series && h.series.length >= 2 ? h.series : null
+  if (!data) return null
+  const max = Math.max(...data.map((p) => p.value), 1)
+  const kind = h.chartKind || 'bar'
+  return (
+    <div className="rounded-brief border border-border bg-card p-4 shadow-card">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <div className="text-[13px] font-semibold text-text-1">{h.title}</div>
+        {h.summary && <div className="truncate text-[11.5px] text-text-3">{h.summary}</div>}
+      </div>
+      {kind === 'bar' ? <BarChart data={data} max={max} /> : <LineChart data={data} max={max} />}
+    </div>
+  )
+}
+
+function BarChart({ data, max }: { data: Array<{ date: string; value: number }>; max: number }) {
+  // Hauteur fixe 120px, largeur des barres calculée pour occuper toute la
+  // largeur du container avec un gap de 6px. SVG rendu inline pour le contrôle
+  // pixel-parfait + accessible via aria-label.
+  const barW = `calc((100% - ${(data.length - 1) * 6}px) / ${data.length})`
+  return (
+    <div
+      className="flex h-[120px] items-end gap-1.5"
+      role="img"
+      aria-label={`Bar chart, ${data.length} points, max ${max}`}
+    >
+      {data.map((p) => {
+        const hPct = max > 0 ? (p.value / max) * 100 : 0
+        return (
+          <div
+            key={p.date}
+            className="flex flex-col items-center"
+            style={{ width: barW }}
+            title={`${p.date} — ${formatValue(p.value)}`}
+          >
+            <div className="flex h-full w-full flex-col justify-end">
+              <div
+                className="w-full rounded-t-[3px] bg-brand-blue-deep transition-all"
+                style={{ height: `${Math.max(hPct, 2)}%` }}
+              />
+            </div>
+            <div
+              className="mt-1 truncate font-mono text-[9px] uppercase text-text-3"
+              style={{ maxWidth: '100%' }}
+            >
+              {formatDateShort(p.date)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function LineChart({ data, max }: { data: Array<{ date: string; value: number }>; max: number }) {
+  const w = 100
+  const h = 30
+  const step = data.length > 1 ? w / (data.length - 1) : 0
+  const points = data
+    .map((p, i) => `${i * step},${h - (max > 0 ? (p.value / max) * h : 0)}`)
+    .join(' ')
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      className="h-[120px] w-full"
+      role="img"
+      aria-label={`Line chart, ${data.length} points, max ${max}`}
+    >
+      <polyline
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        points={points}
+        className="text-brand-blue-deep"
+      />
+    </svg>
+  )
+}
+
+function formatValue(v: number): string {
+  if (Math.abs(v) >= 1000)
+    return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)
+  return String(Math.round(v * 100) / 100)
+}
+
+function formatDateShort(iso: string): string {
+  // "2026-06-14" → "14/6"
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return iso
+  return `${parseInt(m[2], 10)}/${parseInt(m[1], 10)}`
 }
 
 // ─── KPI ────────────────────────────────────────────────────────────────

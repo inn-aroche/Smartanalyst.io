@@ -89,6 +89,13 @@ choses directement (action_card / watch). Utilise-les quand c'est pertinent :
 - "préviens-moi si…", "alerte-moi quand…" → create_watch
 Sinon, propose simplement l'action en texte et laisse l'user décider.
 
+GRANULARITÉ TEMPORELLE — Le bloc "Métriques du workspace" ci-dessous contient
+des agrégats 30 jours, pas la série journalière. Si l'user demande une vue par
+jour/semaine ("évolution depuis X jours", "jour par jour", "détail quotidien",
+"par semaine"), APPELLE le tool get_metric_series avec la metric_key et le bon
+nombre de days — NE réponds JAMAIS que tu n'as pas accès à la granularité, tu
+l'as via ce tool.
+
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
 un marqueur [N] (ex: [1], [2]). Quand tu cites un chiffre issu de ces métriques,
 AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture
@@ -128,6 +135,12 @@ ACTION HOOKS — You have tools that let you directly CREATE things
 - "add a task to…", "remind me to…" → create_action_card
 - "alert me if…", "let me know when…" → create_watch
 Otherwise, just propose the action in text and let the user decide.
+
+TIME GRANULARITY — The "User's workspace metrics" block below contains
+30-day aggregates, not daily series. If the user asks for a per-day/week
+view ("evolution over X days", "day by day", "daily breakdown", "weekly"),
+CALL the get_metric_series tool with the metric_key and days — NEVER answer
+that you don't have the granularity, you do via this tool.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
 with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
@@ -798,12 +811,17 @@ async function askStream({
   ]
 
   // Routing provider (cahier ADR-04) :
-  //   - mode='deep' + ANTHROPIC_API_KEY → Claude Sonnet (analyse approfondie,
-  //     pas de function-calling sur ce 1er round)
-  //   - sinon → Gemini Flash (tool-use complet, latence plus basse)
+  //   - mode='deep' + ANTHROPIC_API_KEY → Claude Sonnet (analyse approfondie)
+  //   - sinon → Gemini Flash (latence plus basse)
+  // Function-calling : porté aux deux providers — claude.service convertit
+  // les declarations Gemini en input_schema Anthropic en interne.
   const useClaude = mode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
-  const MAX_TOOL_ROUNDS = useClaude ? 0 : 3
+  const MAX_TOOL_ROUNDS = 3
   const toolsUsed = []
+  // Capture des séries temporelles retournées par les tools (get_metric_series).
+  // Auto-injectées en fin de tour comme highlights `chart` pour rendre une vraie
+  // viz au lieu d'une bullet list dans la prose.
+  const toolSeries = []
   let finalText = ''
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
@@ -818,9 +836,7 @@ async function askStream({
       out = await streamFn({
         systemPrompt,
         contents: history,
-        // Claude ignore `tools` ici (function-calling non porté) — passage
-        // sans effet. Gemini en a besoin pour exposer les crochets.
-        tools: useClaude ? undefined : chatTools.DECLARATIONS,
+        tools: chatTools.DECLARATIONS,
         temperature: 0.4,
         onDelta: (delta) => emit({ type: 'delta', text: delta }),
       })
@@ -856,6 +872,21 @@ async function askStream({
           { workspaceId, userId },
         )
         toolsUsed.push(call.name)
+        // Capture des séries temporelles pour auto-injection en highlight chart.
+        // get_metric_series retourne { points: [{date,value},...] } — on garde
+        // tel quel avec un peu de méta pour le rendu.
+        if (
+          call.name === 'get_metric_series' &&
+          Array.isArray(res?.points) &&
+          res.points.length >= 2
+        ) {
+          toolSeries.push({
+            metricKey: res.metric_key || call.args?.metric_key || 'series',
+            days: res.days || call.args?.days || res.points.length,
+            sources: res.sources || [],
+            points: res.points,
+          })
+        }
         return { functionResponse: { name: call.name, response: { result: res } } }
       }),
     )
@@ -911,7 +942,7 @@ async function askStream({
       if (error) logger.warn({ event: 'chat_audit_failed', error: error.message })
     })
 
-  const highlights = await chatHighlights.extract({
+  const extractedHighlights = await chatHighlights.extract({
     workspaceId,
     userId,
     question: message,
@@ -919,6 +950,12 @@ async function askStream({
     sources: usedSources,
     locale,
   })
+
+  // Auto-injection des highlights `chart` à partir des séries retournées par
+  // les tools (typiquement get_metric_series). Posés AVANT les highlights
+  // extraits par la 2e passe Gemini pour qu'ils soient visuellement prioritaires.
+  const chartHighlights = toolSeries.map((s) => buildChartHighlight(s, locale))
+  const highlights = [...chartHighlights, ...extractedHighlights]
 
   if (conversation) {
     try {
@@ -951,6 +988,31 @@ async function askStream({
     highlights,
     conversationId: conversation?.id || null,
   })
+}
+
+/**
+ * Construit un highlight `chart` à partir d'une série temporelle retournée
+ * par un tool (get_metric_series). Titre humanisé via METRIC_LABELS quand
+ * dispo, sinon fallback metric_key brut.
+ */
+function buildChartHighlight(series, locale) {
+  const label = METRIC_LABELS[series.metricKey]
+  const title = label
+    ? `${locale === 'en' ? label.en : label.fr} — ${series.days}j`
+    : `${series.metricKey} — ${series.days}j`
+  const summary = series.sources?.length
+    ? `${locale === 'en' ? 'source' : 'source'} : ${series.sources.join(', ')}`
+    : null
+  return {
+    type: 'chart',
+    title,
+    summary,
+    series: series.points,
+    chartKind: 'bar',
+    metricKey: series.metricKey,
+    unit: label?.unit || null,
+    tone: 'info',
+  }
 }
 
 module.exports = { ask, askStream, AiBudgetExceededError, ChatProviderError, classifyGeminiError }

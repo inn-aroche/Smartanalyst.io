@@ -387,8 +387,10 @@ export default function ChatPage() {
           />
         )}
 
-        {/* Colonne chat */}
-        <div className="mx-auto flex max-w-3xl flex-1 flex-col px-6 py-8 md:py-10">
+        {/* Colonne chat — élargie (max-w-5xl) pour laisser respirer les
+            highlights/tableaux dans les réponses. La sidebar conversations
+            prend 280px à gauche, le reste est au chat. */}
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-8 md:py-10">
           <div className="mb-6 flex-shrink-0">
             <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
               {t('chat.kicker')}
@@ -730,6 +732,8 @@ function mapErrorToMessage(err: unknown, t: ReturnType<typeof useT>): string {
         return t('chat.error.timeout')
       case 'AI_PROVIDER_DOWN':
         return t('chat.error.providerDown')
+      case 'AI_CREDIT_DEPLETED':
+        return t('chat.error.creditDepleted')
       default:
         return err.status === 503 ? err.message : err.message || t('chat.error')
     }
@@ -767,10 +771,10 @@ function renderCitation(id: number, key: string, byId: Map<number, Source>) {
           { duration: 1200 },
         )
       }}
-      className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-brand-cyan/40 bg-brand-cyan/10 px-1 align-super font-mono text-[9px] font-semibold text-brand-cyan transition hover:bg-brand-cyan/20"
+      className="ml-0.5 align-super font-mono text-[10px] text-text-3 transition hover:text-brand-cyan"
       title={`${src.label}: ${src.formattedValue} (${src.providers.join(', ')})`}
     >
-      {id}
+      [{id}]
     </button>
   )
 }
