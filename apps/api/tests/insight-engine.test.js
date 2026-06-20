@@ -6,6 +6,7 @@ const assert = require('node:assert/strict')
 const SUPABASE_PATH = require.resolve('../src/lib/supabase')
 const GEMINI_PATH = require.resolve('../src/services/ai/gemini.service')
 const AGG_PATH = require.resolve('../src/services/insights/aggregator.service')
+const NOTIF_PATH = require.resolve('../src/services/notifications/notification-center.service')
 const ENGINE_PATH = require.resolve('../src/services/insights/insight-engine.service')
 
 function load({ context, geminiJson, geminiThrows, insertError = null } = {}) {
@@ -47,6 +48,21 @@ function load({ context, geminiJson, geminiThrows, insertError = null } = {}) {
   require.cache[AGG_PATH] = {
     id: AGG_PATH, filename: AGG_PATH, loaded: true,
     exports: { buildContext: async () => context },
+  }
+  // Mock no-op du Centre de notifications : sinon le `void createNotification(...)`
+  // ajouté en Lot 1 essaie d'écrire dans Supabase (mock incomplet pour ce
+  // chemin) et leak une rejection async qui fait planter le test runner.
+  require.cache[NOTIF_PATH] = {
+    id: NOTIF_PATH, filename: NOTIF_PATH, loaded: true,
+    exports: {
+      createNotification: async () => ({ id: 'notif-noop' }),
+      listForUser: async () => [],
+      unreadCount: async () => 0,
+      markAsRead: async () => true,
+      markAllAsRead: async () => 0,
+      ALLOWED_TYPES: new Set(),
+      ALLOWED_SEVERITIES: new Set(),
+    },
   }
 
   delete require.cache[ENGINE_PATH]

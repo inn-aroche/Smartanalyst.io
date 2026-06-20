@@ -6,6 +6,7 @@ const assert = require('node:assert/strict')
 const SUPABASE_PATH = require.resolve('../src/lib/supabase')
 const CANONICAL_PATH = require.resolve('../src/services/metrics/canonical-metrics.service')
 const DIGEST_PATH = require.resolve('../src/services/notifications/digest.service')
+const NOTIF_PATH = require.resolve('../src/services/notifications/notification-center.service')
 const SERVICE_PATH = require.resolve('../src/services/watches/watch-evaluator.service')
 
 function loadIsolated() {
@@ -100,6 +101,23 @@ function load({ metrics = [], insightInsertError = null, recentlyTriggered = fal
         captured.alertSent = insight
         return { sent: true }
       },
+    },
+  }
+  // Mock no-op du Centre de notifications : sinon le `void createNotification(...)`
+  // ajouté en Lot 1 réutilise le `chain` mock supabase et pollue `captured.insightRow`
+  // avec le payload notif (fait fail les assertions sur severity/category).
+  require.cache[NOTIF_PATH] = {
+    id: NOTIF_PATH,
+    filename: NOTIF_PATH,
+    loaded: true,
+    exports: {
+      createNotification: async () => ({ id: 'notif-noop' }),
+      listForUser: async () => [],
+      unreadCount: async () => 0,
+      markAsRead: async () => true,
+      markAllAsRead: async () => 0,
+      ALLOWED_TYPES: new Set(),
+      ALLOWED_SEVERITIES: new Set(),
     },
   }
   delete require.cache[SERVICE_PATH]

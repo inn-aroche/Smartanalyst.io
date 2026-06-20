@@ -269,17 +269,21 @@ async function persistTrigger(watch, latest, previous, condition) {
   }
   // 4. notify_in_app (cahier §3 Lot 1) : on pousse aussi une notif dans le
   //    Centre de notifications (cloche), pas seulement un insight au fil.
-  //    Best-effort, l'insight reste la source de vérité.
+  //    Best-effort : l'insight reste la source de vérité, et la rejection
+  //    éventuelle est avalée (.catch) pour ne pas faire crasher les tests
+  //    qui mock Supabase de façon incomplète sur le path notif.
   if (watch.notify_in_app !== false) {
-    void notificationCenter.createNotification({
-      workspaceId: watch.workspace_id,
-      type: 'watch_triggered',
-      severity: 'warning',
-      title,
-      body: summary ? String(summary).slice(0, 280) : null,
-      link: '/veille',
-      meta: { watch_id: watch.id, insight_id: insight?.id || null },
-    })
+    notificationCenter
+      .createNotification({
+        workspaceId: watch.workspace_id,
+        type: 'watch_triggered',
+        severity: 'warning',
+        title,
+        body: summary ? String(summary).slice(0, 280) : null,
+        link: '/veille',
+        meta: { watch_id: watch.id, insight_id: insight?.id || null },
+      })
+      .catch(() => null)
   }
 }
 

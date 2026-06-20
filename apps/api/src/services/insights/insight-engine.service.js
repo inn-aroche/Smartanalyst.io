@@ -206,21 +206,25 @@ async function generateForWorkspace(workspaceId) {
         created++
         // Notification in-app (cahier §3 Lot 1) — toute création d'insight
         // génère une notif, la sévérité visuelle dépend de celle de l'insight.
-        // Best-effort : un échec n'interrompt pas la génération.
-        void notificationCenter.createNotification({
-          workspaceId,
-          type: 'insight_created',
-          severity:
-            insight.severity === 'critical' || insight.severity === 'high'
-              ? 'critical'
-              : insight.severity === 'medium'
-                ? 'warning'
-                : 'info',
-          title: insight.title,
-          body: insight.summary ? String(insight.summary).slice(0, 280) : null,
-          link: '/veille',
-          meta: { insight_id: r.insightId, severity: insight.severity },
-        })
+        // Best-effort : un échec n'interrompt pas la génération, et la
+        // rejection éventuelle est avalée pour ne pas faire crasher le runner
+        // de tests (qui mock Supabase de façon incomplète sur le path notif).
+        notificationCenter
+          .createNotification({
+            workspaceId,
+            type: 'insight_created',
+            severity:
+              insight.severity === 'critical' || insight.severity === 'high'
+                ? 'critical'
+                : insight.severity === 'medium'
+                  ? 'warning'
+                  : 'info',
+            title: insight.title,
+            body: insight.summary ? String(insight.summary).slice(0, 280) : null,
+            link: '/veille',
+            meta: { insight_id: r.insightId, severity: insight.severity },
+          })
+          .catch(() => null)
         // Brief V2 §3.3 : alerte email immédiate sur insight critical
         // nouvellement créé (la veille qui prévient AVANT qu'on demande).
         // Best-effort, jamais bloquant pour la génération.
