@@ -6,7 +6,9 @@ import BillingSection from '@/components/billing/BillingSection'
 import CopyButton from '@/components/CopyButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import AiUsageBlock from '@/components/settings/AiUsageBlock'
+import ApiKeysSection from '@/components/settings/ApiKeysSection'
 import NotificationSettings from '@/components/settings/NotificationSettings'
+import WhiteLabelSection from '@/components/settings/WhiteLabelSection'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { openConsentPreferences } from '@/lib/consent'
@@ -116,6 +118,14 @@ function SettingsContent() {
 
       <Section title={t('settings.section.billing')}>
         <BillingSection />
+      </Section>
+
+      <Section title={t('settings.section.whiteLabel')}>
+        <WhiteLabelSection />
+      </Section>
+
+      <Section title={t('settings.section.apiKeys')}>
+        <ApiKeysSection />
       </Section>
 
       <Section title={t('settings.section.tracking')}>

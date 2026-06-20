@@ -800,6 +800,49 @@ const en = {
     'Change the language of the interface. Your choice is saved on this device.',
   'settings.section.tracking': 'Tracking — SmartTag',
   'settings.section.billing': 'Plan & billing',
+  'settings.section.whiteLabel': 'Branding',
+  'settings.section.apiKeys': 'API keys',
+  // ━━━ White-label (cahier §3 Lot 4) ━━━
+  'whiteLabel.title': 'Brand colors and logo',
+  'whiteLabel.body':
+    'Customize the look of generated reports and your workspace. Reflected on every report you export.',
+  'whiteLabel.color': 'Brand color',
+  'whiteLabel.color.invalid': 'Must be #RRGGBB',
+  'whiteLabel.logo': 'Logo URL',
+  'whiteLabel.logo.invalid': 'Must be a https:// URL',
+  'whiteLabel.save': 'Save branding',
+  'whiteLabel.saving': 'Saving…',
+  'whiteLabel.saved': 'Saved',
+  'whiteLabel.error': 'Save failed',
+  // ━━━ API keys (cahier §3 Lot 4) ━━━
+  'apiKeys.title': 'API keys',
+  'apiKeys.body':
+    'Generate keys to script access to your workspace data (export, automations, custom integrations).',
+  'apiKeys.create': 'Generate key',
+  'apiKeys.create.nameLabel': 'Key name',
+  'apiKeys.create.namePlaceholder': 'e.g. Zapier prod, monthly export script',
+  'apiKeys.creating': 'Generating…',
+  'apiKeys.confirm': 'Generate',
+  'apiKeys.cancel': 'Cancel',
+  'apiKeys.error': 'Generation failed',
+  'apiKeys.empty': 'No API keys yet. Generate one to get started.',
+  'apiKeys.lastUsed': 'Last used',
+  'apiKeys.revoked': 'Revoked',
+  'apiKeys.revoke': 'Revoke',
+  'apiKeys.revoke.confirm':
+    'Revoke this key? Any script still using it will stop working immediately.',
+  'apiKeys.revealed.warning': '⚠ Copy this key now — it will never be shown again.',
+  'apiKeys.revealed.body':
+    "Store it in a password manager or env variable. We only keep a hash, so we can't show it again.",
+  'apiKeys.revealed.dismiss': "I've copied it, hide",
+  'apiKeys.footer':
+    "API key format: sa_test_…/sa_live_… · 32 base62 chars. Pass it as 'Authorization: Bearer <key>'.",
+  // ━━━ Veille snooze (cahier §3 Lot 4) ━━━
+  'watch.snooze.button': 'Snooze',
+  'watch.snooze.24h': 'For 24h',
+  'watch.snooze.7d': 'For 7 days',
+  'watch.snooze.cancel': 'Resume now',
+  'watch.snoozed.until': 'Snoozed until {{date}}',
   // ━━━ Billing (cahier §3 Lot 3) ━━━
   'billing.currentPlan': 'Current plan',
   'billing.active': 'Active',
@@ -1808,6 +1851,49 @@ const fr: Record<keyof typeof en, string> = {
     'Change la langue de l’interface. Ton choix est gardé sur cet appareil.',
   'settings.section.tracking': 'Tracking — SmartTag',
   'settings.section.billing': 'Plan & facturation',
+  'settings.section.whiteLabel': 'Branding',
+  'settings.section.apiKeys': 'Clés API',
+  // ━━━ White-label (cahier §3 Lot 4) ━━━
+  'whiteLabel.title': 'Couleurs de marque et logo',
+  'whiteLabel.body':
+    'Personnalise le rendu des rapports générés et de ton workspace. Appliqué sur chaque export.',
+  'whiteLabel.color': 'Couleur principale',
+  'whiteLabel.color.invalid': 'Format #RRGGBB attendu',
+  'whiteLabel.logo': 'URL du logo',
+  'whiteLabel.logo.invalid': 'Doit être une URL https://',
+  'whiteLabel.save': 'Enregistrer',
+  'whiteLabel.saving': 'Sauvegarde…',
+  'whiteLabel.saved': 'Sauvegardé',
+  'whiteLabel.error': 'Échec de la sauvegarde',
+  // ━━━ Clés API (cahier §3 Lot 4) ━━━
+  'apiKeys.title': 'Clés API',
+  'apiKeys.body':
+    "Génère des clés pour scripter l'accès aux données de ton workspace (export, automatisations, intégrations custom).",
+  'apiKeys.create': 'Générer une clé',
+  'apiKeys.create.nameLabel': 'Nom de la clé',
+  'apiKeys.create.namePlaceholder': 'ex. Zapier prod, script export mensuel',
+  'apiKeys.creating': 'Génération…',
+  'apiKeys.confirm': 'Générer',
+  'apiKeys.cancel': 'Annuler',
+  'apiKeys.error': 'Échec de la génération',
+  'apiKeys.empty': 'Pas encore de clé API. Génères-en une pour commencer.',
+  'apiKeys.lastUsed': 'Dernière utilisation',
+  'apiKeys.revoked': 'Révoquée',
+  'apiKeys.revoke': 'Révoquer',
+  'apiKeys.revoke.confirm':
+    'Révoquer cette clé ? Tout script qui l’utilise encore arrêtera de fonctionner immédiatement.',
+  'apiKeys.revealed.warning': '⚠ Copie cette clé maintenant — elle ne sera plus jamais affichée.',
+  'apiKeys.revealed.body':
+    "Stocke-la dans un gestionnaire de mot de passe ou une variable d'environnement. On ne garde qu'un hash, on ne peut pas la re-montrer.",
+  'apiKeys.revealed.dismiss': "Je l'ai copiée, masquer",
+  'apiKeys.footer':
+    "Format : sa_test_…/sa_live_… · 32 caractères base62. À passer dans l'header 'Authorization: Bearer <clé>'.",
+  // ━━━ Veille snooze (cahier §3 Lot 4) ━━━
+  'watch.snooze.button': 'Mettre en pause',
+  'watch.snooze.24h': 'Pendant 24 h',
+  'watch.snooze.7d': 'Pendant 7 jours',
+  'watch.snooze.cancel': 'Réactiver maintenant',
+  'watch.snoozed.until': 'En pause jusqu’au {{date}}',
   // ━━━ Billing (cahier §3 Lot 3) ━━━
   'billing.currentPlan': 'Plan actuel',
   'billing.active': 'Actif',

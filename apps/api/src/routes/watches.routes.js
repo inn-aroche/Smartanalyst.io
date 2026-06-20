@@ -85,6 +85,15 @@ router.patch(
     body('enabled').optional().isBoolean(),
     body('notify_in_app').optional().isBoolean(),
     body('notify_email').optional().isBoolean(),
+    // Snooze (cahier §3 Lot 4) : `snooze_hours` raccourci pour suspendre
+    // pendant N heures (1 à 168 = 1 semaine), OU `snoozed_until=null` pour
+    // annuler le snooze. Edition de la métrique surveillée : threshold +
+    // description peuvent être mis à jour (mais pas metric_key/operator —
+    // sinon autant créer une nouvelle veille).
+    body('snooze_hours').optional().isInt({ min: 0, max: 168 }),
+    body('snoozed_until').optional({ nullable: true }).isISO8601(),
+    body('description').optional().isString().bail().trim().isLength({ min: 3, max: 280 }),
+    body('threshold').optional({ nullable: true }).isNumeric(),
   ],
   runValidation,
   workspaceScope,

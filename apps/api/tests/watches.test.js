@@ -118,8 +118,10 @@ test('createWatch : insertion correcte avec defaults', async () => {
 
 test('patchWatch : aucun champ → throw EMPTY_PATCH', async () => {
   const { svc } = load()
+  // metric_key et operator restent non-éditables (cf. Lot 4 : on autorise
+  // l'édition de description / threshold / snooze mais pas la métrique elle-même).
   await assert.rejects(
-    () => svc.patchWatch('ws-1', 'w-1', { description: 'on triche' }),
+    () => svc.patchWatch('ws-1', 'w-1', { metric_key: 'forbidden' }),
     (e) => e.code === 'EMPTY_PATCH',
   )
 })
@@ -128,10 +130,37 @@ test('patchWatch : ne garde que les champs whitelistés', async () => {
   const { svc, captured } = load()
   await svc.patchWatch('ws-1', 'w-1', {
     enabled: false,
-    description: 'forbidden',
+    description: 'nouvelle desc',
     metric_key: 'forbidden',
+    operator: 'forbidden',
   })
-  assert.deepEqual(captured.updateRow, { enabled: false })
+  // description est désormais whitelistée (Lot 4) ; metric_key/operator ne le
+  // sont pas. updated_at est posé automatiquement.
+  assert.equal(captured.updateRow.enabled, false)
+  assert.equal(captured.updateRow.description, 'nouvelle desc')
+  assert.ok(captured.updateRow.updated_at, 'updated_at posé automatiquement')
+  assert.equal(captured.updateRow.metric_key, undefined)
+  assert.equal(captured.updateRow.operator, undefined)
+})
+
+test('patchWatch : snooze_hours → snoozed_until calculé', async () => {
+  const { svc, captured } = load()
+  const before = Date.now()
+  await svc.patchWatch('ws-1', 'w-1', { snooze_hours: 24 })
+  const after = Date.now()
+  assert.ok(captured.updateRow.snoozed_until, 'snoozed_until posé')
+  const snoozedAtMs = new Date(captured.updateRow.snoozed_until).getTime()
+  assert.ok(
+    snoozedAtMs >= before + 24 * 3_600_000 - 1000 &&
+      snoozedAtMs <= after + 24 * 3_600_000 + 1000,
+    'snoozed_until ≈ now + 24h',
+  )
+})
+
+test('patchWatch : snooze_hours=0 → snoozed_until=null (annule)', async () => {
+  const { svc, captured } = load()
+  await svc.patchWatch('ws-1', 'w-1', { snooze_hours: 0 })
+  assert.strictEqual(captured.updateRow.snoozed_until, null)
 })
 
 test('listWatches : passe-plat', async () => {
