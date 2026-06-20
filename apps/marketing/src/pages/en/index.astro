@@ -4,7 +4,7 @@ import BrandMark from '../../components/BrandMark.astro';
 import LogoStrip from '../../components/LogoStrip.astro';
 import LogoIcon from '../../components/LogoIcon.astro';
 import '../../styles/landing.css';
-import { PLANS, PLAN_ORDER } from '@smartanalyst/shared/pricing';
+import { PLANS, PUBLIC_PLAN_ORDER } from '@smartanalyst/shared/pricing';
 
 const HERO_CONNECTORS = [
   { icon: 'ga4' },
@@ -23,7 +23,7 @@ const softwareApplication = {
   url: 'https://smartanalyst.io/en',
   description:
     'Conversational AI marketing analyst. Connect GA4, Meta Ads, Google Ads, Stripe and Search Console and get structured answers about your performance, causes, evidence and recommended actions.',
-  offers: PLAN_ORDER.map((key) => ({
+  offers: PUBLIC_PLAN_ORDER.map((key) => ({
     '@type': 'Offer',
     name: PLANS[key].label,
     price: PLANS[key].priceEurMonth,
