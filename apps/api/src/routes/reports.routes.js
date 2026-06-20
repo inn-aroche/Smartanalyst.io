@@ -47,6 +47,9 @@ router.post(
       .isIn(['source'])
       .withMessage('segmentBy must be "source" or null.'),
     body('compareToPreviousPeriod').optional().isBoolean(),
+    // Lot 4 : templates + mot de l'analyste IA.
+    body('template').optional().isIn(['standard', 'executive', 'detail', 'agency']),
+    body('aiNote').optional().isBoolean(),
   ],
   runValidation,
   workspaceScope,
@@ -66,6 +69,8 @@ router.post(
         sources: Array.isArray(req.body.sources) ? req.body.sources : undefined,
         segmentBy: req.body.segmentBy || null,
         compareToPreviousPeriod: !!req.body.compareToPreviousPeriod,
+        template: req.body.template || 'standard',
+        aiNote: !!req.body.aiNote,
       })
       res.status(201).json({ id: result.id })
     } catch (err) {

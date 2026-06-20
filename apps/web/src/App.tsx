@@ -8,6 +8,7 @@ import BetaLocked from './pages/BetaLocked'
 import BriefHome from './pages/BriefHome'
 import Chat from './pages/Chat'
 import Connectors from './pages/Connectors'
+import InviteAccept from './pages/InviteAccept'
 import Live from './pages/Live'
 import Login from './pages/Login'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
@@ -30,6 +31,7 @@ export default function App() {
       <Route path="/beta-locked" element={<BetaLocked />} />
       <Route path="/reset-password/request" element={<ResetPasswordRequest />} />
       <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
+      <Route path="/invite/accept" element={<InviteAccept />} />
       <Route
         path="/"
         element={

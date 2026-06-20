@@ -3,7 +3,7 @@
 // Le HTML rendu côté backend est affiché dans un <iframe srcdoc>, et
 // l'export PDF se fait via window.print() — zéro dépendance Chromium.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
@@ -44,6 +44,17 @@ export default function ReportsPage() {
   const wsId = workspace?.id ?? ''
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [genOpen, setGenOpen] = useState(false)
+
+  // Ecoute la palette : "Générer un rapport" ouvre le modal direct.
+  useEffect(() => {
+    function onAction(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail === 'create-report') setGenOpen(true)
+    }
+    window.addEventListener('sa-palette:action', onAction)
+    return () => window.removeEventListener('sa-palette:action', onAction)
+  }, [])
+
   // Gating (cahier §3 Lot 3) : sur plan Free, la génération de rapports
   // n'est pas incluse → on remplace le bouton "+ Générer" par un UpgradePrompt
   // contextualisé.
@@ -314,6 +325,11 @@ function ReportGenModal({
   const [segmentBy, setSegmentBy] = useState<'none' | 'source'>('none')
   const [compareToPrev, setCompareToPrev] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  // Template + mot de l'analyste IA (cahier §3 Lot 4).
+  const [template, setTemplate] = useState<'standard' | 'executive' | 'detail' | 'agency'>(
+    'standard',
+  )
+  const [aiNote, setAiNote] = useState(false)
 
   // Liste des connecteurs actifs pour le multi-select sources.
   const connectorsQ = useQuery({
@@ -345,6 +361,8 @@ function ReportGenModal({
           ...(selectedSources.length > 0 ? { sources: selectedSources } : {}),
           ...(segmentBy === 'source' ? { segmentBy: 'source' } : {}),
           compareToPreviousPeriod: compareToPrev,
+          template,
+          aiNote,
         },
       }),
     onSuccess: (res) => {
@@ -414,10 +432,36 @@ function ReportGenModal({
               />
             </div>
           </div>
+          <div>
+            <div className="sa-label">{t('reports.gen.template')}</div>
+            <select
+              value={template}
+              onChange={(e) => setTemplate(e.target.value as typeof template)}
+              className="sa-input !py-2.5"
+            >
+              <option value="standard">{t('reports.kind.monthly')}</option>
+              <option value="executive">{t('reports.gen.template.executive')}</option>
+              <option value="detail">{t('reports.gen.template.detail')}</option>
+              <option value="agency">{t('reports.gen.template.agency')}</option>
+            </select>
+          </div>
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-border bg-bg-2 px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={aiNote}
+              onChange={(e) => setAiNote(e.target.checked)}
+              className="mt-0.5 accent-brand-blue-deep"
+            />
+            <div>
+              <div className="text-sm text-text-1">{t('reports.gen.aiNote')}</div>
+              <div className="mt-0.5 text-[11.5px] text-text-3">{t('reports.gen.aiNote.hint')}</div>
+            </div>
+          </label>
           <label className="flex cursor-pointer items-center gap-2.5 rounded-[10px] border border-border bg-bg-2 px-3 py-2.5">
             <input
               type="checkbox"
-              checked={whiteLabel}
+              checked={whiteLabel || template === 'agency'}
+              disabled={template === 'agency'}
               onChange={(e) => setWhiteLabel(e.target.checked)}
               className="accent-brand-blue-deep"
             />

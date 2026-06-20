@@ -11,7 +11,7 @@
 //
 // Données : /api/v1/insights — filtré côté client par sévérité.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
@@ -60,6 +60,16 @@ export default function VeillePage() {
   const [topTab, setTopTab] = useState<TopTab>('insights')
   const [filter, setFilter] = useState<FilterId>('all')
   const [watchModalOpen, setWatchModalOpen] = useState(false)
+
+  // Ecoute des actions de la command palette (cahier §3 Lot 4).
+  useEffect(() => {
+    function onAction(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail === 'create-watch') setWatchModalOpen(true)
+    }
+    window.addEventListener('sa-palette:action', onAction)
+    return () => window.removeEventListener('sa-palette:action', onAction)
+  }, [])
 
   // 2 queries : insights open + insights résolus (pour l'onglet "Traités").
   // L'API filtre par status, on n'a donc qu'à demander les 2 buckets une fois.

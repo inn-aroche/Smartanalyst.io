@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import AppLayout, { useToast } from '@/components/AppLayout'
@@ -8,6 +8,7 @@ import LocaleSwitcher from '@/components/LocaleSwitcher'
 import AiUsageBlock from '@/components/settings/AiUsageBlock'
 import ApiKeysSection from '@/components/settings/ApiKeysSection'
 import NotificationSettings from '@/components/settings/NotificationSettings'
+import TeamSection from '@/components/settings/TeamSection'
 import WhiteLabelSection from '@/components/settings/WhiteLabelSection'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -36,6 +37,17 @@ function SettingsContent() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [confirmText, setConfirmText] = useState('')
+
+  // Ecoute la command palette pour scroller jusqu'a la section demandee.
+  useEffect(() => {
+    function onAction(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail === 'open-billing') scrollToSection('section-billing')
+      else if (detail === 'invite-member') scrollToSection('section-team')
+    }
+    window.addEventListener('sa-palette:action', onAction)
+    return () => window.removeEventListener('sa-palette:action', onAction)
+  }, [])
 
   async function handleExport() {
     setExportError(null)
@@ -116,8 +128,12 @@ function SettingsContent() {
         <Field label={t('settings.field.yourRole')} value={workspace?.role ?? '—'} />
       </Section>
 
-      <Section title={t('settings.section.billing')}>
+      <Section title={t('settings.section.billing')} id="section-billing">
         <BillingSection />
+      </Section>
+
+      <Section title={t('settings.section.team')} id="section-team">
+        <TeamSection />
       </Section>
 
       <Section title={t('settings.section.whiteLabel')}>
@@ -291,15 +307,32 @@ function SettingsContent() {
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  id,
+}: {
+  title: string
+  children: React.ReactNode
+  id?: string
+}) {
   return (
-    <section className="mb-10">
+    <section id={id} className="mb-10 scroll-mt-20">
       <h2 className="mb-3 font-head text-sm font-semibold uppercase tracking-widest text-text-3">
         {title}
       </h2>
       <div className="flex flex-col gap-3">{children}</div>
     </section>
   )
+}
+
+function scrollToSection(id: string) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // Highlight visuel court (3s) pour signaler ou on a atterri.
+  el.classList.add('ring-2', 'ring-brand-cyan/40', 'rounded-xl')
+  setTimeout(() => el.classList.remove('ring-2', 'ring-brand-cyan/40', 'rounded-xl'), 2400)
 }
 
 function buildSettingsSnippet(writeKey: string): string {
