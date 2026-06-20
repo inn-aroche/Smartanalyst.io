@@ -89,6 +89,13 @@ choses directement (action_card / watch). Utilise-les quand c'est pertinent :
 - "préviens-moi si…", "alerte-moi quand…" → create_watch
 Sinon, propose simplement l'action en texte et laisse l'user décider.
 
+GRANULARITÉ TEMPORELLE — Le bloc "Métriques du workspace" ci-dessous contient
+des agrégats 30 jours, pas la série journalière. Si l'user demande une vue par
+jour/semaine ("évolution depuis X jours", "jour par jour", "détail quotidien",
+"par semaine"), APPELLE le tool get_metric_series avec la metric_key et le bon
+nombre de days — NE réponds JAMAIS que tu n'as pas accès à la granularité, tu
+l'as via ce tool.
+
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
 un marqueur [N] (ex: [1], [2]). Quand tu cites un chiffre issu de ces métriques,
 AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture
@@ -128,6 +135,12 @@ ACTION HOOKS — You have tools that let you directly CREATE things
 - "add a task to…", "remind me to…" → create_action_card
 - "alert me if…", "let me know when…" → create_watch
 Otherwise, just propose the action in text and let the user decide.
+
+TIME GRANULARITY — The "User's workspace metrics" block below contains
+30-day aggregates, not daily series. If the user asks for a per-day/week
+view ("evolution over X days", "day by day", "daily breakdown", "weekly"),
+CALL the get_metric_series tool with the metric_key and days — NEVER answer
+that you don't have the granularity, you do via this tool.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
 with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
@@ -798,11 +811,12 @@ async function askStream({
   ]
 
   // Routing provider (cahier ADR-04) :
-  //   - mode='deep' + ANTHROPIC_API_KEY → Claude Sonnet (analyse approfondie,
-  //     pas de function-calling sur ce 1er round)
-  //   - sinon → Gemini Flash (tool-use complet, latence plus basse)
+  //   - mode='deep' + ANTHROPIC_API_KEY → Claude Sonnet (analyse approfondie)
+  //   - sinon → Gemini Flash (latence plus basse)
+  // Function-calling : porté aux deux providers — claude.service convertit
+  // les declarations Gemini en input_schema Anthropic en interne.
   const useClaude = mode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
-  const MAX_TOOL_ROUNDS = useClaude ? 0 : 3
+  const MAX_TOOL_ROUNDS = 3
   const toolsUsed = []
   let finalText = ''
   let modelName = ''
@@ -818,9 +832,7 @@ async function askStream({
       out = await streamFn({
         systemPrompt,
         contents: history,
-        // Claude ignore `tools` ici (function-calling non porté) — passage
-        // sans effet. Gemini en a besoin pour exposer les crochets.
-        tools: useClaude ? undefined : chatTools.DECLARATIONS,
+        tools: chatTools.DECLARATIONS,
         temperature: 0.4,
         onDelta: (delta) => emit({ type: 'delta', text: delta }),
       })
