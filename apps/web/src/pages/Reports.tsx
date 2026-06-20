@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
+import DataFreshnessChip from '@/components/DataFreshnessChip'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -59,18 +60,16 @@ export default function ReportsPage() {
         subtitle={
           workspace ? `${workspace.name} · ${t('reports.subtitle')}` : t('reports.subtitle')
         }
-        rightChip={
-          <span className="sa-chip bg-brand-green/10 text-brand-green">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-            {t('nav.dataUpToDate')}
-          </span>
-        }
+        rightChip={<DataFreshnessChip />}
         primaryAction={{ label: t('nav.askQuestion'), onClick: () => navigate('/chat') }}
       />
 
-      <div className="grid h-[calc(100vh-4rem)] grid-cols-[280px_1fr] gap-0 lg:h-[calc(100vh-4.5rem)]">
+      {/* Layout responsive : sur mobile, liste pleine largeur en haut, détail
+          en dessous (scroll naturel). À partir de md (≥768px), 2 colonnes
+          côte à côte sur la hauteur viewport. */}
+      <div className="grid h-[calc(100vh-4rem)] grid-cols-1 gap-0 md:grid-cols-[280px_1fr] lg:h-[calc(100vh-4.5rem)]">
         {/* Panneau gauche : liste */}
-        <aside className="overflow-y-auto border-r border-border bg-bg-2 p-4">
+        <aside className="max-h-[40vh] overflow-y-auto border-b border-border bg-bg-2 p-4 md:max-h-none md:border-b-0 md:border-r">
           <button
             type="button"
             onClick={() => setGenOpen(true)}

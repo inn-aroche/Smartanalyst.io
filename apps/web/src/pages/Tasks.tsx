@@ -89,7 +89,7 @@ export default function TasksPage() {
         {!q.isLoading && actions.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {COLUMNS.map((col) => (
               <Column
                 key={col.key}

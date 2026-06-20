@@ -4,6 +4,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import ChatWidget from './ChatWidget'
 import LocaleSwitcher from './LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
+import { openGlobalSearch } from '@/components/GlobalSearch'
 import NotificationBell from '@/components/notifications/NotificationBell'
 import { type StringKey, useT } from '@/lib/i18n'
 
@@ -224,6 +225,7 @@ export function Topbar({
       </div>
       <div className="ml-4 flex flex-shrink-0 items-center gap-2.5">
         {rightChip}
+        <SearchButton />
         <NotificationBell />
         {primaryAction && (
           <button
@@ -236,6 +238,34 @@ export function Topbar({
         )}
       </div>
     </div>
+  )
+}
+
+// Bouton Recherche topbar — déclenche l'ouverture du modal `GlobalSearch`.
+// Le raccourci Cmd+K reste actif partout dans l'app (cf. GlobalSearch.tsx).
+function SearchButton() {
+  const t = useT()
+  return (
+    <button
+      type="button"
+      onClick={openGlobalSearch}
+      aria-label={t('search.open.aria')}
+      title={t('search.open.aria')}
+      className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] border border-border bg-card text-text-2 hover:bg-card-hover"
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <line
+          x1="10.5"
+          y1="10.5"
+          x2="14"
+          y2="14"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+      </svg>
+    </button>
   )
 }
 

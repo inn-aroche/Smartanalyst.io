@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import ConsentBanner from './components/ConsentBanner'
 import ErrorBoundary from './components/ErrorBoundary'
+import GlobalSearch from './components/GlobalSearch'
 import OnboardingFlow from './components/onboarding/OnboardingFlow'
 import { AuthProvider } from './lib/auth'
 import { installGlobalErrorReporting } from './lib/client-errors'
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
                 <App />
                 <ConsentBanner />
                 <OnboardingFlow />
+                <GlobalSearch />
               </TrackingProvider>
             </AuthProvider>
           </LocaleProvider>

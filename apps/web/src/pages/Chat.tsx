@@ -87,6 +87,18 @@ export default function ChatPage() {
   // Fichier joint à la prochaine requête. Persiste tant que l'user ne
   // l'enlève pas — l'assistant peut s'y référer dans plusieurs échanges.
   const [attachedFileId, setAttachedFileId] = useState<string | null>(null)
+  // Toggle Rapide/Approfondi (cahier ADR-04). Persiste dans localStorage
+  // pour qu'un user qui préfère "Approfondi" ne reswitche pas à chaque
+  // ouverture. Jamais "Gemini"/"Claude" exposés en UI (terminologie CLAUDE.md).
+  const [mode, setMode] = useState<'fast' | 'deep'>(() => {
+    if (typeof window === 'undefined') return 'fast'
+    const stored = window.localStorage.getItem('sa-chat:mode')
+    return stored === 'deep' ? 'deep' : 'fast'
+  })
+  // AbortController du stream en cours — permet le bouton "Stop".
+  const abortRef = useRef<AbortController | null>(null)
+  // Feedback par message (en mémoire pour l'instant — persist API à brancher).
+  const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({})
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -237,12 +249,16 @@ export default function ChatPage() {
     // des chunks, on finalise au 'done' avec sources + highlights.
     let accumulated = ''
     let errored = false
+    const controller = new AbortController()
+    abortRef.current = controller
     try {
       await apiStream('/api/v1/chat/stream', {
+        signal: controller.signal,
         body: {
           message: trimmed,
           workspaceId,
           locale,
+          mode,
           fileIds: attachedFileId ? [attachedFileId] : undefined,
           ...(conversationId ? { conversationId } : {}),
         },
@@ -305,10 +321,51 @@ export default function ChatPage() {
         },
       })
     } catch (err) {
-      if (!errored) {
+      // Abort = user a cliqué "Stop". On garde le texte accumulé, on retire
+      // le flag streaming, et on ne montre PAS d'erreur (c'était volontaire).
+      if (controller.signal.aborted) {
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === pendingMsg.id
+              ? accumulated
+                ? {
+                    id: msg.id,
+                    role: 'assistant',
+                    text: accumulated + ' …',
+                    streaming: false,
+                  }
+                : msg
+              : msg,
+          ),
+        )
+      } else if (!errored) {
         setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
         setError(mapErrorToMessage(err, t))
       }
+    } finally {
+      abortRef.current = null
+    }
+  }
+
+  function stopGeneration() {
+    abortRef.current?.abort()
+  }
+
+  function setModeAndPersist(next: 'fast' | 'deep') {
+    setMode(next)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('sa-chat:mode', next)
+    }
+  }
+
+  function recordFeedback(messageId: string, value: 'up' | 'down') {
+    setFeedback((m) => ({
+      ...m,
+      [messageId]: m[messageId] === value ? (undefined as never) : value,
+    }))
+    // Event qualité IA (cahier §6) — signal d'hallucination quand thumbs down.
+    if (value === 'down') {
+      track('insight_dismissed_as_wrong', { source: 'chat', message_id: messageId })
     }
   }
 
@@ -348,7 +405,12 @@ export default function ChatPage() {
             ) : (
               <div className="flex flex-col gap-5">
                 {messages.map((m) => (
-                  <MessageBubble key={m.id} message={m} />
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    feedback={m.role === 'assistant' && 'text' in m ? feedback[m.id] : undefined}
+                    onFeedback={(v) => recordFeedback(m.id, v)}
+                  />
                 ))}
               </div>
             )}
@@ -378,7 +440,23 @@ export default function ChatPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-4 flex flex-shrink-0 gap-2">
+          {/* Toggle Rapide/Approfondi (cahier ADR-04). Jamais "Gemini"/"Claude"
+              exposés. Approfondi = analyse plus lente, plus profonde. */}
+          <div className="mt-4 flex flex-shrink-0 items-center justify-between">
+            <ModeToggle mode={mode} onChange={setModeAndPersist} disabled={pending} />
+            {pending && (
+              <button
+                type="button"
+                onClick={stopGeneration}
+                className="sa-btn !text-[12px]"
+                aria-label={t('chat.stop.aria')}
+              >
+                ◼ {t('chat.stop')}
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-2 flex flex-shrink-0 gap-2">
             <input
               type="text"
               value={input}
@@ -433,7 +511,15 @@ function EmptyState({
   )
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  feedback,
+  onFeedback,
+}: {
+  message: Message
+  feedback?: 'up' | 'down'
+  onFeedback: (v: 'up' | 'down') => void
+}) {
   const t = useT()
   if (message.role === 'user') {
     return (
@@ -469,7 +555,7 @@ function MessageBubble({ message }: { message: Message }) {
   const byId = new Map(sources.map((s) => [s.id, s]))
 
   return (
-    <div className="flex items-start gap-2.5">
+    <div className="group flex items-start gap-2.5">
       <AssistantAvatar />
       <div className="min-w-0 flex-1">
         <div className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-text-3">
@@ -479,6 +565,16 @@ function MessageBubble({ message }: { message: Message }) {
           {renderMarkdown(text, (id, key) => renderCitation(id, key, byId))}
           {streaming && <StreamCursor />}
         </div>
+        {/* Actions au survol — copier + feedback ↑↓ (cahier §4.3). Non
+            affichées pendant le streaming pour ne pas distraire. */}
+        {!streaming && text && (
+          <MessageActions
+            text={text}
+            messageId={message.id}
+            feedback={feedback}
+            onFeedback={onFeedback}
+          />
+        )}
         {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini. */}
         <HighlightStack highlights={highlights} />
         {sources.length > 0 && (
@@ -492,6 +588,107 @@ function MessageBubble({ message }: { message: Message }) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// Toggle Rapide/Approfondi — segmented control. Pas de label "Gemini"/"Claude"
+// (terminologie cahier CLAUDE.md).
+function ModeToggle({
+  mode,
+  onChange,
+  disabled,
+}: {
+  mode: 'fast' | 'deep'
+  onChange: (m: 'fast' | 'deep') => void
+  disabled?: boolean
+}) {
+  const t = useT()
+  return (
+    <div
+      className="inline-flex rounded-[8px] border border-border bg-bg-2 p-0.5 text-[12px]"
+      role="group"
+      aria-label={t('chat.mode.aria')}
+    >
+      {(['fast', 'deep'] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(m)}
+          aria-pressed={mode === m}
+          className={[
+            'rounded-[6px] px-2.5 py-1 transition-colors',
+            mode === m
+              ? 'bg-card font-semibold text-text-1 shadow-sm'
+              : 'text-text-3 hover:text-text-2',
+            disabled ? 'cursor-not-allowed opacity-50' : '',
+          ].join(' ')}
+        >
+          {m === 'fast' ? t('chat.mode.fast') : t('chat.mode.deep')}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Actions au survol d'un message assistant : copier, feedback ↑↓.
+// Pas de "régénérer" / "éditer" sur ce 1er round (effort vs valeur).
+function MessageActions({
+  text,
+  feedback,
+  onFeedback,
+}: {
+  text: string
+  messageId: string
+  feedback: 'up' | 'down' | undefined
+  onFeedback: (v: 'up' | 'down') => void
+}) {
+  const t = useT()
+  function copy() {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      void navigator.clipboard.writeText(text)
+    }
+  }
+  return (
+    <div className="mt-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <button
+        type="button"
+        onClick={copy}
+        className="rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-text-3 hover:bg-bg-3 hover:text-text-1"
+        aria-label={t('chat.copy')}
+        title={t('chat.copy')}
+      >
+        ⧉ {t('chat.copy')}
+      </button>
+      <button
+        type="button"
+        onClick={() => onFeedback('up')}
+        aria-label={t('chat.feedback.up')}
+        aria-pressed={feedback === 'up'}
+        className={[
+          'rounded px-1.5 py-0.5 text-[12px]',
+          feedback === 'up'
+            ? 'bg-brand-green/15 text-brand-green'
+            : 'text-text-3 hover:bg-bg-3 hover:text-text-1',
+        ].join(' ')}
+      >
+        ↑
+      </button>
+      <button
+        type="button"
+        onClick={() => onFeedback('down')}
+        aria-label={t('chat.feedback.down')}
+        aria-pressed={feedback === 'down'}
+        className={[
+          'rounded px-1.5 py-0.5 text-[12px]',
+          feedback === 'down'
+            ? 'bg-brand-red/15 text-brand-red'
+            : 'text-text-3 hover:bg-bg-3 hover:text-text-1',
+        ].join(' ')}
+      >
+        ↓
+      </button>
     </div>
   )
 }

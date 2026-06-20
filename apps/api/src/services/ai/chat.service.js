@@ -3,6 +3,7 @@
 // audit log (best-effort), returns the text.
 
 const { generateOnce, generateStream } = require('./gemini.service')
+const claudeService = require('./claude.service')
 const aiUsage = require('./ai-usage.service')
 const chatHighlights = require('./chat-highlights.service')
 const chatConversations = require('./chat-conversations.service')
@@ -679,6 +680,11 @@ async function askStream({
   locale = 'fr',
   fileIds = [],
   conversationId = null,
+  // Cahier ADR-04 : "Rapide" = Gemini Flash (défaut), "Approfondi" = Claude.
+  // Si ANTHROPIC_API_KEY n'est pas configuré, on fallback transparent sur
+  // Gemini pour ne pas casser l'UX — la promesse "Approfondi" est dégradée
+  // mais le chat reste utilisable.
+  mode = 'fast',
   onEvent,
 }) {
   const emit = (ev) => {
@@ -791,7 +797,12 @@ async function askStream({
     { role: 'user', parts: initialParts },
   ]
 
-  const MAX_TOOL_ROUNDS = 3
+  // Routing provider (cahier ADR-04) :
+  //   - mode='deep' + ANTHROPIC_API_KEY → Claude Sonnet (analyse approfondie,
+  //     pas de function-calling sur ce 1er round)
+  //   - sinon → Gemini Flash (tool-use complet, latence plus basse)
+  const useClaude = mode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
+  const MAX_TOOL_ROUNDS = useClaude ? 0 : 3
   const toolsUsed = []
   let finalText = ''
   let modelName = ''
@@ -803,14 +814,20 @@ async function askStream({
       // n'émettent typiquement aucun texte ; on les exécute en non-streaming
       // pour éviter une SSE qui ouvre/ferme à vide. Stratégie : on tente le
       // streaming sur chaque tour ; les chunks vides sont ignorés.
-      out = await generateStream({
+      const streamFn = useClaude ? claudeService.generateStream : generateStream
+      out = await streamFn({
         systemPrompt,
         contents: history,
-        tools: chatTools.DECLARATIONS,
+        // Claude ignore `tools` ici (function-calling non porté) — passage
+        // sans effet. Gemini en a besoin pour exposer les crochets.
+        tools: useClaude ? undefined : chatTools.DECLARATIONS,
         temperature: 0.4,
         onDelta: (delta) => emit({ type: 'delta', text: delta }),
       })
     } catch (err) {
+      // Erreurs Anthropic non classifiées : on les laisse remonter au
+      // catch externe qui mappera en CLAUDE_NOT_CONFIGURED ou générique.
+      if (useClaude) throw err
       throw classifyGeminiError(err)
     }
     modelName = out.modelName
