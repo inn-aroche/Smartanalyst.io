@@ -140,6 +140,9 @@ router.post(
     body('fileIds').optional().isArray({ max: 4 }),
     body('fileIds.*').optional().isUUID(),
     body('conversationId').optional({ nullable: true, checkFalsy: false }).isUUID(),
+    // Cahier ADR-04 — toggle Rapide/Approfondi côté UI (Claude/Gemini côté
+    // backend, transparent pour l'user qui voit juste "Rapide"/"Approfondi").
+    body('mode').optional().isIn(['fast', 'deep']),
   ],
   runValidation,
   async (req, res, next) => {
@@ -183,6 +186,7 @@ router.post(
         locale: req.body.locale || 'fr',
         fileIds: req.body.fileIds || [],
         conversationId: req.body.conversationId || null,
+        mode: req.body.mode || 'fast',
         onEvent: (ev) => {
           if (closed) return
           send(ev.type, ev)
@@ -207,6 +211,9 @@ router.post(
       } else if (err && err.code === 'AI_PROVIDER_DOWN') {
         code = 'AI_PROVIDER_DOWN'
         message = 'IA temporairement indisponible.'
+      } else if (err && err.code === 'CLAUDE_NOT_CONFIGURED') {
+        code = 'AI_NOT_CONFIGURED'
+        message = "Le mode Approfondi n'est pas encore configuré côté serveur."
       } else {
         // Erreur non classifiée : on logue côté serveur pour investigation,
         // on n'expose pas le détail au client.

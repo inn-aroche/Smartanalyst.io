@@ -274,6 +274,51 @@ router.get(
   },
 )
 
+// ━━━ GET /connectors/freshness — résumé global de la fraîcheur ━━━
+// Cahier §3 Lot 2 : la topbar de toutes les pages doit afficher
+// "dernière sync il y a 2 h" — pas un chip "Data up to date" hardcodé.
+// On expose ici une vue agrégée pour ne pas refaire le calcul en JS côté
+// front (et éviter un /connectors complet juste pour ce chiffre).
+router.get(
+  '/freshness',
+  [query('workspaceId').isUUID().withMessage('workspaceId UUID requis.')],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const items = await connectorService.list(req.workspaceId)
+      const enriched = connectorHealth.enrichWithHealth(items)
+      // last_synced_at le plus récent et le plus vieux parmi les connecteurs
+      // actifs — utile pour le chip "Dernière sync il y a Xh".
+      const syncs = items
+        .map((c) => (c.last_synced_at ? new Date(c.last_synced_at).getTime() : null))
+        .filter((t) => t !== null)
+      const latestSync = syncs.length ? new Date(Math.max(...syncs)).toISOString() : null
+      const oldestSync = syncs.length ? new Date(Math.min(...syncs)).toISOString() : null
+      const states = enriched.map((c) => c.health_state.state)
+      res.json({
+        connectorCount: items.length,
+        latestSync,
+        oldestSync,
+        // Sévérité globale = pire état parmi tous les connecteurs. Ordre :
+        // failing > expired > stale > healthy > unknown.
+        worstState: pickWorstState(states),
+        states,
+      })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+function pickWorstState(states) {
+  const order = ['failing', 'expired', 'stale', 'unknown', 'healthy']
+  for (const s of order) {
+    if (states.includes(s)) return s
+  }
+  return 'unknown'
+}
+
 // ━━━ POST /connectors — add API-key connector ━━━
 router.post(
   '/',

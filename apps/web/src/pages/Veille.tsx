@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
+import DataFreshnessChip from '@/components/DataFreshnessChip'
 import InsightCard from '@/components/insights/InsightCard'
 import WatchModal from '@/components/insights/WatchModal'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
@@ -126,12 +127,7 @@ export default function VeillePage() {
       <Topbar
         title={t('veille.topbar.title')}
         subtitle={sub}
-        rightChip={
-          <span className="sa-chip bg-brand-green/10 text-brand-green">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-            {t('nav.dataUpToDate')}
-          </span>
-        }
+        rightChip={<DataFreshnessChip />}
         primaryAction={{ label: t('nav.askQuestion'), onClick: () => navigate('/chat') }}
       />
 

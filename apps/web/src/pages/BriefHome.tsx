@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar } from '@/components/AppLayout'
+import DataFreshnessChip from '@/components/DataFreshnessChip'
 import KpiCard, { type Kpi } from '@/components/charts/KpiCard'
 import ScoreRing from '@/components/charts/ScoreRing'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
@@ -116,12 +117,7 @@ export default function BriefHomePage() {
       <Topbar
         title={t('brief.topbar.title')}
         subtitle={sub}
-        rightChip={
-          <span className="sa-chip bg-brand-green/10 text-brand-green">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-            {t('nav.dataUpToDate')}
-          </span>
-        }
+        rightChip={<DataFreshnessChip />}
         primaryAction={{ label: t('nav.askQuestion'), onClick: () => navigate('/chat') }}
       />
 
