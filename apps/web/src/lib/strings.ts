@@ -808,6 +808,7 @@ const en = {
   'billing.pro.description':
     'Pro plan: unlimited sources, unlimited insights, reports and Deep mode chat.',
   'billing.upgradeToPro': 'Upgrade to Pro',
+  'billing.upgradeToStarter': 'Or start with Starter',
   'billing.managePortal': 'Manage plan',
   'billing.loading': 'Opening…',
   'billing.usage': 'Usage this month',
@@ -1815,6 +1816,7 @@ const fr: Record<keyof typeof en, string> = {
   'billing.pro.description':
     'Plan Pro : sources illimitées, insights illimités, rapports et mode Approfondi.',
   'billing.upgradeToPro': 'Passer au plan Pro',
+  'billing.upgradeToStarter': 'Ou commencer avec Starter',
   'billing.managePortal': 'Gérer mon abonnement',
   'billing.loading': 'Ouverture…',
   'billing.usage': 'Utilisation ce mois-ci',

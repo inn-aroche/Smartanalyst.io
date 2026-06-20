@@ -32,6 +32,32 @@ function errorHandler(err, req, res, next) {
   const requestId = req.requestId || null
   const userId = req.user?.id || null
 
+  // Guard SSE : si la réponse a déjà commencé (streaming chat avec headers
+  // flushés + chunks écrits), on ne peut PLUS envoyer un body JSON sinon
+  // Express throw ERR_HTTP_HEADERS_SENT et pollue les logs. On log quand même
+  // l'erreur métier, et on close la connexion proprement.
+  if (res.headersSent) {
+    logger.warn(
+      {
+        event: 'error_after_headers_sent',
+        path: req.path,
+        method: req.method,
+        workspaceId,
+        userId,
+        requestId,
+        error: err.message,
+        isUserFacing: err instanceof UserFacingError,
+      },
+      'Error raised after response headers were sent — closing connection silently',
+    )
+    try {
+      res.end()
+    } catch {
+      // socket déjà fermée
+    }
+    return
+  }
+
   if (err instanceof UserFacingError) {
     logger.warn(
       {

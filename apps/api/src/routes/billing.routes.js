@@ -49,7 +49,9 @@ router.post(
   '/checkout',
   [
     body('workspaceId').isUUID(),
-    body('plan').isIn(['pro']),
+    // Whitelist alignée sur PUBLIC_PLAN_ORDER (cf. packages/shared/src/pricing.js)
+    // Pro = plan principal du funnel. Starter accepté pour le tiers freelance.
+    body('plan').isIn(['pro', 'starter']),
     body('successUrl').optional().isURL({ require_tld: false }),
     body('cancelUrl').optional().isURL({ require_tld: false }),
   ],

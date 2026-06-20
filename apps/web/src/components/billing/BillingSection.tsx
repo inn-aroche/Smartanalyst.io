@@ -35,10 +35,10 @@ export default function BillingSection() {
   })
 
   const checkout = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (plan: 'pro' | 'starter') => {
       const res = await apiFetch<{ url: string }>('/api/v1/billing/checkout', {
         method: 'POST',
-        body: { workspaceId, plan: 'pro' },
+        body: { workspaceId, plan },
       })
       if (res.url && typeof window !== 'undefined') window.location.href = res.url
       return res
@@ -116,14 +116,28 @@ export default function BillingSection() {
                 {portal.isPending ? t('billing.loading') : t('billing.managePortal')}
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => checkout.mutate()}
-                disabled={checkout.isPending}
-                className="sa-btn sa-btn-primary !text-[13px] disabled:opacity-60"
-              >
-                {checkout.isPending ? t('billing.loading') : t('billing.upgradeToPro') + ' →'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => checkout.mutate('pro')}
+                  disabled={checkout.isPending}
+                  className="sa-btn sa-btn-primary !text-[13px] disabled:opacity-60"
+                >
+                  {checkout.isPending && checkout.variables === 'pro'
+                    ? t('billing.loading')
+                    : t('billing.upgradeToPro') + ' — 59€/mois →'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => checkout.mutate('starter')}
+                  disabled={checkout.isPending}
+                  className="sa-btn !text-[12px] disabled:opacity-60"
+                >
+                  {checkout.isPending && checkout.variables === 'starter'
+                    ? t('billing.loading')
+                    : t('billing.upgradeToStarter') + ' — 29€/mois'}
+                </button>
+              </>
             )}
             {(checkout.isError || portal.isError) && (
               <div className="text-[11.5px] text-brand-red">
