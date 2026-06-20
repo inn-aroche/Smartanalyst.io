@@ -14,6 +14,7 @@ const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const digestService = require('../notifications/digest.service')
+const notificationCenter = require('../notifications/notification-center.service')
 
 const REFIRE_COOLDOWN_HOURS = 24
 
@@ -266,8 +267,20 @@ async function persistTrigger(watch, latest, previous, condition) {
       )
     }
   }
-  // 4. notify_in_app : l'insight est créé en status=open, il apparaîtra
-  //    automatiquement dans BriefHome/Veille — pas d'action explicite à faire.
+  // 4. notify_in_app (cahier §3 Lot 1) : on pousse aussi une notif dans le
+  //    Centre de notifications (cloche), pas seulement un insight au fil.
+  //    Best-effort, l'insight reste la source de vérité.
+  if (watch.notify_in_app !== false) {
+    void notificationCenter.createNotification({
+      workspaceId: watch.workspace_id,
+      type: 'watch_triggered',
+      severity: 'warning',
+      title,
+      body: summary ? String(summary).slice(0, 280) : null,
+      link: '/veille',
+      meta: { watch_id: watch.id, insight_id: insight?.id || null },
+    })
+  }
 }
 
 function formatValue(v) {

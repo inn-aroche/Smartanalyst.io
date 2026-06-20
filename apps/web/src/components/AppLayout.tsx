@@ -4,6 +4,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import ChatWidget from './ChatWidget'
 import LocaleSwitcher from './LocaleSwitcher'
 import { useAuth } from '@/lib/auth'
+import NotificationBell from '@/components/notifications/NotificationBell'
 import { type StringKey, useT } from '@/lib/i18n'
 
 // Nav alignée App v2 (handoff Claude Design — direction "Le Brief").
@@ -223,14 +224,7 @@ export function Topbar({
       </div>
       <div className="ml-4 flex flex-shrink-0 items-center gap-2.5">
         {rightChip}
-        <button
-          type="button"
-          className="relative flex h-[34px] w-[34px] items-center justify-center rounded-[9px] border border-border bg-card text-text-2 hover:bg-card-hover"
-          aria-label="Notifications"
-        >
-          <span className="text-[15px]">◔</span>
-          <span className="absolute right-1.5 top-1.5 h-[7px] w-[7px] rounded-full border-2 border-card bg-brand-red" />
-        </button>
+        <NotificationBell />
         {primaryAction && (
           <button
             type="button"

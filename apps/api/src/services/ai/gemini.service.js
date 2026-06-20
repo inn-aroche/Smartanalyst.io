@@ -122,6 +122,106 @@ async function generateOnce({
 }
 
 /**
+ * Streaming variant of generateOnce. Yields incremental text deltas via
+ * `onDelta(text)` and resolves with the full result (text + functionCalls +
+ * usage). Cahier §3 Lot 1 — perception "moderne" du chat.
+ *
+ * On garde la même API que generateOnce pour les paramètres ; la seule
+ * différence côté appelant est `onDelta` (fire-and-forget côté UI).
+ *
+ * Note function-calling : Gemini ne stream PAS les functionCalls (elles
+ * arrivent dans la sortie finale). On collecte donc le buffer complet,
+ * puis on yield les deltas texte au fur et à mesure, et on remonte les
+ * functionCalls à la fin pour que la boucle tool-use continue.
+ *
+ * @param {object} params
+ * @param {string} params.systemPrompt
+ * @param {string} [params.userMessage]
+ * @param {Array}  [params.contents]
+ * @param {Array}  [params.tools]
+ * @param {Array}  [params.attachments]
+ * @param {number} [params.temperature=0.4]
+ * @param {(delta: string) => void} [params.onDelta]
+ * @returns {Promise<{ text: string, modelName: string, functionCalls: Array, candidate: object, usage: object }>}
+ */
+async function generateStream({
+  systemPrompt,
+  userMessage,
+  contents,
+  tools,
+  temperature = 0.4,
+  attachments = [],
+  onDelta,
+}) {
+  const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL
+  const model = getModel(modelName)
+
+  let payloadContents = contents
+  if (!payloadContents) {
+    const parts = [{ text: userMessage }]
+    for (const att of attachments) {
+      if (att && att.data && att.mimeType) {
+        parts.push({ inlineData: { mimeType: att.mimeType, data: att.data } })
+      }
+    }
+    payloadContents = [{ role: 'user', parts }]
+  }
+
+  const requestBody = {
+    systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+    contents: payloadContents,
+    generationConfig: {
+      temperature,
+      maxOutputTokens: 1500,
+    },
+  }
+  if (Array.isArray(tools) && tools.length > 0) {
+    requestBody.tools = [{ functionDeclarations: tools }]
+  }
+
+  const t0 = Date.now()
+  const streamResult = await model.generateContentStream(requestBody)
+
+  let text = ''
+  // Itère les chunks au fur et à mesure ; chaque chunk peut contenir du
+  // texte partiel (.text()) — on l'envoie au handler avant d'agréger.
+  for await (const chunk of streamResult.stream) {
+    let delta = ''
+    try {
+      delta = chunk.text() || ''
+    } catch {
+      delta = ''
+    }
+    if (delta) {
+      text += delta
+      if (typeof onDelta === 'function') onDelta(delta)
+    }
+  }
+
+  const response = await streamResult.response
+  const candidate = response.candidates?.[0] || null
+
+  const functionCalls = []
+  const candidateParts = candidate?.content?.parts || []
+  for (const p of candidateParts) {
+    if (p.functionCall) functionCalls.push(p.functionCall)
+  }
+
+  const usage = response.usageMetadata || {}
+  const usageInfo = {
+    inputTokens: usage.promptTokenCount || 0,
+    outputTokens: usage.candidatesTokenCount || 0,
+    durationMs: Date.now() - t0,
+    model: modelName,
+  }
+
+  // Quand le model n'a que des functionCalls, response.text() lance. On a déjà
+  // agrégé `text` via les deltas, donc on n'a rien à faire — il sera "" si
+  // aucun chunk texte n'est arrivé.
+  return { text, modelName, functionCalls, candidate, usage: usageInfo }
+}
+
+/**
  * Génère une réponse JSON structurée (Structured Output).
  *
  * Force `responseMimeType: application/json` → Gemini renvoie du JSON valide
@@ -185,5 +285,6 @@ async function generateStructured({
 module.exports = {
   getModel,
   generateOnce,
+  generateStream,
   generateStructured,
 }

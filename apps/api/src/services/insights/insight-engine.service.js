@@ -17,6 +17,7 @@ const { generateStructured } = require('../ai/gemini.service')
 const aiUsage = require('../ai/ai-usage.service')
 const aggregator = require('./aggregator.service')
 const digestService = require('../notifications/digest.service')
+const notificationCenter = require('../notifications/notification-center.service')
 const { validateInsightsPayload, SCHEMA_DESCRIPTION_FOR_PROMPT } = require('./insight-schema')
 
 const SYSTEM_PROMPT = `Tu es Smart Analyst, un analyste marketing IA spécialisé dans l'analyse de performance.
@@ -203,6 +204,23 @@ async function generateForWorkspace(workspaceId) {
       const r = await storeInsight(workspaceId, insight, result.json)
       if (r.created) {
         created++
+        // Notification in-app (cahier §3 Lot 1) — toute création d'insight
+        // génère une notif, la sévérité visuelle dépend de celle de l'insight.
+        // Best-effort : un échec n'interrompt pas la génération.
+        void notificationCenter.createNotification({
+          workspaceId,
+          type: 'insight_created',
+          severity:
+            insight.severity === 'critical' || insight.severity === 'high'
+              ? 'critical'
+              : insight.severity === 'medium'
+                ? 'warning'
+                : 'info',
+          title: insight.title,
+          body: insight.summary ? String(insight.summary).slice(0, 280) : null,
+          link: '/veille',
+          meta: { insight_id: r.insightId, severity: insight.severity },
+        })
         // Brief V2 §3.3 : alerte email immédiate sur insight critical
         // nouvellement créé (la veille qui prévient AVANT qu'on demande).
         // Best-effort, jamais bloquant pour la génération.

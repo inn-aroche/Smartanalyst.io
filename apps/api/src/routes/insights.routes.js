@@ -38,11 +38,16 @@ router.get(
 )
 
 // ━━━ GET /insights/actions — board d'actions ━━━
+// Statuts réels en DB (cf. migration 023) : proposed, todo, in_progress,
+// done, archived. `dismissed` gardé en alias pour rétrocompatibilité
+// (anciens clients) — mappé sur archived côté service.
 router.get(
   '/actions',
   [
     query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
-    query('status').optional().isIn(['todo', 'in_progress', 'done', 'dismissed', 'all']),
+    query('status')
+      .optional()
+      .isIn(['proposed', 'todo', 'in_progress', 'done', 'archived', 'dismissed', 'all']),
   ],
   runValidation,
   workspaceScope,
@@ -52,6 +57,47 @@ router.get(
         status: req.query.status,
       })
       res.json({ actions })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ━━━ POST /insights/actions — création manuelle d'une tâche ━━━
+// Source : 'manual' (UI quick-add) ou 'chat' (crochet d'action depuis
+// une réponse de l'assistant, cahier §3 Lot 1). RLS reste strict
+// (service_role only pour INSERT) : le serveur valide le workspace
+// membership puis insère.
+router.post(
+  '/actions',
+  [
+    body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+    body('title').isString().bail().trim().isLength({ min: 3, max: 200 }),
+    body('description').optional().isString().isLength({ max: 2000 }),
+    body('priority').optional().isIn(['critical', 'high', 'medium', 'low']),
+    body('impact').optional().isInt({ min: 1, max: 5 }),
+    body('effort').optional().isInt({ min: 1, max: 5 }),
+    body('confidence').optional().isInt({ min: 1, max: 5 }),
+    body('insightId').optional({ nullable: true }).isUUID(),
+    body('source').optional().isIn(['manual', 'chat']),
+  ],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const created = await insightsService.createAction({
+        workspaceId: req.workspaceId,
+        userId: req.user?.id,
+        title: req.body.title,
+        description: req.body.description,
+        priority: req.body.priority || 'medium',
+        impact: req.body.impact,
+        effort: req.body.effort,
+        confidence: req.body.confidence,
+        insightId: req.body.insightId || null,
+        source: req.body.source || 'manual',
+      })
+      res.status(201).json(created)
     } catch (err) {
       next(err)
     }

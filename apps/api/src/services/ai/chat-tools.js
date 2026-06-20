@@ -17,6 +17,7 @@
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const insightsService = require('../insights/insights.service')
 const healthScore = require('../health/health-score.service')
+const watchesService = require('../watches/watches.service')
 const { logger } = require('../../lib/logger')
 
 // Format Gemini function declarations (FunctionDeclaration[]).
@@ -78,11 +79,72 @@ const DECLARATIONS = [
       required: ['metric_key'],
     },
   },
+  // ─── Crochets d'action (cahier §3 Lot 1) ───────────────────────────────
+  // Le différenciateur unique vs ChatGPT/Claude : depuis une réponse,
+  // l'assistant peut CRÉER une tâche / une veille — directement.
+  {
+    name: 'create_action_card',
+    description:
+      "Crée une tâche actionnable dans la liste 'À faire' du workspace. À utiliser quand l'user demande explicitement d'ajouter une tâche, OU quand tu recommandes une action concrète et que c'est pertinent de la matérialiser comme tâche (pas pour les conseils abstraits). Le titre doit être concret et actionnable (verbe d'action en début).",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        title: {
+          type: 'STRING',
+          description:
+            "Titre court et actionnable de la tâche. Commence par un verbe d'action. Ex: 'Lancer un A/B test sur la créa Meta'.",
+        },
+        description: {
+          type: 'STRING',
+          description: 'Contexte optionnel (2-3 phrases max).',
+        },
+        priority: {
+          type: 'STRING',
+          description: "Priorité : 'critical', 'high', 'medium' (défaut), 'low'.",
+        },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'create_watch',
+    description:
+      "Crée une veille (alerte automatique) sur une métrique. À utiliser quand l'user demande à être prévenu d'un changement (ex: 'préviens-moi si le MRR baisse', 'alerte si les sessions chutent de 20%').",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        description: {
+          type: 'STRING',
+          description:
+            'Phrase humaine de l’alerte. Ex: "Préviens-moi si le MRR baisse de plus de 5%".',
+        },
+        metric_key: {
+          type: 'STRING',
+          description:
+            "Clé canonique exacte. Exemples : 'revenue_recurring_monthly', 'sessions_all', 'spend_paid_social'.",
+        },
+        operator: {
+          type: 'STRING',
+          description:
+            "'gt' (supérieur), 'lt' (inférieur), 'pct_change_gt' (variation %), 'any_change' (toute variation).",
+        },
+        threshold: {
+          type: 'NUMBER',
+          description: 'Seuil numérique. Omis si operator=any_change.',
+        },
+        source: {
+          type: 'STRING',
+          description: 'Source spécifique optionnelle (ga4, meta_ads, stripe…).',
+        },
+      },
+      required: ['description', 'metric_key', 'operator'],
+    },
+  },
 ]
 
 // Exécution. Reçoit { name, args } + workspaceId fixe. Retourne un objet JSON
 // simple (sérialisable) que la couche chat re-passe au model comme functionResponse.
-async function execute({ name, args }, { workspaceId }) {
+async function execute({ name, args }, { workspaceId, userId }) {
   if (!workspaceId) return { error: 'no_workspace' }
 
   try {
@@ -160,6 +222,61 @@ async function execute({ name, args }, { workspaceId }) {
         first: points[0] || null,
         last: points[points.length - 1] || null,
         points,
+      }
+    }
+
+    if (name === 'create_action_card') {
+      const title = String(args?.title || '').trim()
+      if (!title || title.length < 3) return { error: 'title_required' }
+      const created = await insightsService.createAction({
+        workspaceId,
+        userId: userId || null,
+        title,
+        description: args?.description ? String(args.description).trim() : null,
+        priority: ['critical', 'high', 'medium', 'low'].includes(args?.priority)
+          ? args.priority
+          : 'medium',
+        insightId: null,
+        source: 'chat',
+      })
+      logger.info(
+        { event: 'chat_tool_created_action', workspaceId, actionId: created.id },
+        'Chat created action card',
+      )
+      return {
+        ok: true,
+        id: created.id,
+        title: created.title,
+        url: '/tasks',
+        kind: 'action_card',
+      }
+    }
+
+    if (name === 'create_watch') {
+      const payload = {
+        description: String(args?.description || '').trim(),
+        metric_key: String(args?.metric_key || '').trim(),
+        operator: args?.operator,
+        threshold: args?.threshold,
+        source: args?.source ? String(args.source).trim() : undefined,
+      }
+      try {
+        const created = await watchesService.createWatch(workspaceId, userId || null, payload)
+        logger.info(
+          { event: 'chat_tool_created_watch', workspaceId, watchId: created.id },
+          'Chat created watch',
+        )
+        return {
+          ok: true,
+          id: created.id,
+          description: created.description,
+          url: '/veille',
+          kind: 'watch',
+        }
+      } catch (err) {
+        // Erreur de validation user-facing du watch (ex. métrique inconnue) :
+        // on remonte le message au LLM pour qu'il l'explique à l'user.
+        return { error: err.message || 'invalid_watch_input' }
       }
     }
 

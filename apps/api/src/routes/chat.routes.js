@@ -118,6 +118,114 @@ router.post(
   },
 )
 
+// ─── Streaming (SSE) — cahier §3 Lot 1 ──────────────────────────────────
+//
+// Même contrat d'entrée que /ask, mais réponse en text/event-stream :
+//   - meta  : { conversationId }
+//   - delta : { text }   répétés au fur et à mesure
+//   - done  : { answer, model, sources, highlights, conversationId }
+//   - error : { code, message }   (statut HTTP toujours 200 car SSE déjà
+//             commencé ; le client lit error.code pour mapper l'i18n)
+//
+// Note : pas de gestion du Last-Event-ID / reconnect SSE — un échec en
+// cours de stream force le client à retomber sur /ask (non-streaming).
+router.post(
+  '/stream',
+  jwtMiddleware,
+  askLimiter,
+  [
+    body('message').isString().bail().trim().isLength({ min: 1, max: 2000 }),
+    body('workspaceId').optional().isUUID(),
+    body('locale').optional().isIn(['fr', 'en']),
+    body('fileIds').optional().isArray({ max: 4 }),
+    body('fileIds.*').optional().isUUID(),
+    body('conversationId').optional({ nullable: true, checkFalsy: false }).isUUID(),
+  ],
+  runValidation,
+  async (req, res, next) => {
+    // Headers SSE — flush immédiat pour que le client commence à recevoir.
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+    res.setHeader('Cache-Control', 'no-cache, no-transform')
+    res.setHeader('Connection', 'keep-alive')
+    res.setHeader('X-Accel-Buffering', 'no') // disable proxy buffering (nginx)
+    if (typeof res.flushHeaders === 'function') res.flushHeaders()
+
+    const send = (event, payload) => {
+      try {
+        res.write(`event: ${event}\n`)
+        res.write(`data: ${JSON.stringify(payload)}\n\n`)
+      } catch {
+        // Socket fermée — on ignore, le close handler nettoiera.
+      }
+    }
+
+    // Heartbeat toutes les 15s : keep-alive pour les proxys (nginx, ELB)
+    // qui ferment les connexions idle après 30-60s.
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(': ping\n\n')
+      } catch {
+        clearInterval(heartbeat)
+      }
+    }, 15_000)
+
+    let closed = false
+    req.on('close', () => {
+      closed = true
+      clearInterval(heartbeat)
+    })
+
+    try {
+      await chatService.askStream({
+        userId: req.user.id,
+        workspaceId: req.body.workspaceId,
+        message: req.body.message,
+        locale: req.body.locale || 'fr',
+        fileIds: req.body.fileIds || [],
+        conversationId: req.body.conversationId || null,
+        onEvent: (ev) => {
+          if (closed) return
+          send(ev.type, ev)
+        },
+      })
+    } catch (err) {
+      // Mapping des erreurs métier → event SSE 'error' avec le bon code.
+      let code = 'INTERNAL'
+      let message = err.message || 'Internal error'
+      if (err && err.code === 'GEMINI_NOT_CONFIGURED') {
+        code = 'AI_NOT_CONFIGURED'
+        message = 'Le chat IA n’est pas encore configuré côté serveur.'
+      } else if (err && err.code === 'AI_BUDGET_EXCEEDED') {
+        code = 'AI_BUDGET_EXCEEDED'
+        message = 'Budget IA mensuel atteint.'
+      } else if (err && err.code === 'AI_RATE_LIMIT') {
+        code = 'AI_RATE_LIMIT'
+        message = 'Trop de questions, l’IA est saturée.'
+      } else if (err && err.code === 'AI_TIMEOUT') {
+        code = 'AI_TIMEOUT'
+        message = 'La réponse a mis trop de temps.'
+      } else if (err && err.code === 'AI_PROVIDER_DOWN') {
+        code = 'AI_PROVIDER_DOWN'
+        message = 'IA temporairement indisponible.'
+      } else {
+        // Erreur non classifiée : on logue côté serveur pour investigation,
+        // on n'expose pas le détail au client.
+        next(err)
+      }
+      send('error', { code, message })
+    } finally {
+      clearInterval(heartbeat)
+      if (!closed) {
+        try {
+          res.end()
+        } catch {
+          // déjà fermée
+        }
+      }
+    }
+  },
+)
+
 // ─── Conversations (mémoire chat — migration 031) ───────────────────────
 
 // Liste les fils de discussion du workspace (sidebar future + reprise

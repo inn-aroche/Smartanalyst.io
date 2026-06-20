@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
 import type { ActionCard, ActionStatus } from '@/lib/insights-types'
+import { track } from '@/lib/tracking'
 
 // Page Tâches dédiée (brief V2 §3.4). Trois colonnes : Inbox (proposed),
 // Aujourd'hui (todo), Faites (done). Drag-and-drop pas implémenté en V1 —
@@ -49,7 +50,16 @@ export default function TasksPage() {
         method: 'PATCH',
         body: { workspaceId, status },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['actions'] }),
+    onSuccess: (_data, variables) => {
+      // Events §6 — boucle d'engagement. proposed→todo = "accepted",
+      // *→done = "completed".
+      if (variables.status === 'todo') {
+        track('task_accepted', { task_id: variables.id })
+      } else if (variables.status === 'done') {
+        track('task_completed', { task_id: variables.id })
+      }
+      void queryClient.invalidateQueries({ queryKey: ['actions'] })
+    },
   })
 
   const actions = q.data?.actions ?? []

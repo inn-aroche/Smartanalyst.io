@@ -180,6 +180,43 @@ async function updateInsightStatus(workspaceId, insightId, status) {
   return data
 }
 
+/**
+ * Crée une action manuellement (UI quick-add ou crochet chat).
+ *
+ * Insertion via service_role : la RLS de `action_cards` réserve INSERT au
+ * service_role (cf. migration 022). Le serveur garantit ici le scope
+ * workspace (workspaceScope middleware) et fixe les défauts métier.
+ */
+async function createAction({
+  workspaceId,
+  userId,
+  title,
+  description,
+  priority,
+  impact,
+  effort,
+  confidence,
+  insightId,
+  source,
+}) {
+  const supabase = getServiceRoleClient()
+  const payload = {
+    workspace_id: workspaceId,
+    insight_id: insightId || null,
+    title: title.trim(),
+    description: description ? description.trim() : null,
+    priority: priority || 'medium',
+    impact: Number.isFinite(impact) ? impact : null,
+    effort: Number.isFinite(effort) ? effort : null,
+    confidence: Number.isFinite(confidence) ? confidence : null,
+    status: 'todo',
+    source: { type: source || 'manual', created_by: userId || null },
+  }
+  const { data, error } = await supabase.from('action_cards').insert(payload).select('*').single()
+  if (error) throw error
+  return data
+}
+
 async function updateActionStatus(workspaceId, actionId, status) {
   if (!ACTION_STATUSES.has(status)) {
     throw new UserFacingError(`Statut action invalide : ${status}`, {
@@ -205,6 +242,7 @@ module.exports = {
   listActions,
   getActionById,
   getInsightChart,
+  createAction,
   updateInsightStatus,
   updateActionStatus,
   INSIGHT_STATUSES,

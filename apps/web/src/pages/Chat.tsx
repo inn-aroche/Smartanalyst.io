@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
 import HighlightStack, { type Highlight } from '@/components/chat/HighlightStack'
-import { apiFetch, ApiError } from '@/lib/api'
+import { apiFetch, apiStream, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { pickSuggestions } from '@/lib/chat-suggestions'
 import { useLocale, useT } from '@/lib/i18n'
@@ -38,19 +38,12 @@ type Message =
       text: string
       sources?: Source[]
       highlights?: Highlight[]
+      // `streaming` = true tant qu'on reçoit des deltas SSE. Bascule à false
+      // au moment du 'done'. Permet à l'UI d'afficher un curseur clignotant
+      // pendant la frappe.
+      streaming?: boolean
     }
   | { id: string; role: 'assistant'; pending: true }
-
-type AskResponse = {
-  answer: string
-  model: string
-  sources?: Source[]
-  highlights?: Highlight[]
-  // ID du fil de discussion — créé par le backend au 1er tour, à renvoyer
-  // tel quel ensuite pour que l'historique s'accumule. null en cas de
-  // workspace absent (fallback exceptionnel).
-  conversationId: string | null
-}
 
 type ConversationDetail = {
   conversation: { id: string; title: string; created_at: string; updated_at: string }
@@ -239,44 +232,83 @@ export default function ChatPage() {
       has_file: Boolean(attachedFileId),
     })
 
+    // Streaming SSE (cahier §3 Lot 1 — perception "moderne") : on bascule le
+    // message pending → streaming au 1er delta, on accumule le texte au fil
+    // des chunks, on finalise au 'done' avec sources + highlights.
+    let accumulated = ''
+    let errored = false
     try {
-      const res = await apiFetch<AskResponse>('/api/v1/chat/ask', {
-        method: 'POST',
+      await apiStream('/api/v1/chat/stream', {
         body: {
           message: trimmed,
           workspaceId,
           locale,
           fileIds: attachedFileId ? [attachedFileId] : undefined,
-          // Au 1er tour conversationId est null — on OMET la clé du payload
-          // pour qu'express-validator ne tente pas de valider `null` comme
-          // un UUID (validation côté API stricte). Backend crée le fil et
-          // renvoie son ID qu'on persiste pour les tours suivants.
           ...(conversationId ? { conversationId } : {}),
         },
-      })
-      if (res.conversationId && res.conversationId !== conversationId) {
-        setConversationId(res.conversationId)
-        if (workspaceId) {
-          const key = lastConversationKey(workspaceId)
-          if (key) window.localStorage.setItem(key, res.conversationId)
-        }
-      }
-      setMessages((m) =>
-        m.map((msg) =>
-          msg.id === pendingMsg.id
-            ? {
-                id: msg.id,
-                role: 'assistant',
-                text: res.answer,
-                sources: res.sources,
-                highlights: res.highlights,
+        onEvent: (ev) => {
+          const payload = ev.data as Record<string, unknown>
+          if (ev.event === 'meta') {
+            const cid = payload?.conversationId as string | null | undefined
+            if (cid && cid !== conversationId) {
+              setConversationId(cid)
+              if (workspaceId) {
+                const key = lastConversationKey(workspaceId)
+                if (key) window.localStorage.setItem(key, cid)
               }
-            : msg,
-        ),
-      )
+            }
+          } else if (ev.event === 'delta') {
+            const delta = typeof payload?.text === 'string' ? payload.text : ''
+            if (!delta) return
+            accumulated += delta
+            setMessages((m) =>
+              m.map((msg) =>
+                msg.id === pendingMsg.id
+                  ? { id: msg.id, role: 'assistant', text: accumulated, streaming: true }
+                  : msg,
+              ),
+            )
+          } else if (ev.event === 'done') {
+            const answer = (payload?.answer as string) || accumulated
+            const sources = payload?.sources as Source[] | undefined
+            const highlights = payload?.highlights as Highlight[] | undefined
+            const cid = payload?.conversationId as string | null | undefined
+            if (cid && cid !== conversationId) {
+              setConversationId(cid)
+              if (workspaceId) {
+                const key = lastConversationKey(workspaceId)
+                if (key) window.localStorage.setItem(key, cid)
+              }
+            }
+            setMessages((m) =>
+              m.map((msg) =>
+                msg.id === pendingMsg.id
+                  ? {
+                      id: msg.id,
+                      role: 'assistant',
+                      text: answer,
+                      sources,
+                      highlights,
+                      streaming: false,
+                    }
+                  : msg,
+              ),
+            )
+          } else if (ev.event === 'error') {
+            errored = true
+            const code = (payload?.code as string) || 'INTERNAL'
+            const message = (payload?.message as string) || ''
+            const fakeErr = Object.assign(new ApiError(message, 500, payload), { code })
+            setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
+            setError(mapErrorToMessage(fakeErr, t))
+          }
+        },
+      })
     } catch (err) {
-      setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
-      setError(mapErrorToMessage(err, t))
+      if (!errored) {
+        setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
+        setError(mapErrorToMessage(err, t))
+      }
     }
   }
 
@@ -433,6 +465,7 @@ function MessageBubble({ message }: { message: Message }) {
   const text = 'text' in message ? message.text : ''
   const sources = 'sources' in message ? message.sources || [] : []
   const highlights = 'highlights' in message ? message.highlights || [] : []
+  const streaming = 'streaming' in message ? Boolean(message.streaming) : false
   const byId = new Map(sources.map((s) => [s.id, s]))
 
   return (
@@ -444,6 +477,7 @@ function MessageBubble({ message }: { message: Message }) {
         </div>
         <div className="rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm text-text-1">
           {renderMarkdown(text, (id, key) => renderCitation(id, key, byId))}
+          {streaming && <StreamCursor />}
         </div>
         {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini. */}
         <HighlightStack highlights={highlights} />
@@ -470,6 +504,17 @@ function AssistantAvatar() {
     >
       ✦
     </div>
+  )
+}
+
+// Curseur clignotant rendu à la fin du texte tant que des deltas SSE
+// arrivent. Signale visuellement que la frappe est en cours.
+function StreamCursor() {
+  return (
+    <span
+      aria-hidden="true"
+      className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-pulse bg-brand-blue-deep"
+    />
   )
 }
 
