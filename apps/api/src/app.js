@@ -189,6 +189,8 @@ function createApp() {
   app.use('/api/v1/notifications', require('./routes/notifications.routes'))
   // Recherche globale cross-entity (cahier §3 Lot 2)
   app.use('/api/v1/search', require('./routes/search.routes'))
+  // Billing (Stripe Checkout + Customer Portal — cahier §3 Lot 3)
+  app.use('/api/v1/billing', require('./routes/billing.routes'))
   // Alertes custom utilisateur (brief V2 §3.3 — WatchModal)
   app.use('/api/v1/watches', require('./routes/watches.routes'))
   // Rapports HTML (brief V2 §3.6 — synthèse mensuelle / à la demande)

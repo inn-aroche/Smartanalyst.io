@@ -18,6 +18,7 @@ const aiUsage = require('../ai/ai-usage.service')
 const aggregator = require('./aggregator.service')
 const digestService = require('../notifications/digest.service')
 const notificationCenter = require('../notifications/notification-center.service')
+const entitlements = require('../billing/entitlements.service')
 const { validateInsightsPayload, SCHEMA_DESCRIPTION_FOR_PROMPT } = require('./insight-schema')
 
 const SYSTEM_PROMPT = `Tu es Smart Analyst, un analyste marketing IA spécialisé dans l'analyse de performance.
@@ -143,6 +144,25 @@ async function storeInsight(workspaceId, insight, rawModelOutput) {
  * @returns {Promise<{ generated: number, dropped: number, skipped: boolean }>}
  */
 async function generateForWorkspace(workspaceId) {
+  // Quota check (cahier §3 Lot 3) : un workspace en plan Free est plafonné
+  // à 3 insights/mois. Si dépassé, on skip silencieusement — l'user verra
+  // dans Settings/Billing qu'il a atteint sa limite, et l'UI proposera
+  // l'upgrade.
+  const quota = await entitlements.checkQuota(workspaceId, 'insights_per_month')
+  if (quota.exceeded) {
+    logger.info(
+      {
+        event: 'insight_engine_quota_exceeded',
+        workspaceId,
+        plan: quota.plan,
+        current: quota.current,
+        limit: quota.limit,
+      },
+      'Insight engine: monthly insight quota reached, skipping',
+    )
+    return { generated: 0, dropped: 0, skipped: true, reason: 'quota_exceeded' }
+  }
+
   const context = await aggregator.buildContext(workspaceId)
   if (!context) {
     logger.info(

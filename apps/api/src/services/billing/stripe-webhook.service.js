@@ -1,7 +1,5 @@
-// Stripe webhook service — vérification signature + idempotence + dispatch.
-//
-// Source: docs/10_BILLING_ET_STRIPE.md (à compléter dans le Lot 2 du chantier d'audit
-// pour les handlers complets upgrade/downgrade/dunning).
+// Stripe webhook service — vérification signature + idempotence + handlers
+// métier (cahier §3 Lot 3).
 //
 // Contrat:
 //   - constructEvent(rawBody, signature) : valide HMAC Stripe, lève si KO.
@@ -10,11 +8,20 @@
 //
 // Idempotence: si Stripe re-livre le même event.id, l'INSERT échoue sur la
 // contrainte unique (PG code 23505) → on retourne { duplicate: true } sans
-// rejouer le handler. C'est la garantie demandée par le Lot 1 du chantier.
+// rejouer le handler.
+//
+// Handlers métier (Lot 3) :
+//   - checkout.session.completed       → lie stripe_customer_id à l'organization
+//   - customer.subscription.created    → set organizations.plan + upsert subscriptions
+//   - customer.subscription.updated    → idem (upgrade/downgrade)
+//   - customer.subscription.deleted    → revient à plan 'free'
+//   - invoice.payment_failed           → notification in-app (dunning soft) + log
+//   - invoice.paid                     → no-op (purement informatif)
 
 const Stripe = require('stripe')
 const { logger } = require('../../lib/logger')
 const { getServiceRoleClient } = require('../../lib/supabase')
+const notificationCenter = require('../notifications/notification-center.service')
 
 const STRIPE_API_VERSION = '2024-06-20'
 
@@ -65,7 +72,11 @@ async function handleEvent(event) {
       return { duplicate: true }
     }
     logger.error(
-      { event: 'stripe_webhook_insert_failed', stripeEventId: event.id, error: insertError.message },
+      {
+        event: 'stripe_webhook_insert_failed',
+        stripeEventId: event.id,
+        error: insertError.message,
+      },
       'Failed to record stripe webhook event',
     )
     throw insertError
@@ -89,27 +100,26 @@ async function handleEvent(event) {
 }
 
 // ─── Dispatch ────────────────────────────────────────────────────────────
-// Le Lot 1 ne fait que **tracer** l'event de façon idempotente. Les handlers
-// métier (upgrade plan, dunning, mail facture) sont planifiés dans le Lot 2.
+// Handlers métier (cahier §3 Lot 3). Tout est idempotent : un même
+// stripe_event_id ne re-passe jamais ici (court-circuité par billing_events
+// UNIQUE), donc on peut faire des INSERT/UPDATE sans set de garde-fou
+// supplémentaire au sein du handler.
 
 async function _dispatch(event) {
   switch (event.type) {
     case 'checkout.session.completed':
+      return _onCheckoutCompleted(event)
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
+      return _onSubscriptionUpsert(event)
     case 'customer.subscription.deleted':
-    case 'invoice.paid':
+      return _onSubscriptionDeleted(event)
     case 'invoice.payment_failed':
+      return _onInvoicePaymentFailed(event)
+    case 'invoice.paid':
     case 'invoice.finalized':
-      logger.info(
-        {
-          event: 'stripe_webhook_received',
-          type: event.type,
-          stripeEventId: event.id,
-          stripeObjectId: event.data?.object?.id,
-        },
-        `Stripe webhook ${event.type} received (handler TODO Lot 2)`,
-      )
+      // Informatif — pas d'action métier en MVP (le user voit l'historique
+      // dans le Customer Portal Stripe).
       return
     default:
       logger.debug(
@@ -117,6 +127,175 @@ async function _dispatch(event) {
         `Stripe webhook ${event.type} ignored`,
       )
   }
+}
+
+// Mapping price_id Stripe → plan canonique. Driven par l'env pour qu'on
+// puisse changer les prix sans déploiement code.
+function _planFromPriceId(priceId) {
+  if (!priceId) return null
+  if (priceId === process.env.STRIPE_PRICE_PRO) return 'pro'
+  if (priceId === process.env.STRIPE_PRICE_STARTER) return 'starter'
+  if (priceId === process.env.STRIPE_PRICE_AGENCY) return 'agency'
+  return null
+}
+
+async function _findOrgByCustomerId(supabase, stripeCustomerId) {
+  if (!stripeCustomerId) return null
+  const { data } = await supabase
+    .from('organizations')
+    .select('id, plan')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .maybeSingle()
+  return data || null
+}
+
+/**
+ * Au moment du checkout réussi, on lie le stripe_customer_id à l'organization
+ * (passée en client_reference_id côté création de session). C'est la 1ère fois
+ * où on connaît le customer Stripe d'une org — on l'épingle pour que tous les
+ * webhooks suivants soient routables.
+ */
+async function _onCheckoutCompleted(event) {
+  const session = event.data.object || {}
+  const stripeCustomerId = session.customer
+  const orgId = session.client_reference_id || session.metadata?.organization_id
+  if (!stripeCustomerId || !orgId) {
+    logger.warn(
+      {
+        event: 'stripe_checkout_unrouted',
+        stripeEventId: event.id,
+        hasCustomer: Boolean(stripeCustomerId),
+        hasOrg: Boolean(orgId),
+      },
+      'checkout.session.completed without customer or org reference',
+    )
+    return
+  }
+  const supabase = getServiceRoleClient()
+  await supabase
+    .from('organizations')
+    .update({ stripe_customer_id: stripeCustomerId })
+    .eq('id', orgId)
+  logger.info(
+    { event: 'stripe_customer_linked', orgId, stripeCustomerId },
+    'Linked Stripe customer to organization',
+  )
+}
+
+/**
+ * Met à jour le plan de l'organization + upsert la ligne subscriptions à
+ * partir d'un objet `subscription` Stripe. Géré pour created ET updated
+ * (upgrade/downgrade) — Stripe envoie les deux selon le contexte.
+ */
+async function _onSubscriptionUpsert(event) {
+  const sub = event.data.object || {}
+  const stripeCustomerId = sub.customer
+  const priceId = sub.items?.data?.[0]?.price?.id || null
+  const plan = _planFromPriceId(priceId)
+  const status = sub.status // 'active' | 'past_due' | 'canceled' | 'trialing' | ...
+  const supabase = getServiceRoleClient()
+
+  const org = await _findOrgByCustomerId(supabase, stripeCustomerId)
+  if (!org) {
+    logger.warn(
+      { event: 'stripe_sub_unrouted', stripeEventId: event.id, stripeCustomerId },
+      'subscription event for unknown customer (org not found)',
+    )
+    return
+  }
+
+  // Upsert subscriptions row keyed by stripe_subscription_id.
+  await supabase.from('subscriptions').upsert(
+    {
+      organization_id: org.id,
+      stripe_subscription_id: sub.id,
+      stripe_customer_id: stripeCustomerId,
+      stripe_price_id: priceId,
+      plan: plan || org.plan || 'free',
+      status,
+      current_period_start: sub.current_period_start
+        ? new Date(sub.current_period_start * 1000).toISOString()
+        : null,
+      current_period_end: sub.current_period_end
+        ? new Date(sub.current_period_end * 1000).toISOString()
+        : null,
+      cancel_at: sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null,
+    },
+    { onConflict: 'stripe_subscription_id' },
+  )
+
+  // Met à jour le plan de l'org SI active. Si past_due/canceled, on ne
+  // downgrade pas immédiatement : on attend `customer.subscription.deleted`
+  // pour basculer en 'free'.
+  if (plan && (status === 'active' || status === 'trialing')) {
+    await supabase.from('organizations').update({ plan }).eq('id', org.id)
+    logger.info(
+      { event: 'stripe_plan_changed', orgId: org.id, fromPlan: org.plan, toPlan: plan },
+      'Organization plan updated',
+    )
+  }
+}
+
+async function _onSubscriptionDeleted(event) {
+  const sub = event.data.object || {}
+  const supabase = getServiceRoleClient()
+  const org = await _findOrgByCustomerId(supabase, sub.customer)
+  if (!org) return
+  await supabase
+    .from('subscriptions')
+    .update({ status: 'canceled' })
+    .eq('stripe_subscription_id', sub.id)
+  await supabase.from('organizations').update({ plan: 'free' }).eq('id', org.id)
+  logger.info(
+    { event: 'stripe_plan_downgraded_to_free', orgId: org.id, stripeSubId: sub.id },
+    'Subscription deleted — organization back to free',
+  )
+}
+
+/**
+ * Échec de paiement : on log + on notifie in-app. Pas de retry automatique
+ * côté code — Stripe gère le smart retry au niveau de l'invoice (configurable
+ * dans le dashboard Stripe → Billing → Settings).
+ */
+async function _onInvoicePaymentFailed(event) {
+  const invoice = event.data.object || {}
+  const supabase = getServiceRoleClient()
+  const org = await _findOrgByCustomerId(supabase, invoice.customer)
+  if (!org) return
+  // Trouve un workspace de l'org pour adresser la notif (workspace-scoped).
+  const { data: workspaces } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('organization_id', org.id)
+    .limit(1)
+  const workspaceId = workspaces?.[0]?.id
+  if (!workspaceId) {
+    logger.warn(
+      { event: 'stripe_payment_failed_no_workspace', orgId: org.id },
+      'invoice.payment_failed but no workspace to notify',
+    )
+    return
+  }
+  await notificationCenter
+    .createNotification({
+      workspaceId,
+      type: 'system',
+      severity: 'critical',
+      title: 'Échec de paiement',
+      body: 'Le règlement de ton abonnement a échoué. Mets à jour ton moyen de paiement dans Réglages → Plan & facturation pour éviter une interruption.',
+      link: '/settings',
+      meta: { invoice_id: invoice.id, amount_due: invoice.amount_due },
+    })
+    .catch(() => null)
+  logger.warn(
+    {
+      event: 'stripe_payment_failed',
+      orgId: org.id,
+      invoiceId: invoice.id,
+      amountDue: invoice.amount_due,
+    },
+    'Stripe invoice payment failed — user notified',
+  )
 }
 
 module.exports = { constructEvent, handleEvent }
