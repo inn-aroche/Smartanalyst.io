@@ -42,15 +42,16 @@ function load({ metrics = [], insights = [], actions = [], health = null } = {})
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 6 tools déclarés', () => {
+test('DECLARATIONS : 7 tools déclarés', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 6)
+  assert.equal(tools.DECLARATIONS.length, 7)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
     'create_action_card',
     'create_watch',
     'get_health_score',
     'get_metric_series',
+    'get_traffic_sources',
     'list_pending_actions',
     'list_top_insights',
   ])

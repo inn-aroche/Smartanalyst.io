@@ -18,6 +18,7 @@ const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const insightsService = require('../insights/insights.service')
 const healthScore = require('../health/health-score.service')
 const watchesService = require('../watches/watches.service')
+const ga4Live = require('../ga4/ga4-live.service')
 const { logger } = require('../../lib/logger')
 
 // Format Gemini function declarations (FunctionDeclaration[]).
@@ -104,6 +105,20 @@ const DECLARATIONS = [
         },
       },
       required: ['title'],
+    },
+  },
+  {
+    name: 'get_traffic_sources',
+    description:
+      "Récupère le breakdown du trafic GA4 par canal d'acquisition (Organic Search, Paid Social, Direct, Email, Referral…) sur une fenêtre. À utiliser quand l'user demande d'où vient son trafic, quel canal performe, ou pour expliquer un pic/chute de sessions.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        days: {
+          type: 'INTEGER',
+          description: 'Nombre de jours en arrière (1 à 90). Défaut 7.',
+        },
+      },
     },
   },
   {
@@ -222,6 +237,23 @@ async function execute({ name, args }, { workspaceId, userId }) {
         first: points[0] || null,
         last: points[points.length - 1] || null,
         points,
+      }
+    }
+
+    if (name === 'get_traffic_sources') {
+      const days = Math.min(Math.max(Number(args?.days) || 7, 1), 90)
+      const res = await ga4Live.getTrafficSources({ workspaceId, days })
+      if (!res) {
+        return {
+          error:
+            'no_ga4_connector_or_unavailable: connect GA4 or check that the OAuth token is still valid.',
+        }
+      }
+      return {
+        days,
+        total_sessions: res.total,
+        channel_count: res.channels.length,
+        channels: res.channels,
       }
     }
 

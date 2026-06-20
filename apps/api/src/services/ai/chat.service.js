@@ -818,6 +818,10 @@ async function askStream({
   const useClaude = mode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
   const MAX_TOOL_ROUNDS = 3
   const toolsUsed = []
+  // Capture des séries temporelles retournées par les tools (get_metric_series).
+  // Auto-injectées en fin de tour comme highlights `chart` pour rendre une vraie
+  // viz au lieu d'une bullet list dans la prose.
+  const toolSeries = []
   let finalText = ''
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
@@ -868,6 +872,21 @@ async function askStream({
           { workspaceId, userId },
         )
         toolsUsed.push(call.name)
+        // Capture des séries temporelles pour auto-injection en highlight chart.
+        // get_metric_series retourne { points: [{date,value},...] } — on garde
+        // tel quel avec un peu de méta pour le rendu.
+        if (
+          call.name === 'get_metric_series' &&
+          Array.isArray(res?.points) &&
+          res.points.length >= 2
+        ) {
+          toolSeries.push({
+            metricKey: res.metric_key || call.args?.metric_key || 'series',
+            days: res.days || call.args?.days || res.points.length,
+            sources: res.sources || [],
+            points: res.points,
+          })
+        }
         return { functionResponse: { name: call.name, response: { result: res } } }
       }),
     )
@@ -923,7 +942,7 @@ async function askStream({
       if (error) logger.warn({ event: 'chat_audit_failed', error: error.message })
     })
 
-  const highlights = await chatHighlights.extract({
+  const extractedHighlights = await chatHighlights.extract({
     workspaceId,
     userId,
     question: message,
@@ -931,6 +950,12 @@ async function askStream({
     sources: usedSources,
     locale,
   })
+
+  // Auto-injection des highlights `chart` à partir des séries retournées par
+  // les tools (typiquement get_metric_series). Posés AVANT les highlights
+  // extraits par la 2e passe Gemini pour qu'ils soient visuellement prioritaires.
+  const chartHighlights = toolSeries.map((s) => buildChartHighlight(s, locale))
+  const highlights = [...chartHighlights, ...extractedHighlights]
 
   if (conversation) {
     try {
@@ -963,6 +988,31 @@ async function askStream({
     highlights,
     conversationId: conversation?.id || null,
   })
+}
+
+/**
+ * Construit un highlight `chart` à partir d'une série temporelle retournée
+ * par un tool (get_metric_series). Titre humanisé via METRIC_LABELS quand
+ * dispo, sinon fallback metric_key brut.
+ */
+function buildChartHighlight(series, locale) {
+  const label = METRIC_LABELS[series.metricKey]
+  const title = label
+    ? `${locale === 'en' ? label.en : label.fr} — ${series.days}j`
+    : `${series.metricKey} — ${series.days}j`
+  const summary = series.sources?.length
+    ? `${locale === 'en' ? 'source' : 'source'} : ${series.sources.join(', ')}`
+    : null
+  return {
+    type: 'chart',
+    title,
+    summary,
+    series: series.points,
+    chartKind: 'bar',
+    metricKey: series.metricKey,
+    unit: label?.unit || null,
+    tone: 'info',
+  }
 }
 
 module.exports = { ask, askStream, AiBudgetExceededError, ChatProviderError, classifyGeminiError }

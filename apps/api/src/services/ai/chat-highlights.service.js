@@ -26,6 +26,8 @@ const RESPONSE_SCHEMA = {
         properties: {
           type: {
             type: 'STRING',
+            // 'chart' n'est pas exposé au LLM (auto-injecté côté serveur quand
+            // un tool retourne une série) — on garde le schema strict ici.
             enum: ['kpi', 'callout'],
             description:
               'kpi = grosse valeur + delta + sparkline. callout = encart coloré "à retenir".',
