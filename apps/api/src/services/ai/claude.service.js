@@ -24,6 +24,25 @@ class ClaudeNotConfiguredError extends Error {
   }
 }
 
+// Anthropic renvoie un 400 "credit balance is too low" quand le compte
+// n'a plus de crédits prépayés. On la mappe vers AI_CREDIT_DEPLETED pour
+// que le frontend affiche un message dédié (et pas l'erreur brute).
+class ClaudeCreditDepletedError extends Error {
+  constructor() {
+    super('Anthropic credit balance too low.')
+    this.code = 'AI_CREDIT_DEPLETED'
+    this.statusCode = 402
+  }
+}
+
+function classifyAnthropicError(err) {
+  const msg = String(err?.message || '')
+  if (/credit balance is too low|credit_balance/i.test(msg)) {
+    return new ClaudeCreditDepletedError()
+  }
+  return err
+}
+
 function ensureConfigured() {
   const key = process.env.ANTHROPIC_API_KEY
   if (!key || key.startsWith('sk-ant-<') || key === '') {
@@ -81,13 +100,20 @@ async function generateStream({ systemPrompt, userMessage, contents, temperature
   // Le SDK Anthropic expose un Stream via `messages.stream` — itérable
   // avec des évènements typés. On capture les `content_block_delta` (texte)
   // et le `message_delta` final (usage).
-  const stream = await client.messages.stream({
-    model,
-    system: systemPrompt,
-    messages,
-    temperature,
-    max_tokens: 2048,
-  })
+  let stream
+  try {
+    stream = await client.messages.stream({
+      model,
+      system: systemPrompt,
+      messages,
+      temperature,
+      max_tokens: 2048,
+    })
+  } catch (err) {
+    // Mapping des erreurs métier (credit dépleté, etc.) avant qu'elles ne
+    // remontent en stack brute au client.
+    throw classifyAnthropicError(err)
+  }
 
   for await (const event of stream) {
     if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
@@ -124,4 +150,5 @@ async function generateStream({ systemPrompt, userMessage, contents, temperature
 module.exports = {
   generateStream,
   ClaudeNotConfiguredError,
+  ClaudeCreditDepletedError,
 }
