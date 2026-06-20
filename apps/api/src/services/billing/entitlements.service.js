@@ -31,9 +31,13 @@ const PLAN_FEATURES = {
     canUseDeepChat: true,
   },
 }
-// Plans non-MVP : on les considère équivalents à 'pro' pour ne pas régresser
-// un compte existant. On migrera progressivement.
-const LEGACY_TO_MVP = { starter: 'pro', agency: 'pro', trial: 'pro' }
+// Plans non-MVP :
+//   - starter, agency = comptes existants à ne pas régresser → mappés sur 'pro'
+//     (ils paient déjà, ils gardent l'accès complet le temps qu'on migre)
+//   - trial = état initial d'inscription (créé par auth.service à l'inscription),
+//     PAS un plan payé → doit être traité comme 'free' (sinon tout nouveau user
+//     a accès à tout gratuitement, fuite de revenus garantie)
+const LEGACY_TO_MVP = { starter: 'pro', agency: 'pro', trial: 'free' }
 
 function normalizePlan(plan) {
   if (!plan) return 'free'
