@@ -94,3 +94,98 @@ function safeJson(text: string): unknown {
     return text
   }
 }
+
+// ─── Server-Sent Events (SSE) — chat streaming (cahier §3 Lot 1) ────────
+//
+// Pourquoi pas EventSource natif : il ne supporte que GET. Le streaming
+// chat exige POST (body avec message + workspaceId + fileIds). On utilise
+// donc fetch + ReadableStream + parser SSE maison (~30 lignes, vs ajouter
+// une dépendance npm).
+//
+// Format SSE consommé (compatible spec) :
+//   event: <name>\n
+//   data: <json>\n\n
+// Les lignes ":" (commentaires de heartbeat) sont ignorées.
+
+export type StreamEvent = { event: string; data: unknown }
+
+type StreamOptions = {
+  body: unknown
+  signal?: AbortSignal
+  onEvent: (ev: StreamEvent) => void
+}
+
+export async function apiStream(path: string, opts: StreamOptions): Promise<void> {
+  const headers: Record<string, string> = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json',
+  }
+  if (currentToken) headers.Authorization = `Bearer ${currentToken}`
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(opts.body),
+    signal: opts.signal,
+  })
+
+  if (!res.ok) {
+    // Erreur AVANT le démarrage du stream (401, 429, validation, etc.) :
+    // on lit le body comme JSON classique et on rebascule sur ApiError.
+    const text = await res.text()
+    const parsed = text ? safeJson(text) : null
+    const errorField = (parsed as { error?: unknown })?.error
+    const message =
+      (typeof errorField === 'object' && errorField !== null
+        ? (errorField as { message?: string }).message
+        : typeof errorField === 'string'
+          ? errorField
+          : undefined) ?? `${res.status} ${res.statusText}`
+    throw new ApiError(message, res.status, parsed, res.headers.get('X-Request-Id'))
+  }
+
+  if (!res.body) {
+    throw new ApiError('Stream sans body', 502, null)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let buffer = ''
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    // Sépare les events sur le double saut de ligne (terminator SSE).
+    let sepIdx
+    while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
+      const rawEvent = buffer.slice(0, sepIdx)
+      buffer = buffer.slice(sepIdx + 2)
+      const parsed = parseSseBlock(rawEvent)
+      if (parsed) opts.onEvent(parsed)
+    }
+  }
+}
+
+function parseSseBlock(block: string): StreamEvent | null {
+  let eventName = 'message'
+  const dataLines: string[] = []
+  for (const line of block.split('\n')) {
+    if (!line || line.startsWith(':')) continue
+    if (line.startsWith('event:')) {
+      eventName = line.slice(6).trim()
+    } else if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5).trim())
+    }
+  }
+  if (dataLines.length === 0) return null
+  const dataStr = dataLines.join('\n')
+  let data: unknown = dataStr
+  try {
+    data = JSON.parse(dataStr)
+  } catch {
+    // garde le texte brut si non-JSON (rare)
+  }
+  return { event: eventName, data }
+}

@@ -185,6 +185,8 @@ function createApp() {
   app.use('/api/v1/files', require('./routes/files.routes'))
   // Réglages notifications par workspace (brief V2 §3.9)
   app.use('/api/v1/notification-settings', require('./routes/notification-settings.routes'))
+  // Centre de notifications in-app (cahier §3 Lot 1)
+  app.use('/api/v1/notifications', require('./routes/notifications.routes'))
   // Alertes custom utilisateur (brief V2 §3.3 — WatchModal)
   app.use('/api/v1/watches', require('./routes/watches.routes'))
   // Rapports HTML (brief V2 §3.6 — synthèse mensuelle / à la demande)

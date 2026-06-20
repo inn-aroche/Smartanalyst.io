@@ -11,7 +11,8 @@
 // Tous les blocs ont un fallback élégant en cas d'absence de données ou
 // d'erreur API — la home reste utilisable même sur un workspace vide.
 
-import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar } from '@/components/AppLayout'
@@ -22,6 +23,7 @@ import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
+import { track } from '@/lib/tracking'
 
 type HealthScore = {
   score: number
@@ -36,7 +38,7 @@ type Insight = {
   summary: string
   severity: 'critical' | 'high' | 'medium' | 'low'
   evidence?: Array<{ source?: string; explanation?: string }>
-  actions?: Array<{ id: string; title: string }>
+  actions?: Array<{ id: string; title: string; status?: string }>
 }
 
 type ActionCard = {
@@ -66,6 +68,13 @@ export default function BriefHomePage() {
   const { state } = useAuth()
   const workspace = state.workspaces[0]
   const wsId = workspace?.id
+
+  // Event brief_viewed (cahier §6 — engagement / boucle). On l'émet au
+  // premier mount avec le workspace résolu, pas à chaque refetch.
+  useEffect(() => {
+    if (!wsId) return
+    track('brief_viewed')
+  }, [wsId])
 
   // 4 queries en parallèle (React Query déduplique + cache).
   const scoreQ = useQuery({
@@ -346,9 +355,36 @@ function ThreeThings({ insights, loading }: { insights: Insight[]; loading: bool
 
 function InsightCard({ insight }: { insight: Insight }) {
   const t = useT()
+  const navigate = useNavigate()
+  const { state } = useAuth()
+  const queryClient = useQueryClient()
+  const workspaceId = state.workspaces[0]?.id
   const sevMeta = severityMeta(insight.severity)
   const cause = insight.evidence?.[0]?.explanation
-  const reco = insight.actions?.[0]?.title
+  // Action "proposed" attachée — c'est elle qu'on promeut en tâche
+  // active (cahier §4.2 — InsightCardActions). Fallback : 1ère action.
+  const proposedAction = insight.actions?.find((a) => a.status === 'proposed')
+  const reco = proposedAction?.title || insight.actions?.[0]?.title
+
+  const promote = useMutation({
+    mutationFn: async () => {
+      if (!proposedAction || !workspaceId) throw new Error('no_action')
+      return apiFetch(`/api/v1/insights/actions/${proposedAction.id}`, {
+        method: 'PATCH',
+        body: { workspaceId, status: 'todo' },
+      })
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['insights'] })
+      void queryClient.invalidateQueries({ queryKey: ['actions'] })
+    },
+  })
+
+  function askDetails() {
+    const q = encodeURIComponent(insight.title)
+    navigate(`/chat?q=${q}`)
+  }
+
   return (
     <div className="flex gap-3.5 rounded-brief border border-border bg-card p-4 shadow-card">
       <span
@@ -367,6 +403,22 @@ function InsightCard({ insight }: { insight: Insight }) {
             {reco}
           </div>
         )}
+        {/* Actions sur la carte (cahier §4.2 — InsightCardActions). */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {proposedAction && (
+            <button
+              type="button"
+              onClick={() => promote.mutate()}
+              disabled={promote.isPending || promote.isSuccess}
+              className="sa-btn !text-[12px] disabled:opacity-50"
+            >
+              {promote.isSuccess ? '✓ ' + t('brief.three.added') : '+ ' + t('brief.three.toTasks')}
+            </button>
+          )}
+          <button type="button" onClick={askDetails} className="sa-btn !text-[12px]">
+            {t('brief.three.askDetails')}
+          </button>
+        </div>
       </div>
     </div>
   )

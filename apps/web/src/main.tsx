@@ -11,6 +11,7 @@ import { AuthProvider } from './lib/auth'
 import { installGlobalErrorReporting } from './lib/client-errors'
 import { LocaleProvider } from './lib/i18n'
 import { queryClient } from './lib/queryClient'
+import { TrackingProvider } from './lib/tracking-provider'
 import './index.css'
 
 // Capture les erreurs JS globales (window.onerror + unhandledrejection)
@@ -24,9 +25,11 @@ createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <LocaleProvider>
             <AuthProvider>
-              <App />
-              <ConsentBanner />
-              <OnboardingFlow />
+              <TrackingProvider>
+                <App />
+                <ConsentBanner />
+                <OnboardingFlow />
+              </TrackingProvider>
             </AuthProvider>
           </LocaleProvider>
         </BrowserRouter>

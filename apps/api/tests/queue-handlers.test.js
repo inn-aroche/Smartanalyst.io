@@ -178,11 +178,23 @@ test('alerts scanAllWorkspaces enqueues for every workspace', async () => {
   }
 })
 
-test('alerts checkWorkspace stub returns expected shape', async () => {
-  const result = await alertsHandler.checkWorkspace({ data: { workspaceId: 'ws-1' } })
-  assert.equal(result.workspaceId, 'ws-1')
-  assert.equal(result.stub, true)
-  assert.equal(result.alertsTriggered, 0)
+test('alerts checkWorkspace returns connector health summary', async () => {
+  // Lot 0.3 : checkWorkspace n'est plus un stub, il appelle
+  // connectorService.list() puis enrichWithHealth. On mock connectorService.list
+  // pour ne pas dépendre de Supabase dans ce test ciblé sur le shape du handler.
+  const connectorService = require('../src/services/connectors/connector.service')
+  const restore = mock.method(connectorService, 'list', async () => [
+    { id: 'c-1', source: 'ga4', status: 'active', last_synced_at: new Date().toISOString() },
+    { id: 'c-2', source: 'meta_ads', status: 'active', last_synced_at: new Date().toISOString() },
+  ])
+  try {
+    const result = await alertsHandler.checkWorkspace({ data: { workspaceId: 'ws-1' } })
+    assert.equal(result.workspaceId, 'ws-1')
+    assert.equal(result.connectorCount, 2)
+    assert.equal(typeof result.alertsTriggered, 'number')
+  } finally {
+    restore.mock.restore()
+  }
 })
 
 // ━━━ insights.handler ━━━

@@ -17,12 +17,26 @@ const { generateStructured } = require('../ai/gemini.service')
 const aiUsage = require('../ai/ai-usage.service')
 const aggregator = require('./aggregator.service')
 const digestService = require('../notifications/digest.service')
+const notificationCenter = require('../notifications/notification-center.service')
 const { validateInsightsPayload, SCHEMA_DESCRIPTION_FOR_PROMPT } = require('./insight-schema')
 
 const SYSTEM_PROMPT = `Tu es Smart Analyst, un analyste marketing IA spécialisé dans l'analyse de performance.
 
 Tu analyses UNIQUEMENT les données fournies dans le contexte. Tu ne dois JAMAIS inventer une donnée ni un chiffre.
 Tu ne dois jamais affirmer une causalité certaine si les données ne la prouvent pas : parle de cause probable, d'hypothèse ou de signal explicatif.
+
+Règle "jamais de chiffre nu suspect" (cahier §3 Lot 0) :
+- Si tu lis "0 €", "0 conversion", "0 session" sur une source, regarde d'abord \`source_states\` :
+  - state="not_connected" → la source n'existe pas pour ce workspace, ne mentionne pas ce zéro.
+  - state="connected_no_data" → connecteur OK mais aucune donnée remontée : c'est probablement un volume trop bas ou un tracking absent, dis-le explicitement (catégorie data_quality / tracking).
+  - state="failing" ou "expired" → tu DOIS attribuer le zéro à l'incident de sync, pas au business.
+  - state="producing_data" → le zéro est réel, tu peux le commenter normalement.
+- Tu n'écris jamais un chiffre seul sans le contextualiser. Toujours associer une cause probable (signal métier OU problème technique) ou explicitement dire "donnée trop faible pour conclure".
+
+Règle "seuil de signifiance" (cahier §3 Lot 0) :
+- Le contexte fournit \`data_density\` = { days_with_data, days_in_window, min_days_required, sufficient }.
+- Si \`data_density.sufficient === false\` (typiquement < 7 jours de données) : tu N'écris PAS de diagnostic métier ; tu renvoies UN SEUL insight catégorie data_quality, sévérité info, qui explique calmement que la fenêtre est trop courte pour conclure et que les insights démarreront automatiquement à mesure que les données arrivent. Aucun pourcentage de variation, aucun "fort recul" — ce serait du bruit non défendable statistiquement.
+- Si \`data_density.sufficient === true\` : analyse normalement.
 
 Ta mission :
 - détecter les signaux importants (variations fortes, anomalies, écarts entre sources) ;
@@ -190,6 +204,27 @@ async function generateForWorkspace(workspaceId) {
       const r = await storeInsight(workspaceId, insight, result.json)
       if (r.created) {
         created++
+        // Notification in-app (cahier §3 Lot 1) — toute création d'insight
+        // génère une notif, la sévérité visuelle dépend de celle de l'insight.
+        // Best-effort : un échec n'interrompt pas la génération, et la
+        // rejection éventuelle est avalée pour ne pas faire crasher le runner
+        // de tests (qui mock Supabase de façon incomplète sur le path notif).
+        notificationCenter
+          .createNotification({
+            workspaceId,
+            type: 'insight_created',
+            severity:
+              insight.severity === 'critical' || insight.severity === 'high'
+                ? 'critical'
+                : insight.severity === 'medium'
+                  ? 'warning'
+                  : 'info',
+            title: insight.title,
+            body: insight.summary ? String(insight.summary).slice(0, 280) : null,
+            link: '/veille',
+            meta: { insight_id: r.insightId, severity: insight.severity },
+          })
+          .catch(() => null)
         // Brief V2 §3.3 : alerte email immédiate sur insight critical
         // nouvellement créé (la veille qui prévient AVANT qu'on demande).
         // Best-effort, jamais bloquant pour la génération.

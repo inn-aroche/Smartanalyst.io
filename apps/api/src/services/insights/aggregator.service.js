@@ -10,7 +10,19 @@
 // tous les chiffres viennent d'ici.
 
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
+const connectorService = require('../connectors/connector.service')
+const connectorHealth = require('../connectors/connector-health.service')
 const tracking = require('../tracking/ingestion.service')
+
+// Seuil de signifiance (cahier §3 Lot 0). Sous ce volume, l'engine doit
+// préférer un insight catégorie data_quality plutôt qu'un diagnostic
+// non statistiquement défendable.
+//
+// "days_with_data" = nombre de jours distincts pour lesquels au moins un
+// row canonical_metrics existe sur la fenêtre. C'est le proxy le plus
+// honnête : pas de double-comptage de sources, robuste aux trous
+// d'historique côté connecteur tiers.
+const MIN_DAYS_OF_DATA = 7
 
 // Métriques "snapshot" (état à un instant) vs "flux" (cumulables). Pour un
 // snapshot on prend la dernière valeur de la période ; pour un flux on somme.
@@ -60,6 +72,31 @@ function deltaPercent(current, previous) {
 }
 
 /**
+ * Calcule la densité de données sur la fenêtre courante.
+ * @param {Array<{date: string}>} rows
+ * @param {number} windowDays
+ * @returns {{
+ *   days_with_data: number,
+ *   days_in_window: number,
+ *   min_days_required: number,
+ *   sufficient: boolean,
+ * }}
+ */
+function computeDataDensity(rows, windowDays) {
+  const distinctDays = new Set()
+  for (const r of rows || []) {
+    if (r && typeof r.date === 'string') distinctDays.add(r.date.slice(0, 10))
+  }
+  const daysWithData = distinctDays.size
+  return {
+    days_with_data: daysWithData,
+    days_in_window: windowDays,
+    min_days_required: MIN_DAYS_OF_DATA,
+    sufficient: daysWithData >= MIN_DAYS_OF_DATA,
+  }
+}
+
+/**
  * Construit le contexte d'analyse pour un workspace.
  *
  * @param {string} workspaceId
@@ -86,7 +123,12 @@ async function buildContext(workspaceId, { windowDays = 30 } = {}) {
   let prevRows = []
   try {
     ;[curRows, prevRows] = await Promise.all([
-      canonicalMetrics.query({ workspaceId, startDate: period.start, endDate: period.end, limit: 2000 }),
+      canonicalMetrics.query({
+        workspaceId,
+        startDate: period.start,
+        endDate: period.end,
+        limit: 2000,
+      }),
       canonicalMetrics.query({
         workspaceId,
         startDate: period.comparison_start,
@@ -152,16 +194,61 @@ async function buildContext(workspaceId, { windowDays = 30 } = {}) {
     })
   }
 
+  // ── Source states (cahier §3 Lot 0 — jamais de chiffre nu suspect) ──
+  // On distingue explicitement : producing_data / connected_no_data /
+  // failing / expired / not_connected. Le LLM doit savoir si un "0 €" est
+  // un vrai zéro ou une absence de connecteur.
+  let sourceStates = []
+  try {
+    const connectors = await connectorService.list(workspaceId)
+    const enriched = connectorHealth.enrichWithHealth(connectors)
+    const sourcesWithData = new Set(metrics.map((m) => m.source))
+    sourceStates = enriched.map((c) => {
+      const state = sourcesWithData.has(c.source)
+        ? 'producing_data'
+        : c.health_state.state === 'expired'
+          ? 'expired'
+          : c.health_state.state === 'failing' || c.health_state.silent_failure
+            ? 'failing'
+            : 'connected_no_data'
+      return {
+        source: c.source,
+        state,
+        health: c.health_state.state,
+        reason: c.health_state.reason,
+        last_synced_at: c.last_synced_at || null,
+      }
+    })
+  } catch (err) {
+    // Best-effort : si on ne peut pas lire la table connectors, on continue
+    // sans source_states — le LLM perdra le contexte de causalité mais
+    // aura toujours les métriques. On loggue silencieusement.
+    sourceStates = []
+  }
+
   // Aucune donnée nulle part → rien à analyser.
   if (metrics.length === 0 && smarttag.length === 0) return null
+
+  // Densité — sert au LLM à décider entre vrai diagnostic vs insight
+  // data_quality "fenêtre trop courte" (cahier §3 Lot 0).
+  const data_density = computeDataDensity(curRows, windowDays)
 
   return {
     period,
     connected_sources: Array.from(new Set(metrics.map((m) => m.source))),
+    source_states: sourceStates,
+    data_density,
     smarttag_active: smarttag.length > 0,
     metrics,
     smarttag,
   }
 }
 
-module.exports = { buildContext, reduceRows, deltaPercent, SNAPSHOT_METRICS }
+module.exports = {
+  buildContext,
+  reduceRows,
+  deltaPercent,
+  computeDataDensity,
+  SNAPSHOT_METRICS,
+  MIN_DAYS_OF_DATA,
+}

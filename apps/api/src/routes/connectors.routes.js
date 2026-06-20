@@ -14,6 +14,7 @@ const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope, requireRole } = require('../middleware/workspace-scope.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const connectorService = require('../services/connectors/connector.service')
+const connectorHealth = require('../services/connectors/connector-health.service')
 const providersService = require('../services/connectors/providers.service')
 const accountResolver = require('../services/connectors/account-resolver.service')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
@@ -73,7 +74,9 @@ router.get('/oauth/callback', async (req, res) => {
     // dans l'écran de consentement : le token marche, mais en READ-ONLY ou
     // sans les permissions critiques. Sans cette vérif on s'en rendrait
     // compte uniquement au premier sync KO. On log un warning structuré
-    // pour pouvoir alerter (Sentry / debug user).
+    // pour pouvoir alerter (Sentry / debug user) ET on remonte le signal
+    // jusqu'à l'UI via le redirect (Lot 0 §4.7 : aucun échec silencieux).
+    let scopeMismatch = null
     try {
       const provider = await providersService.getWithDecryptedCredentials(source)
       const requestedScopes = provider.scopes || []
@@ -81,6 +84,7 @@ router.get('/oauth/callback', async (req, res) => {
       if (grantedScopes && requestedScopes.length > 0) {
         const missing = requestedScopes.filter((s) => !grantedScopes.includes(s))
         if (missing.length > 0) {
+          scopeMismatch = missing
           logger.warn(
             {
               event: 'oauth_scope_mismatch',
@@ -166,7 +170,15 @@ router.get('/oauth/callback', async (req, res) => {
       )
     }
 
-    return res.redirect(`${frontendUrl}/connectors?status=connected&source=${source}`)
+    const successParams = new URLSearchParams({ status: 'connected', source })
+    if (scopeMismatch && scopeMismatch.length > 0) {
+      // L'UI affichera un panneau d'avertissement (ScopeMismatchWarning)
+      // listant les scopes manquants — le user comprend pourquoi telle
+      // métrique restera vide sans avoir à creuser les logs.
+      successParams.set('warning', 'scope_mismatch')
+      successParams.set('missing_scopes', scopeMismatch.join(','))
+    }
+    return res.redirect(`${frontendUrl}/connectors?${successParams.toString()}`)
   } catch (err) {
     logger.error({
       event: 'oauth_callback_failed',
@@ -251,7 +263,11 @@ router.get(
   async (req, res, next) => {
     try {
       const items = await connectorService.list(req.workspaceId)
-      res.json({ connectors: items })
+      // Calcule un health_state dérivé pour chaque connecteur (cahier §3
+      // Lot 0). Permet au front d'afficher un badge précis sans dupliquer
+      // la logique de seuils.
+      const enriched = connectorHealth.enrichWithHealth(items)
+      res.json({ connectors: enriched })
     } catch (err) {
       next(err)
     }

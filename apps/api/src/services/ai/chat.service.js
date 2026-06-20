@@ -2,7 +2,7 @@
 // canonical metrics, injects them as context, asks Gemini, records an
 // audit log (best-effort), returns the text.
 
-const { generateOnce } = require('./gemini.service')
+const { generateOnce, generateStream } = require('./gemini.service')
 const aiUsage = require('./ai-usage.service')
 const chatHighlights = require('./chat-highlights.service')
 const chatConversations = require('./chat-conversations.service')
@@ -82,6 +82,12 @@ EXCEPTIONS — Si la question est conversationnelle pure ("salut", "ok merci",
 "explique-moi ce qu'est le ROAS"), tu réponds normalement sans imposer le format
 3 sections.
 
+CROCHETS D'ACTION — Tu as accès à des tools qui te permettent de CRÉER des
+choses directement (action_card / watch). Utilise-les quand c'est pertinent :
+- "ajoute une tâche pour…", "rappelle-moi de…" → create_action_card
+- "préviens-moi si…", "alerte-moi quand…" → create_watch
+Sinon, propose simplement l'action en texte et laisse l'user décider.
+
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
 un marqueur [N] (ex: [1], [2]). Quand tu cites un chiffre issu de ces métriques,
 AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture
@@ -115,6 +121,12 @@ What the user should do now. Concrete, actionable, prioritized. No abstract
 
 EXCEPTIONS — If the question is purely conversational ("hi", "ok thanks",
 "explain ROAS to me"), reply normally without imposing the 3-section format.
+
+ACTION HOOKS — You have tools that let you directly CREATE things
+(action_card / watch). Use them when relevant:
+- "add a task to…", "remind me to…" → create_action_card
+- "alert me if…", "let me know when…" → create_watch
+Otherwise, just propose the action in text and let the user decide.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
 with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
@@ -486,7 +498,7 @@ async function ask({
       out.functionCalls.map(async (call) => {
         const res = await chatTools.execute(
           { name: call.name, args: call.args || {} },
-          { workspaceId },
+          { workspaceId, userId },
         )
         toolsUsed.push(call.name)
         return { functionResponse: { name: call.name, response: { result: res } } }
@@ -646,4 +658,282 @@ function emptyWorkspaceResponse(locale) {
   }
 }
 
-module.exports = { ask, AiBudgetExceededError, ChatProviderError, classifyGeminiError }
+/**
+ * Streaming variant of ask(). Same business logic, but yields incremental
+ * text deltas via `onEvent({ type, ... })` instead of returning the full
+ * payload at the end. Cahier §3 Lot 1 — chat ressenti "moderne".
+ *
+ * Events emitted (en ordre) :
+ *   - { type: 'meta', conversationId }
+ *   - { type: 'delta', text } — répétés
+ *   - { type: 'done', answer, model, sources, highlights, conversationId }
+ *   - { type: 'error', code, message }
+ *
+ * Le client SSE rebascule sur ask() (non-streaming) si une erreur sévère
+ * survient avant le 1er delta (ex. budget exceeded, provider down).
+ */
+async function askStream({
+  userId,
+  workspaceId,
+  message,
+  locale = 'fr',
+  fileIds = [],
+  conversationId = null,
+  onEvent,
+}) {
+  const emit = (ev) => {
+    try {
+      if (typeof onEvent === 'function') onEvent(ev)
+    } catch (err) {
+      logger.warn({ event: 'chat_stream_emit_failed', error: err.message }, 'onEvent threw')
+    }
+  }
+
+  const budget = await aiUsage.checkBudget(workspaceId)
+  if (!budget.allowed) {
+    throw new AiBudgetExceededError({ used: budget.used, limit: budget.limit })
+  }
+
+  let conversation = null
+  let priorMessages = []
+  if (conversationId && workspaceId) {
+    conversation = await chatConversations.getConversation(conversationId, workspaceId)
+    if (conversation) {
+      priorMessages = await chatConversations.loadRecentMessages(conversation.id)
+    }
+  }
+  if (!conversation && workspaceId) {
+    conversation = await chatConversations.createConversation({
+      workspaceId,
+      userId,
+      firstMessage: message,
+    })
+  }
+
+  // On émet d'abord le conversationId pour que le frontend persiste l'ID
+  // même avant d'avoir reçu le moindre delta texte (utile pour les reprises).
+  emit({ type: 'meta', conversationId: conversation?.id || null })
+
+  const basePrompt = pickSystemPrompt(locale)
+
+  const attachments = []
+  if (Array.isArray(fileIds) && fileIds.length > 0 && workspaceId) {
+    for (const fileId of fileIds.slice(0, 4)) {
+      try {
+        const content = await filesService.getFileContent(workspaceId, fileId)
+        attachments.push({ mimeType: content.mimeType, data: content.base64 })
+      } catch (err) {
+        logger.warn(
+          { event: 'chat_attachment_load_failed', workspaceId, fileId, error: err.message },
+          'Could not load chat attachment',
+        )
+      }
+    }
+  }
+
+  const metricsContext = await buildMetricsContext(workspaceId, locale)
+
+  // Short-circuit "workspace vide" — on émet directement la réponse pré-canned
+  // en un seul chunk pour garder la même UX qu'un stream complété.
+  if (!metricsContext && attachments.length === 0 && workspaceId) {
+    const empty = emptyWorkspaceResponse(locale)
+    emit({ type: 'delta', text: empty.answer })
+    if (conversation) {
+      try {
+        await chatConversations.appendMessage({
+          conversationId: conversation.id,
+          role: 'user',
+          content: message,
+        })
+        await chatConversations.appendMessage({
+          conversationId: conversation.id,
+          role: 'assistant',
+          content: empty.answer,
+          sources: empty.sources,
+          highlights: empty.highlights,
+          model: 'short-circuit',
+        })
+      } catch (err) {
+        logger.warn(
+          { event: 'chat_persist_failed', conversationId: conversation.id, error: err.message },
+          'Could not persist empty-workspace turn',
+        )
+      }
+    }
+    emit({
+      type: 'done',
+      answer: empty.answer,
+      model: 'short-circuit',
+      sources: empty.sources,
+      highlights: empty.highlights,
+      conversationId: conversation?.id || null,
+    })
+    return
+  }
+
+  let systemPrompt = metricsContext ? `${basePrompt}\n\n${metricsContext.contextStr}` : basePrompt
+  if (attachments.length > 0) {
+    systemPrompt +=
+      locale === 'en'
+        ? `\n\nThe user attached ${attachments.length} file(s). Analyse them alongside the connected data. Cite the file (e.g. "Source: your file") when you use it.`
+        : `\n\nL'utilisateur a joint ${attachments.length} fichier(s). Analyse-les en plus des données connectées. Cite le fichier (ex : « Source : ton fichier ») quand tu t'en sers.`
+  }
+
+  const t0 = Date.now()
+  const initialParts = [{ text: message }]
+  for (const att of attachments) {
+    if (att && att.data && att.mimeType) {
+      initialParts.push({ inlineData: { mimeType: att.mimeType, data: att.data } })
+    }
+  }
+  const history = [
+    ...chatConversations.toGeminiContents(priorMessages),
+    { role: 'user', parts: initialParts },
+  ]
+
+  const MAX_TOOL_ROUNDS = 3
+  const toolsUsed = []
+  let finalText = ''
+  let modelName = ''
+  for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
+    let out
+    try {
+      // Seul le DERNIER tour (sans plus de tool-call) est utile à streamer
+      // pour l'user. Les tours intermédiaires (functionCall → toolResponse)
+      // n'émettent typiquement aucun texte ; on les exécute en non-streaming
+      // pour éviter une SSE qui ouvre/ferme à vide. Stratégie : on tente le
+      // streaming sur chaque tour ; les chunks vides sont ignorés.
+      out = await generateStream({
+        systemPrompt,
+        contents: history,
+        tools: chatTools.DECLARATIONS,
+        temperature: 0.4,
+        onDelta: (delta) => emit({ type: 'delta', text: delta }),
+      })
+    } catch (err) {
+      throw classifyGeminiError(err)
+    }
+    modelName = out.modelName
+
+    void aiUsage.recordUsage({
+      workspaceId,
+      userId,
+      model: out.usage?.model || out.modelName,
+      requestType: 'chat',
+      inputTokens: out.usage?.inputTokens || 0,
+      outputTokens: out.usage?.outputTokens || 0,
+      durationMs: out.usage?.durationMs,
+    })
+
+    if (out.functionCalls.length === 0 || round === MAX_TOOL_ROUNDS) {
+      finalText = out.text
+      break
+    }
+
+    history.push({ role: 'model', parts: out.candidate.content.parts })
+
+    const responses = await Promise.all(
+      out.functionCalls.map(async (call) => {
+        const res = await chatTools.execute(
+          { name: call.name, args: call.args || {} },
+          { workspaceId, userId },
+        )
+        toolsUsed.push(call.name)
+        return { functionResponse: { name: call.name, response: { result: res } } }
+      }),
+    )
+    history.push({ role: 'user', parts: responses })
+  }
+
+  const text = finalText
+  const durationMs = Date.now() - t0
+
+  const fullSources = metricsContext?.sources || []
+  const citedIds = new Set()
+  if (typeof text === 'string') {
+    const re = /\[(\d+)\](?!\w)/g
+    let m
+    while ((m = re.exec(text)) !== null) {
+      citedIds.add(Number(m[1]))
+    }
+  }
+  const usedSources = fullSources.filter((s) => citedIds.has(s.id))
+
+  logger.info(
+    {
+      event: 'chat_answered',
+      userId,
+      workspaceId,
+      model: modelName,
+      durationMs,
+      msgLen: message.length,
+      streamed: true,
+      hasMetricsContext: Boolean(metricsContext),
+      sourcesAvailable: fullSources.length,
+      sourcesCited: usedSources.length,
+      toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+    },
+    'Chat answered (stream)',
+  )
+
+  const service = getServiceRoleClient()
+  service
+    .from('audit_logs')
+    .insert({
+      user_id: userId,
+      workspace_id: workspaceId || null,
+      action: 'chat_ask',
+      changes: {
+        message_length: message.length,
+        model: modelName,
+        duration_ms: durationMs,
+        streamed: true,
+      },
+    })
+    .then(({ error }) => {
+      if (error) logger.warn({ event: 'chat_audit_failed', error: error.message })
+    })
+
+  const highlights = await chatHighlights.extract({
+    workspaceId,
+    userId,
+    question: message,
+    answer: text,
+    sources: usedSources,
+    locale,
+  })
+
+  if (conversation) {
+    try {
+      await chatConversations.appendMessage({
+        conversationId: conversation.id,
+        role: 'user',
+        content: message,
+      })
+      await chatConversations.appendMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: text,
+        sources: usedSources,
+        highlights,
+        model: modelName,
+      })
+    } catch (err) {
+      logger.warn(
+        { event: 'chat_persist_failed', conversationId: conversation.id, error: err.message },
+        'Could not persist chat turn',
+      )
+    }
+  }
+
+  emit({
+    type: 'done',
+    answer: text,
+    model: modelName,
+    sources: usedSources,
+    highlights,
+    conversationId: conversation?.id || null,
+  })
+}
+
+module.exports = { ask, askStream, AiBudgetExceededError, ChatProviderError, classifyGeminiError }
