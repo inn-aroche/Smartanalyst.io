@@ -8,6 +8,7 @@ import { apiFetch, apiStream, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { pickSuggestions } from '@/lib/chat-suggestions'
 import { useLocale, useT } from '@/lib/i18n'
+import { useEntitlements } from '@/lib/use-entitlements'
 import { renderMarkdown } from '@/lib/markdown'
 import { track } from '@/lib/tracking'
 
@@ -606,6 +607,12 @@ function ModeToggle({
   disabled?: boolean
 }) {
   const t = useT()
+  // Gating Pro (cahier §3 Lot 3). Si l'user est en Free, l'option "Approfondi"
+  // affiche un badge Pro et reste activable (mais côté backend on fallback
+  // silencieusement sur Gemini si plan ne le permet pas). L'idée est d'éveiller
+  // l'envie d'upgrader sans frustrer.
+  const entitlementsQ = useEntitlements()
+  const deepLocked = entitlementsQ.data?.features.canUseDeepChat === false
   return (
     <div
       className="inline-flex rounded-[8px] border border-border bg-bg-2 p-0.5 text-[12px]"
@@ -620,7 +627,7 @@ function ModeToggle({
           onClick={() => onChange(m)}
           aria-pressed={mode === m}
           className={[
-            'rounded-[6px] px-2.5 py-1 transition-colors',
+            'inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1 transition-colors',
             mode === m
               ? 'bg-card font-semibold text-text-1 shadow-sm'
               : 'text-text-3 hover:text-text-2',
@@ -628,6 +635,11 @@ function ModeToggle({
           ].join(' ')}
         >
           {m === 'fast' ? t('chat.mode.fast') : t('chat.mode.deep')}
+          {m === 'deep' && deepLocked && (
+            <span className="rounded-full bg-brand-amber/15 px-1 font-mono text-[9px] uppercase text-brand-amber">
+              Pro
+            </span>
+          )}
         </button>
       ))}
     </div>

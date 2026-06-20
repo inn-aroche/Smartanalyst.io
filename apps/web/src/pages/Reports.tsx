@@ -8,10 +8,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
+import UpgradePrompt from '@/components/billing/UpgradePrompt'
 import DataFreshnessChip from '@/components/DataFreshnessChip'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { useEntitlements } from '@/lib/use-entitlements'
 import { useLocale, useT } from '@/lib/i18n'
 
 type ReportRow = {
@@ -42,6 +44,11 @@ export default function ReportsPage() {
   const wsId = workspace?.id ?? ''
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [genOpen, setGenOpen] = useState(false)
+  // Gating (cahier §3 Lot 3) : sur plan Free, la génération de rapports
+  // n'est pas incluse → on remplace le bouton "+ Générer" par un UpgradePrompt
+  // contextualisé.
+  const entitlementsQ = useEntitlements()
+  const canGenerate = entitlementsQ.data?.features.canGenerateReports !== false
 
   const listQ = useQuery({
     queryKey: ['reports', 'list', wsId],
@@ -70,13 +77,19 @@ export default function ReportsPage() {
       <div className="grid h-[calc(100vh-4rem)] grid-cols-1 gap-0 md:grid-cols-[280px_1fr] lg:h-[calc(100vh-4.5rem)]">
         {/* Panneau gauche : liste */}
         <aside className="max-h-[40vh] overflow-y-auto border-b border-border bg-bg-2 p-4 md:max-h-none md:border-b-0 md:border-r">
-          <button
-            type="button"
-            onClick={() => setGenOpen(true)}
-            className="sa-btn sa-btn-primary mb-4 w-full !text-sm"
-          >
-            + {t('reports.generate')}
-          </button>
+          {canGenerate ? (
+            <button
+              type="button"
+              onClick={() => setGenOpen(true)}
+              className="sa-btn sa-btn-primary mb-4 w-full !text-sm"
+            >
+              + {t('reports.generate')}
+            </button>
+          ) : (
+            <div className="mb-4">
+              <UpgradePrompt feature="reports" compact />
+            </div>
+          )}
 
           {listQ.isLoading ? (
             <div className="space-y-2">
