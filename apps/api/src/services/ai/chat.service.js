@@ -4,6 +4,7 @@
 
 const { generateOnce, generateStream } = require('./gemini.service')
 const claudeService = require('./claude.service')
+const entitlements = require('../billing/entitlements.service')
 const aiUsage = require('./ai-usage.service')
 const chatHighlights = require('./chat-highlights.service')
 const chatConversations = require('./chat-conversations.service')
@@ -811,11 +812,23 @@ async function askStream({
   ]
 
   // Routing provider (cahier ADR-04) :
-  //   - mode='deep' + ANTHROPIC_API_KEY → Claude Sonnet (analyse approfondie)
-  //   - sinon → Gemini Flash (latence plus basse)
-  // Function-calling : porté aux deux providers — claude.service convertit
-  // les declarations Gemini en input_schema Anthropic en interne.
-  const useClaude = mode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
+  //   - mode='deep' + ANTHROPIC_API_KEY + plan autorise deep_chat → Claude
+  //   - sinon → Gemini Flash (fallback transparent, l'user n'a pas d'erreur)
+  // Gating plan (cahier §3 Lot 3) : seul le plan Pro débloque le mode
+  // Approfondi. Sur Free, on rebascule silencieusement sur Gemini — l'UI
+  // côté front grise déjà le toggle Approfondi pour signaler la limite.
+  let effectiveMode = mode
+  if (mode === 'deep' && workspaceId) {
+    const plan = await entitlements.getWorkspacePlan(workspaceId)
+    if (!entitlements.canUseFeature(plan, 'deep_chat')) {
+      effectiveMode = 'fast'
+      logger.info(
+        { event: 'chat_mode_downgraded_by_plan', workspaceId, plan },
+        'Deep mode requested but plan does not allow it — falling back to fast',
+      )
+    }
+  }
+  const useClaude = effectiveMode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
   const MAX_TOOL_ROUNDS = 3
   const toolsUsed = []
   // Capture des séries temporelles retournées par les tools (get_metric_series).

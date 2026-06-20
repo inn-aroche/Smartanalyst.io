@@ -23,7 +23,7 @@ export const PLANS = Object.freeze({
     id: 'starter',
     label: 'Starter',
     tagline: 'Pour le freelance ou la TPE qui pilote son marketing',
-    priceEurMonth: 99,
+    priceEurMonth: 29,
     stripePriceEnv: 'STRIPE_PRICE_STARTER',
     quotas: {
       clients: 5,
@@ -36,8 +36,8 @@ export const PLANS = Object.freeze({
   PRO: {
     id: 'pro',
     label: 'Pro',
-    tagline: 'Pour l’agence qui gère 5 à 20 clients',
-    priceEurMonth: 199,
+    tagline: 'Pour l’indé ou la PME qui pilote son marketing au jour le jour',
+    priceEurMonth: 59,
     stripePriceEnv: 'STRIPE_PRICE_PRO',
     quotas: {
       clients: 20,
@@ -54,6 +54,10 @@ export const PLANS = Object.freeze({
     tagline: 'Pour les agences avec un portefeuille illimité',
     priceEurMonth: 399,
     stripePriceEnv: 'STRIPE_PRICE_AGENCY',
+    // public:false → masqué du marketing (page pricing publique) pour cette
+    // phase MVP. Le plan reste fonctionnel pour les comptes hérités côté app.
+    // À repasser à true (ou supprimer le flag) quand on relance Agency.
+    public: false,
     quotas: {
       clients: Infinity,
       connectors: 'all',
@@ -62,38 +66,44 @@ export const PLANS = Object.freeze({
       whiteLabel: 'full', // marque blanche complète
     },
   },
-});
+})
 
-export const PLAN_ORDER = ['FREE', 'STARTER', 'PRO', 'AGENCY'];
+// Ordre complet (incluant les plans hérités/internes) — utilisé par l'app
+// pour résoudre les comptes existants même sur un plan masqué.
+export const PLAN_ORDER = ['FREE', 'STARTER', 'PRO', 'AGENCY']
+
+// Ordre des plans EXPOSÉS au public (marketing, page pricing, checkout) —
+// filtre via `public !== false`. Utilise ce tableau dans toute UI publique.
+export const PUBLIC_PLAN_ORDER = PLAN_ORDER.filter((k) => PLANS[k].public !== false)
 
 // 14 jours gratuit, toutes features, pas de CB requise.
 // Reference: docs/00_BRIEF_EXECUTIF.md § "Les 4 plans" → "Trial"
-export const TRIAL_DAYS = 14;
-export const TRIAL_REQUIRES_CARD = false;
+export const TRIAL_DAYS = 14
+export const TRIAL_REQUIRES_CARD = false
 
 export function getPlanById(id) {
-  return Object.values(PLANS).find((p) => p.id === id) ?? null;
+  return Object.values(PLANS).find((p) => p.id === id) ?? null
 }
 
 // Helper for display: turn Infinity into "Illimité" without leaking JS quirks into templates.
 export function formatQuota(value) {
-  if (value === Infinity) return 'Illimité';
-  if (value === 'all_p1') return 'Tous (P1)';
-  if (value === 'all') return 'Tous';
-  return String(value);
+  if (value === Infinity) return 'Illimité'
+  if (value === 'all_p1') return 'Tous (P1)'
+  if (value === 'all') return 'Tous'
+  return String(value)
 }
 
 export function formatWhiteLabel(level) {
   switch (level) {
     case 'none':
-      return 'Logo SmartAnalyst visible';
+      return 'Logo SmartAnalyst visible'
     case 'logo':
-      return 'Votre logo';
+      return 'Votre logo'
     case 'logo_colors':
-      return 'Logo + couleurs';
+      return 'Logo + couleurs'
     case 'full':
-      return 'Marque blanche complète';
+      return 'Marque blanche complète'
     default:
-      return level;
+      return level
   }
 }

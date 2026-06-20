@@ -5,6 +5,7 @@ const { body, param, query } = require('express-validator')
 
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope, requireRole } = require('../middleware/workspace-scope.middleware')
+const { requireFeature } = require('../middleware/quota-gate.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const { NotFoundError } = require('../lib/error-handler')
 const reportGenerator = require('../services/reports/report-generator.service')
@@ -50,6 +51,7 @@ router.post(
   runValidation,
   workspaceScope,
   requireRole('editor'),
+  requireFeature('reports'),
   async (req, res, next) => {
     try {
       const fmt = (d) => new Date(d).toISOString().slice(0, 10)

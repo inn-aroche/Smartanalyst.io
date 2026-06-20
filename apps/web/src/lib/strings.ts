@@ -799,6 +799,41 @@ const en = {
   'settings.language.body':
     'Change the language of the interface. Your choice is saved on this device.',
   'settings.section.tracking': 'Tracking — SmartTag',
+  'settings.section.billing': 'Plan & billing',
+  // ━━━ Billing (cahier §3 Lot 3) ━━━
+  'billing.currentPlan': 'Current plan',
+  'billing.active': 'Active',
+  'billing.free.description':
+    "You're on the Free plan: 1 source connected, 3 insights per month. Upgrade to Pro for unlimited.",
+  'billing.pro.description':
+    'Pro plan: unlimited sources, unlimited insights, reports and Deep mode chat.',
+  'billing.upgradeToPro': 'Upgrade to Pro',
+  'billing.managePortal': 'Manage plan',
+  'billing.loading': 'Opening…',
+  'billing.usage': 'Usage this month',
+  'billing.usage.connectors': 'Connected sources',
+  'billing.usage.insights': 'Insights generated',
+  'billing.usage.reports': 'Report generation',
+  'billing.usage.deepChat': 'Deep mode chat',
+  'billing.unlimited': '∞',
+  'billing.loadError': "Couldn't load your billing details.",
+  'billing.error.notConfigured': 'Billing is not yet configured. Contact support.',
+  'billing.error.noCustomer': 'No subscription to manage yet — upgrade first.',
+  'billing.error.planUnavailable': 'This plan is currently unavailable.',
+  'billing.error.generic': 'Billing request failed. Try again.',
+  // ━━━ UpgradePrompt ━━━
+  'upgrade.title': 'Pro feature',
+  'upgrade.cta': 'Upgrade to Pro',
+  'upgrade.loading': 'Opening…',
+  'upgrade.error': "Couldn't open checkout. Try again.",
+  'upgrade.reason.connectors':
+    "You've reached your 1-source limit. Pro lets you connect unlimited sources.",
+  'upgrade.reason.insights':
+    "You've reached your 3 insights/month. Pro removes the limit so you don't miss a signal.",
+  'upgrade.reason.reports': 'Report generation is included in the Pro plan.',
+  'upgrade.reason.deepChat':
+    'Deep mode (longer, deeper analysis) is included in the Pro plan. Quick mode stays available.',
+  'upgrade.reason.generic': 'This is a Pro feature.',
   'settings.section.privacy': 'Privacy',
   'settings.privacy.title': 'Cookie preferences',
   'settings.privacy.body':
@@ -1771,6 +1806,41 @@ const fr: Record<keyof typeof en, string> = {
   'settings.language.body':
     'Change la langue de l’interface. Ton choix est gardé sur cet appareil.',
   'settings.section.tracking': 'Tracking — SmartTag',
+  'settings.section.billing': 'Plan & facturation',
+  // ━━━ Billing (cahier §3 Lot 3) ━━━
+  'billing.currentPlan': 'Plan actuel',
+  'billing.active': 'Actif',
+  'billing.free.description':
+    'Tu es sur le plan Découverte : 1 source, 3 insights/mois. Passe Pro pour tout débloquer.',
+  'billing.pro.description':
+    'Plan Pro : sources illimitées, insights illimités, rapports et mode Approfondi.',
+  'billing.upgradeToPro': 'Passer au plan Pro',
+  'billing.managePortal': 'Gérer mon abonnement',
+  'billing.loading': 'Ouverture…',
+  'billing.usage': 'Utilisation ce mois-ci',
+  'billing.usage.connectors': 'Sources connectées',
+  'billing.usage.insights': 'Insights générés',
+  'billing.usage.reports': 'Génération de rapports',
+  'billing.usage.deepChat': 'Mode Approfondi du chat',
+  'billing.unlimited': '∞',
+  'billing.loadError': 'Impossible de charger tes infos de facturation.',
+  'billing.error.notConfigured': "La facturation n'est pas encore configurée. Contacte le support.",
+  'billing.error.noCustomer': "Pas encore d'abonnement à gérer — passe Pro d'abord.",
+  'billing.error.planUnavailable': "Ce plan n'est pas disponible pour le moment.",
+  'billing.error.generic': 'Requête de facturation échouée. Réessaie.',
+  // ━━━ UpgradePrompt ━━━
+  'upgrade.title': 'Fonctionnalité Pro',
+  'upgrade.cta': 'Passer au plan Pro',
+  'upgrade.loading': 'Ouverture…',
+  'upgrade.error': "Impossible d'ouvrir le checkout. Réessaie.",
+  'upgrade.reason.connectors':
+    "Tu as atteint la limite d'1 source. Le plan Pro débloque les sources illimitées.",
+  'upgrade.reason.insights':
+    'Tu as atteint tes 3 insights du mois. Le plan Pro lève la limite — tu ne rates plus aucun signal.',
+  'upgrade.reason.reports': 'La génération de rapports est incluse dans le plan Pro.',
+  'upgrade.reason.deepChat':
+    'Le mode Approfondi (analyse plus longue et plus profonde) est inclus dans le plan Pro. Le mode Rapide reste accessible.',
+  'upgrade.reason.generic': 'Cette fonctionnalité est dans le plan Pro.',
   'settings.section.privacy': 'Confidentialité',
   'settings.privacy.title': 'Préférences cookies',
   'settings.privacy.body':

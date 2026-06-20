@@ -12,6 +12,7 @@ const { body, param, query } = require('express-validator')
 const { UserFacingError } = require('../lib/error-handler')
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope, requireRole } = require('../middleware/workspace-scope.middleware')
+const { requireQuota } = require('../middleware/quota-gate.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const connectorService = require('../services/connectors/connector.service')
 const connectorHealth = require('../services/connectors/connector-health.service')
@@ -332,6 +333,7 @@ router.post(
   runValidation,
   workspaceScope,
   requireRole('editor'),
+  requireQuota('connectors'),
   async (req, res, next) => {
     try {
       // Verifie que le provider existe et qu'il est en mode apikey.

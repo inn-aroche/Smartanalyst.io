@@ -1,6 +1,6 @@
 ---
 import DarkBase from '../../layouts/DarkBase.astro';
-import { PLANS, PLAN_ORDER, TRIAL_DAYS } from '@smartanalyst/shared/pricing';
+import { PLANS, PUBLIC_PLAN_ORDER, TRIAL_DAYS } from '@smartanalyst/shared/pricing';
 
 // English UI strings for plans (the shared package is French-only for now).
 const PLAN_LABELS_EN = {
@@ -77,14 +77,14 @@ const productJsonLd = {
     '@type': 'AggregateOffer',
     priceCurrency: 'EUR',
     lowPrice: 0,
-    highPrice: Math.max(...PLAN_ORDER.map((k) => PLANS[k].priceEurMonth)),
-    offerCount: PLAN_ORDER.length,
+    highPrice: Math.max(...PUBLIC_PLAN_ORDER.map((k) => PLANS[k].priceEurMonth)),
+    offerCount: PUBLIC_PLAN_ORDER.length,
   },
 };
 ---
 <DarkBase
   title="Pricing"
-  description="Discovery, Starter, Pro and Agency plans. 14-day free trial, no credit card. AI included in every plan."
+  description="Discovery, Starter and Pro plans. AI included in every plan, no add-on."
   locale="en"
   ogImage="/og/pricing.svg"
   jsonLd={[productJsonLd, faqJsonLd]}
@@ -103,8 +103,8 @@ const productJsonLd = {
 
   <section class="page-section sa-fade">
     <div class="container">
-      <div class="grid cols-4">
-        {PLAN_ORDER.map((key) => {
+      <div class="grid cols-3">
+        {PUBLIC_PLAN_ORDER.map((key) => {
           const plan = PLANS[key];
           const en = PLAN_LABELS_EN[key];
           return (
@@ -144,41 +144,41 @@ const productJsonLd = {
           <thead>
             <tr>
               <th></th>
-              {PLAN_ORDER.map((key) => <th>{PLAN_LABELS_EN[key].label}</th>)}
+              {PUBLIC_PLAN_ORDER.map((key) => <th>{PLAN_LABELS_EN[key].label}</th>)}
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Monthly price</td>
-              {PLAN_ORDER.map((key) => <td><strong>€{PLANS[key].priceEurMonth}</strong></td>)}
+              {PUBLIC_PLAN_ORDER.map((key) => <td><strong>€{PLANS[key].priceEurMonth}</strong></td>)}
             </tr>
             <tr>
               <td>Clients</td>
-              {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.clients)}</td>)}
+              {PUBLIC_PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.clients)}</td>)}
             </tr>
             <tr>
               <td>Connectors</td>
-              {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.connectors)}</td>)}
+              {PUBLIC_PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.connectors)}</td>)}
             </tr>
             <tr>
               <td>Insights / month</td>
-              {PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.insightsPerMonth)}</td>)}
+              {PUBLIC_PLAN_ORDER.map((key) => <td>{quotaEn(PLANS[key].quotas.insightsPerMonth)}</td>)}
             </tr>
             <tr>
               <td>Conversational analysis</td>
-              {PLAN_ORDER.map(() => <td>✓</td>)}
+              {PUBLIC_PLAN_ORDER.map(() => <td>✓</td>)}
             </tr>
             <tr>
               <td>Real-time dashboard</td>
-              {PLAN_ORDER.map(() => <td>✓</td>)}
+              {PUBLIC_PLAN_ORDER.map(() => <td>✓</td>)}
             </tr>
             <tr>
               <td>Auto-reports on the 1st</td>
-              {PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✓' : '·'}</td>)}
+              {PUBLIC_PLAN_ORDER.map((key) => <td>{PLANS[key].quotas.autoSendReports ? '✓' : '·'}</td>)}
             </tr>
             <tr>
               <td>White-label</td>
-              {PLAN_ORDER.map((key) => <td>{whiteLabelEn(PLANS[key].quotas.whiteLabel)}</td>)}
+              {PUBLIC_PLAN_ORDER.map((key) => <td>{whiteLabelEn(PLANS[key].quotas.whiteLabel)}</td>)}
             </tr>
             <tr>
               <td>Competitive benchmark</td>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import AppLayout, { useToast } from '@/components/AppLayout'
+import BillingSection from '@/components/billing/BillingSection'
 import CopyButton from '@/components/CopyButton'
 import LocaleSwitcher from '@/components/LocaleSwitcher'
 import AiUsageBlock from '@/components/settings/AiUsageBlock'
@@ -101,6 +102,10 @@ export default function SettingsPage() {
           <Field label={t('settings.field.workspaceName')} value={workspace?.name ?? '—'} />
           <Field label={t('settings.field.workspaceId')} value={workspace?.id ?? '—'} mono />
           <Field label={t('settings.field.yourRole')} value={workspace?.role ?? '—'} />
+        </Section>
+
+        <Section title={t('settings.section.billing')}>
+          <BillingSection />
         </Section>
 
         <Section title={t('settings.section.tracking')}>
