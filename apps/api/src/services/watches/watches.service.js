@@ -74,7 +74,26 @@ async function patchWatch(workspaceId, watchId, patch) {
   if (typeof patch.enabled === 'boolean') allowed.enabled = patch.enabled
   if (typeof patch.notify_in_app === 'boolean') allowed.notify_in_app = patch.notify_in_app
   if (typeof patch.notify_email === 'boolean') allowed.notify_email = patch.notify_email
-  if (Object.keys(allowed).length === 0) {
+  // Édition de la métrique surveillée (cahier §3 Lot 4).
+  if (typeof patch.description === 'string') allowed.description = patch.description.trim()
+  if (patch.threshold === null) allowed.threshold = null
+  else if (typeof patch.threshold === 'number') allowed.threshold = patch.threshold
+  // Snooze : 2 modes — `snooze_hours` raccourci (N heures à partir de maintenant)
+  // OU `snoozed_until` explicite (peut être null pour annuler le snooze).
+  if (typeof patch.snooze_hours === 'number') {
+    if (patch.snooze_hours <= 0) {
+      allowed.snoozed_until = null // 0 = annule le snooze
+    } else {
+      allowed.snoozed_until = new Date(Date.now() + patch.snooze_hours * 3_600_000).toISOString()
+    }
+  } else if (patch.snoozed_until === null) {
+    allowed.snoozed_until = null
+  } else if (typeof patch.snoozed_until === 'string') {
+    allowed.snoozed_until = patch.snoozed_until
+  }
+  allowed.updated_at = new Date().toISOString()
+  if (Object.keys(allowed).length === 1) {
+    // Seulement updated_at → rien à patcher
     throw new UserFacingError('Aucun champ modifiable fourni.', {
       statusCode: 400,
       code: 'EMPTY_PATCH',

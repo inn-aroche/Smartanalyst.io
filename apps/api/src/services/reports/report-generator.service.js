@@ -14,6 +14,7 @@ const { logger } = require('../../lib/logger')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const insightsService = require('../insights/insights.service')
 const healthScore = require('../health/health-score.service')
+const gemini = require('../ai/gemini.service')
 
 function escapeHtml(s) {
   if (s == null) return ''
@@ -377,7 +378,16 @@ function renderHtml({
   whiteLabel,
   selectedSources,
   segmentBy,
+  template = 'standard',
 }) {
+  // Templates :
+  //   - executive : focus mot analyste + score + top alertes (pas de KPI table, pas de chart)
+  //   - detail    : tout, avec segmentation + comparaison vs N-1
+  //   - agency    : tout + white-label (deja propage en amont)
+  //   - standard  : behavior historique
+  const showKpis = template !== 'executive'
+  const showRevenueChart = template !== 'executive'
+  const showInsights = true
   const wsName = escapeHtml(workspace?.name ?? '—')
   const scoreNum = score?.has_data && typeof score.score === 'number' ? score.score : null
   const scoreDelta = score?.delta
@@ -454,19 +464,23 @@ function renderHtml({
     </div>
   </div>
 
-  <!-- ─── KPIs ─── -->
-  <div class="section">
+  <!-- ─── KPIs (gates par template) ─── -->
+  ${
+    showKpis
+      ? `<div class="section">
     <h2>KPIs sur la période</h2>
     ${renderSourceFilterTag(selectedSources)}
     <div class="kpis">
       ${kpis.map((k) => renderKpiCard(k, kpisPrev, segmentBy)).join('')}
     </div>
-    ${revenueSeries.length >= 2 ? `<div class="chart"><div style="font-size:11px;color:#5C5C78;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Évolution du chiffre d’affaires</div>${renderSparkline(revenueSeries, 700, 90)}</div>` : ''}
-  </div>
+    ${showRevenueChart && revenueSeries.length >= 2 ? `<div class="chart"><div style="font-size:11px;color:#5C5C78;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Évolution du chiffre d’affaires</div>${renderSparkline(revenueSeries, 700, 90)}</div>` : ''}
+  </div>`
+      : ''
+  }
 
   <!-- ─── Insights / points d'attention ─── -->
   ${
-    topInsights.length > 0
+    showInsights && topInsights.length > 0
       ? `<div class="section">
     <h2>Ce qui a compté</h2>
     <div class="insights">
@@ -498,6 +512,64 @@ function renderHtml({
 </html>`
 }
 
+/**
+ * Genere un "mot de l'analyste" via Gemini structured output.
+ * Renvoie un texte court (2-4 phrases) commentant la periode. Si Gemini
+ * n'est pas configure ou echoue, on laisse l'appelant fallback sur
+ * defaultAnalystNote (statique, deterministe).
+ *
+ * On extrait deliberement un sous-ensemble des donnees pour limiter le
+ * contexte (cout + latence) : score, top 3 KPIs, top 3 insights, et le
+ * delta vs periode precedente si dispo.
+ */
+async function generateAnalystNote({ workspaceName, period, score, kpis, kpisPrev, topInsights }) {
+  // Resume compact, lisible cote prompt.
+  const kpiLines = (kpis || [])
+    .slice(0, 6)
+    .map((k) => {
+      const prev = (kpisPrev || []).find((p) => p.key === k.key)
+      const delta = prev ? computeDeltaPct(k.value, prev.value) : null
+      const deltaStr =
+        delta != null && Number.isFinite(delta)
+          ? ` (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}% vs N-1)`
+          : ''
+      return `- ${k.key}: ${k.value == null ? 'n/a' : fmtNumber(k.value)}${deltaStr}`
+    })
+    .join('\n')
+  const insightLines = (topInsights || [])
+    .slice(0, 3)
+    .map((i) => `- [${i.severity || 'medium'}] ${i.title}`)
+    .join('\n')
+  const scoreStr =
+    score?.has_data && typeof score.score === 'number' ? `${score.score}/100` : 'non calcule'
+
+  const systemPrompt = `Tu es un analyste marketing concis. Tu rediges en francais un commentaire de 3 phrases maximum, max 80 mots, sans emojis, sans liste a puces, sans titre. Ton: factuel, conseil sans baratin, pas de promesses. Tu cites un chiffre marquant si dispo. Tu termines par une recommandation actionnable.`
+  const userMessage = `Workspace: ${workspaceName}
+Periode: ${period.start} -> ${period.end}
+Score global: ${scoreStr}
+KPIs:
+${kpiLines || '- aucun'}
+Alertes ouvertes:
+${insightLines || '- aucune'}
+
+Ecris le mot de l'analyste pour le rapport mensuel.`
+
+  const responseSchema = {
+    type: 'object',
+    properties: { note: { type: 'string' } },
+    required: ['note'],
+  }
+
+  const { json } = await gemini.generateStructured({
+    systemPrompt,
+    userMessage,
+    responseSchema,
+    temperature: 0.4,
+    maxOutputTokens: 200,
+  })
+  return typeof json?.note === 'string' && json.note.trim().length > 0 ? json.note.trim() : null
+}
+
 function defaultAnalystNote(score, insightCount) {
   if (score == null) {
     return 'Pas encore assez de données pour un commentaire chiffré — je prendrai la parole dès que les sources auront un mois de recul.'
@@ -527,7 +599,16 @@ async function generate({
   sources,
   segmentBy = null,
   compareToPreviousPeriod = false,
+  template = 'standard',
+  aiNote = false,
 }) {
+  // Les templates "agency" et "detail" surchargent certaines options par
+  // commodite : agency = white_label forcé, detail = compare + segmentBy auto.
+  if (template === 'agency') whiteLabel = true
+  if (template === 'detail') {
+    if (segmentBy == null) segmentBy = 'source'
+    if (!compareToPreviousPeriod) compareToPreviousPeriod = true
+  }
   const supabase = getServiceRoleClient()
 
   // Crée le row en status='generating' pour avoir un id immédiatement.
@@ -553,6 +634,31 @@ async function generate({
       segmentBy,
       compareToPreviousPeriod,
     })
+
+    // Mot de l'analyste IA — optionnel, best-effort : si Gemini fail on
+    // retombe sur la version statique de defaultAnalystNote.
+    let analystNote = row.analyst_note
+    if (aiNote && !analystNote) {
+      try {
+        analystNote = await generateAnalystNote({
+          workspaceName: data.workspace?.name || 'votre business',
+          period: { start: periodStart, end: periodEnd },
+          score: data.score,
+          kpis: data.kpis,
+          kpisPrev: data.kpisPrev,
+          topInsights: data.topInsights,
+        })
+        if (analystNote) {
+          await supabase.from('reports').update({ analyst_note: analystNote }).eq('id', row.id)
+        }
+      } catch (err) {
+        logger.warn(
+          { event: 'report_analyst_note_failed', reportId: row.id, error: err.message },
+          'AI analyst note generation failed — falling back to static',
+        )
+      }
+    }
+
     const html = renderHtml({
       title: row.title,
       workspace: data.workspace,
@@ -562,10 +668,11 @@ async function generate({
       kpisPrev: data.kpisPrev,
       revenueSeries: data.revenueSeries,
       period: { start: periodStart, end: periodEnd },
-      analystNote: row.analyst_note,
+      analystNote,
       whiteLabel: row.white_label,
       selectedSources: data.selectedSources,
       segmentBy: data.segmentBy,
+      template,
     })
 
     const { data: updated, error: updErr } = await supabase

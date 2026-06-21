@@ -1,19 +1,42 @@
-// GlobalSearch — recherche cross-entity (cahier §3 Lot 2).
+// GlobalSearch — recherche cross-entity + command palette (cahier §3 Lot 2 + 4).
 //
 // Ouverture par Cmd+K (Ctrl+K sous Linux/Windows) OU clic sur un bouton
 // dans la sidebar/topbar. Modal centrée, input focus auto, debounce 250ms
 // pour ne pas saturer l'API au typing.
 //
-// 3 buckets de résultats : Conversations · Insights · Rapports. Chaque
-// résultat est cliquable vers la route correspondante.
+// 5 buckets de résultats :
+//   - Navigation (#aller vers chat, audit, sources…) — toujours visibles
+//   - Actions (#créer veille, générer rapport, ouvrir billing) — toujours visibles
+//   - Conversations · Insights · Rapports (data-driven, après 2 chars)
+// Les buckets navigation+actions sont filtrés par fuzzy match sur le label
+// pour rester réactifs même sans backend (effet "Linear-like").
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { useT } from '@/lib/i18n'
+import { useT, type StringKey } from '@/lib/i18n'
+
+// Eventname declenche depuis un autre composant pour pre-remplir l'input ET
+// ouvrir la palette. Utile depuis l'app shell pour exposer des shortcuts
+// (ex: "Inviter un membre" depuis le menu principal).
+export const PALETTE_PREFILL_EVENT = 'sa-palette:prefill'
+export function openPaletteWith(prefill: string): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(PALETTE_PREFILL_EVENT, { detail: prefill }))
+}
+
+// Evenement custom branche dans Veille/Reports/Settings : signale a la
+// command palette qu'une action a ete demandee. Le composant cible decide
+// quoi en faire (ouvrir un modal, scroller, etc.).
+export const ACTION_EVENT = 'sa-palette:action'
+export type PaletteAction = 'create-watch' | 'create-report' | 'open-billing' | 'invite-member'
+export function dispatchPaletteAction(action: PaletteAction): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(ACTION_EVENT, { detail: action }))
+}
 
 type SearchResults = {
   conversations: Array<{ id: string; title: string; updated_at: string }>
@@ -103,12 +126,73 @@ export default function GlobalSearch() {
     navigate(to)
   }
 
+  function doAction(action: PaletteAction, navigateTo?: string) {
+    setOpen(false)
+    if (navigateTo) navigate(navigateTo)
+    // Le composant cible se branche via window.addEventListener(ACTION_EVENT).
+    // On laisse 80ms pour que la nav s'effectue avant le dispatch (le listener
+    // est souvent monte par la page cible).
+    setTimeout(() => dispatchPaletteAction(action), 80)
+  }
+
+  // Definitions statiques des entrees navigation+actions. Filtrees par query
+  // pour rester reactif sans hit backend.
+  const navItems = useMemo(
+    () => [
+      { key: 'palette.go.chat' as StringKey, to: '/chat', icon: '💬' },
+      { key: 'palette.go.audit' as StringKey, to: '/audit', icon: '📊' },
+      { key: 'palette.go.veille' as StringKey, to: '/veille', icon: '👁' },
+      { key: 'palette.go.tasks' as StringKey, to: '/tasks', icon: '✓' },
+      { key: 'palette.go.reports' as StringKey, to: '/rapports', icon: '📑' },
+      { key: 'palette.go.sources' as StringKey, to: '/sources', icon: '🔌' },
+      { key: 'palette.go.live' as StringKey, to: '/live', icon: '⚡' },
+      { key: 'palette.go.settings' as StringKey, to: '/settings', icon: '⚙' },
+    ],
+    [],
+  )
+  const actionItems = useMemo(
+    () => [
+      {
+        key: 'palette.action.newWatch' as StringKey,
+        action: 'create-watch' as PaletteAction,
+        to: '/veille',
+        icon: '➕',
+      },
+      {
+        key: 'palette.action.newReport' as StringKey,
+        action: 'create-report' as PaletteAction,
+        to: '/rapports',
+        icon: '📝',
+      },
+      {
+        key: 'palette.action.openBilling' as StringKey,
+        action: 'open-billing' as PaletteAction,
+        to: '/settings',
+        icon: '💳',
+      },
+      {
+        key: 'palette.action.inviteMember' as StringKey,
+        action: 'invite-member' as PaletteAction,
+        to: '/settings',
+        icon: '👥',
+      },
+    ],
+    [],
+  )
+
+  const q2 = q.trim().toLowerCase()
+  const filteredNav =
+    q2.length === 0 ? navItems : navItems.filter((i) => t(i.key).toLowerCase().includes(q2))
+  const filteredActions =
+    q2.length === 0 ? actionItems : actionItems.filter((i) => t(i.key).toLowerCase().includes(q2))
+
   if (!open) return null
-  const hasAny =
+  const hasDataResults =
     (results.data?.conversations.length || 0) +
       (results.data?.insights.length || 0) +
       (results.data?.reports.length || 0) >
     0
+  const hasNavOrActions = filteredNav.length > 0 || filteredActions.length > 0
   return (
     <div
       className="fixed inset-0 z-[2200] flex items-start justify-center bg-black/40 px-4 pt-[12vh]"
@@ -138,56 +222,85 @@ export default function GlobalSearch() {
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto">
-          {debouncedQ.length < 2 ? (
-            <div className="px-4 py-10 text-center text-sm text-text-3">{t('search.hint')}</div>
-          ) : results.isLoading ? (
-            <div className="px-4 py-6 text-center text-sm text-text-3">{t('search.loading')}</div>
-          ) : results.isError ? (
-            <div className="px-4 py-6 text-center text-sm text-brand-red">
-              {t('search.loadError')}
-            </div>
-          ) : !hasAny ? (
-            <div className="px-4 py-10 text-center text-sm text-text-3">
-              {t('search.noResults')}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2 px-2 py-2">
-              {(results.data?.conversations.length || 0) > 0 && (
-                <Section title={t('search.section.conversations')}>
-                  {results.data!.conversations.map((c) => (
-                    <ResultRow
-                      key={c.id}
-                      title={c.title || t('search.untitled')}
-                      onClick={() => go(`/chat?conv=${c.id}`)}
-                    />
-                  ))}
-                </Section>
-              )}
-              {(results.data?.insights.length || 0) > 0 && (
-                <Section title={t('search.section.insights')}>
-                  {results.data!.insights.map((i) => (
-                    <ResultRow
-                      key={i.id}
-                      title={i.title}
-                      subtitle={i.summary}
-                      onClick={() => go(`/veille`)}
-                    />
-                  ))}
-                </Section>
-              )}
-              {(results.data?.reports.length || 0) > 0 && (
-                <Section title={t('search.section.reports')}>
-                  {results.data!.reports.map((r) => (
-                    <ResultRow
-                      key={r.id}
-                      title={r.title || t('search.untitled')}
-                      onClick={() => go(`/reports?id=${r.id}`)}
-                    />
-                  ))}
-                </Section>
-              )}
-            </div>
-          )}
+          <div className="flex flex-col gap-2 px-2 py-2">
+            {filteredNav.length > 0 && (
+              <Section title={t('palette.section.go')}>
+                {filteredNav.map((i) => (
+                  <ResultRow key={i.key} title={t(i.key)} icon={i.icon} onClick={() => go(i.to)} />
+                ))}
+              </Section>
+            )}
+            {filteredActions.length > 0 && (
+              <Section title={t('palette.section.actions')}>
+                {filteredActions.map((i) => (
+                  <ResultRow
+                    key={i.key}
+                    title={t(i.key)}
+                    icon={i.icon}
+                    onClick={() => doAction(i.action, i.to)}
+                  />
+                ))}
+              </Section>
+            )}
+
+            {debouncedQ.length >= 2 &&
+              (results.isLoading ? (
+                <div className="px-4 py-3 text-center text-sm text-text-3">
+                  {t('search.loading')}
+                </div>
+              ) : results.isError ? (
+                <div className="px-4 py-3 text-center text-sm text-brand-red">
+                  {t('search.loadError')}
+                </div>
+              ) : hasDataResults ? (
+                <>
+                  {(results.data?.conversations.length || 0) > 0 && (
+                    <Section title={t('search.section.conversations')}>
+                      {results.data!.conversations.map((c) => (
+                        <ResultRow
+                          key={c.id}
+                          title={c.title || t('search.untitled')}
+                          onClick={() => go(`/chat?conv=${c.id}`)}
+                        />
+                      ))}
+                    </Section>
+                  )}
+                  {(results.data?.insights.length || 0) > 0 && (
+                    <Section title={t('search.section.insights')}>
+                      {results.data!.insights.map((i) => (
+                        <ResultRow
+                          key={i.id}
+                          title={i.title}
+                          subtitle={i.summary}
+                          onClick={() => go(`/veille`)}
+                        />
+                      ))}
+                    </Section>
+                  )}
+                  {(results.data?.reports.length || 0) > 0 && (
+                    <Section title={t('search.section.reports')}>
+                      {results.data!.reports.map((r) => (
+                        <ResultRow
+                          key={r.id}
+                          title={r.title || t('search.untitled')}
+                          onClick={() => go(`/reports?id=${r.id}`)}
+                        />
+                      ))}
+                    </Section>
+                  )}
+                </>
+              ) : (
+                !hasNavOrActions && (
+                  <div className="px-4 py-6 text-center text-sm text-text-3">
+                    {t('search.noResults')}
+                  </div>
+                )
+              ))}
+
+            {debouncedQ.length < 2 && !hasNavOrActions && (
+              <div className="px-4 py-6 text-center text-sm text-text-3">{t('search.hint')}</div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -208,10 +321,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function ResultRow({
   title,
   subtitle,
+  icon,
   onClick,
 }: {
   title: string
   subtitle?: string
+  icon?: string
   onClick: () => void
 }) {
   return (
@@ -219,12 +334,19 @@ function ResultRow({
       <button
         type="button"
         onClick={onClick}
-        className="block w-full rounded px-3 py-2 text-left transition-colors hover:bg-card-hover"
+        className="flex w-full items-center gap-3 rounded px-3 py-2 text-left transition-colors hover:bg-card-hover"
       >
-        <div className="truncate text-sm font-medium text-text-1">{title}</div>
-        {subtitle && (
-          <div className="mt-0.5 line-clamp-1 text-[12.5px] text-text-2">{subtitle}</div>
+        {icon && (
+          <span aria-hidden="true" className="text-base leading-none">
+            {icon}
+          </span>
         )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-text-1">{title}</div>
+          {subtitle && (
+            <div className="mt-0.5 line-clamp-1 text-[12.5px] text-text-2">{subtitle}</div>
+          )}
+        </div>
       </button>
     </li>
   )

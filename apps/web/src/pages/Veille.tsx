@@ -11,7 +11,7 @@
 //
 // Données : /api/v1/insights — filtré côté client par sévérité.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
@@ -39,6 +39,7 @@ type Watch = {
   enabled: boolean
   triggered_count: number
   last_triggered_at: string | null
+  snoozed_until: string | null
   created_at: string
 }
 
@@ -59,6 +60,16 @@ export default function VeillePage() {
   const [topTab, setTopTab] = useState<TopTab>('insights')
   const [filter, setFilter] = useState<FilterId>('all')
   const [watchModalOpen, setWatchModalOpen] = useState(false)
+
+  // Ecoute des actions de la command palette (cahier §3 Lot 4).
+  useEffect(() => {
+    function onAction(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail === 'create-watch') setWatchModalOpen(true)
+    }
+    window.addEventListener('sa-palette:action', onAction)
+    return () => window.removeEventListener('sa-palette:action', onAction)
+  }, [])
 
   // 2 queries : insights open + insights résolus (pour l'onglet "Traités").
   // L'API filtre par status, on n'a donc qu'à demander les 2 buckets une fois.
@@ -447,6 +458,20 @@ function WatchesList({ watches, workspaceId }: { watches: Watch[]; workspaceId: 
     },
   })
 
+  const snoozeMutation = useMutation({
+    mutationFn: async ({ id, hours }: { id: string; hours: number }) =>
+      apiFetch(`/api/v1/watches/${id}`, {
+        method: 'PATCH',
+        body: { workspaceId, snooze_hours: hours },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['watches', workspaceId] })
+    },
+    onError: (err: unknown) => {
+      toast.push(err instanceof ApiError ? err.message : t('veille.watchesList.toggleError'))
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) =>
       apiFetch(`/api/v1/watches/${id}?workspaceId=${workspaceId}`, {
@@ -484,6 +509,7 @@ function WatchesList({ watches, workspaceId }: { watches: Watch[]; workspaceId: 
                 deleteMutation.mutate(w.id)
               }
             }}
+            onSnooze={(hours) => snoozeMutation.mutate({ id: w.id, hours })}
           />
         ))}
       </div>
@@ -495,13 +521,20 @@ function WatchRow({
   watch,
   onToggle,
   onDelete,
+  onSnooze,
 }: {
   watch: Watch
   onToggle: () => void
   onDelete: () => void
+  onSnooze: (hours: number) => void
 }) {
   const t = useT()
   const op = formatOperator(watch)
+  // Snooze state : si snoozed_until est dans le futur, la veille est en pause.
+  const snoozedUntilMs = watch.snoozed_until ? new Date(watch.snoozed_until).getTime() : null
+  const isSnoozed = snoozedUntilMs !== null && snoozedUntilMs > Date.now()
+  const snoozeLabel = snoozedUntilMs ? new Date(snoozedUntilMs).toLocaleString() : ''
+  const [menuOpen, setMenuOpen] = useState(false)
   return (
     <div className="flex items-start gap-3 rounded-brief border border-border bg-card p-3.5 shadow-card">
       <button
@@ -536,7 +569,70 @@ function WatchRow({
               · {watch.triggered_count}× {t('veille.watchesList.triggered')}
             </span>
           )}
+          {isSnoozed && (
+            <span className="rounded bg-brand-amber/15 px-1.5 py-0.5 text-brand-amber">
+              ⏸ {t('watch.snoozed.until', { date: snoozeLabel })}
+            </span>
+          )}
         </div>
+      </div>
+      {/* Bouton snooze : dropdown 24h / 7j / réactiver (si déjà snoozé). */}
+      <div className="relative mt-0.5 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label={t('watch.snooze.button')}
+          title={t('watch.snooze.button')}
+          aria-expanded={menuOpen}
+          className={[
+            'flex h-7 w-7 items-center justify-center rounded text-text-3 hover:bg-bg-2 hover:text-text-1',
+            isSnoozed ? 'text-brand-amber' : '',
+          ].join(' ')}
+        >
+          ⏸
+        </button>
+        {menuOpen && (
+          <div
+            className="absolute right-0 top-8 z-10 flex w-40 flex-col rounded-[10px] border border-border bg-card py-1 shadow-card"
+            onMouseLeave={() => setMenuOpen(false)}
+          >
+            {isSnoozed ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onSnooze(0)
+                  setMenuOpen(false)
+                }}
+                className="px-3 py-1.5 text-left text-[12px] text-text-1 hover:bg-card-hover"
+              >
+                {t('watch.snooze.cancel')}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSnooze(24)
+                    setMenuOpen(false)
+                  }}
+                  className="px-3 py-1.5 text-left text-[12px] text-text-1 hover:bg-card-hover"
+                >
+                  {t('watch.snooze.24h')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSnooze(168)
+                    setMenuOpen(false)
+                  }}
+                  className="px-3 py-1.5 text-left text-[12px] text-text-1 hover:bg-card-hover"
+                >
+                  {t('watch.snooze.7d')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
       <button
         type="button"

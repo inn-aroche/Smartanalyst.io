@@ -98,6 +98,12 @@ async function evaluateWorkspace(workspaceId) {
  * Évalue une watch en isolation. Renvoie true si elle s'est déclenchée.
  */
 async function evaluateOne(watch) {
+  // Snooze (cahier §3 Lot 4) : si snoozed_until est dans le futur, on skip
+  // entièrement — l'user a explicitement mis la veille en pause.
+  if (watch.snoozed_until) {
+    const snoozedUntilMs = new Date(watch.snoozed_until).getTime()
+    if (Date.now() < snoozedUntilMs) return false
+  }
   // Debounce : si déclenchée dans les dernières 24h, on skip — évite le spam
   // si la condition reste vraie sur plusieurs ticks.
   if (watch.last_triggered_at) {
