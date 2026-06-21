@@ -399,6 +399,14 @@ const en = {
   'chat.hero.placeholder.3': 'Generate my monthly report',
   'chat.hero.placeholder.4': 'What 3 actions should I prioritise?',
   'chat.hero.placeholder.5': 'Which campaigns make 80% of revenue?',
+  // First-run state (no connectors yet)
+  'chat.empty.firstRun.eyebrow': 'Get started',
+  'chat.empty.firstRun.title': 'Connect your first source',
+  'chat.empty.firstRun.body':
+    'I need a source connected (GA4, Meta Ads, Google Ads, Stripe…) before I can help. It takes 2 minutes — then come back here and ask anything.',
+  'chat.empty.firstRun.cta': 'Connect a source',
+  'chat.empty.firstRun.hint':
+    'No source = no data. Once a connector is active, the quick-start cards appear here.',
   'chat.qc.compare.title': 'Compare channels',
   'chat.qc.compare.desc': '30-day breakdown',
   'chat.qc.compare.prompt': 'Compare my acquisition channels over the last 30 days.',
@@ -1592,6 +1600,14 @@ const fr: Record<keyof typeof en, string> = {
   'chat.hero.placeholder.3': 'Génère mon rapport mensuel',
   'chat.hero.placeholder.4': 'Quelles 3 actions prioriser ?',
   'chat.hero.placeholder.5': 'Quelles campagnes font 80 % du CA ?',
+  // First-run state (aucun connecteur)
+  'chat.empty.firstRun.eyebrow': 'Pour commencer',
+  'chat.empty.firstRun.title': 'Connecte ta première source',
+  'chat.empty.firstRun.body':
+    "J'ai besoin d'une source connectée (GA4, Meta Ads, Google Ads, Stripe…) avant de pouvoir t'aider. Ça prend 2 minutes — reviens ensuite ici et pose-moi n'importe quelle question.",
+  'chat.empty.firstRun.cta': 'Connecter une source',
+  'chat.empty.firstRun.hint':
+    'Pas de source = pas de données. Dès qu’un connecteur est actif, les cartes de démarrage apparaissent ici.',
   'chat.qc.compare.title': 'Comparer canaux',
   'chat.qc.compare.desc': 'Ventilation 30 j',
   'chat.qc.compare.prompt': "Compare mes canaux d'acquisition sur les 30 derniers jours.",

@@ -8,8 +8,13 @@
 // L'input du hero est rendu PAR LE PARENT (Chat.tsx) — ce composant ne
 // gere que les decorations + les cards. Le parent passe `onPick(prompt)`
 // pour qu'un clic sur une card envoie le prompt directement.
+//
+// CAS LIMITE — workspace sans connecteur (1er-run). On remplace la grille
+// de quick-cards par une seule CTA "Connecte ta 1ere source" pour eviter
+// la frustration "l'IA n'a pas de donnees" sur chaque clic.
 
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useT, type StringKey } from '@/lib/i18n'
 
@@ -133,6 +138,35 @@ export default function EmptyStateHero({
     })
     return list.slice(0, maxCards)
   }, [activeSources, maxCards])
+
+  // Cas 1er-run : aucun connecteur actif → afficher une CTA dediee plutot
+  // que les quick-cards (qui declencheraient des reponses IA "no data").
+  if (activeSources.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-6 px-4 py-10 text-center">
+        <h2 className="max-w-xl font-head text-2xl font-bold text-text-1 sm:text-3xl">
+          {t('chat.hero.title')}
+        </h2>
+        <div className="w-full max-w-md rounded-[14px] border border-brand-cyan/30 bg-brand-cyan/5 p-5 text-left">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-brand-cyan">
+            {t('chat.empty.firstRun.eyebrow')}
+          </div>
+          <h3 className="mt-1.5 font-head text-[17px] font-bold text-text-1">
+            {t('chat.empty.firstRun.title')}
+          </h3>
+          <p className="mt-2 text-[13px] leading-relaxed text-text-2">
+            {t('chat.empty.firstRun.body')}
+          </p>
+          <Link to="/sources" className="sa-btn sa-btn-primary mt-3 inline-flex !text-[13px]">
+            {t('chat.empty.firstRun.cta')} →
+          </Link>
+        </div>
+        <div className="max-w-sm text-[11.5px] leading-snug text-text-3">
+          {t('chat.empty.firstRun.hint')}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-8 px-4 py-10 text-center">
