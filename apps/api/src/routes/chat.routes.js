@@ -143,6 +143,10 @@ router.post(
     // Cahier ADR-04 — toggle Rapide/Approfondi côté UI (Claude/Gemini côté
     // backend, transparent pour l'user qui voit juste "Rapide"/"Approfondi").
     body('mode').optional().isIn(['fast', 'deep']),
+    // Cahier 22b §3.2 — chip "filtre sources" persistante au-dessus de l'input.
+    // Limite le scope de la reponse a un sous-ensemble de connecteurs.
+    body('sources').optional().isArray({ max: 10 }),
+    body('sources.*').optional().isString().isLength({ min: 2, max: 40 }),
   ],
   runValidation,
   async (req, res, next) => {
@@ -187,6 +191,7 @@ router.post(
         fileIds: req.body.fileIds || [],
         conversationId: req.body.conversationId || null,
         mode: req.body.mode || 'fast',
+        sources: Array.isArray(req.body.sources) ? req.body.sources : null,
         onEvent: (ev) => {
           if (closed) return
           send(ev.type, ev)

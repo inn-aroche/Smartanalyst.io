@@ -699,6 +699,10 @@ async function askStream({
   // Gemini pour ne pas casser l'UX — la promesse "Approfondi" est dégradée
   // mais le chat reste utilisable.
   mode = 'fast',
+  // Cahier 22b §3.2 — chip "filtre sources" : array de connecteur keys
+  // (ex: ['ga4', 'meta_ads']). Si fourni, on injecte une directive dans
+  // le system prompt pour que le LLM scope ses tool calls a ces sources.
+  sources = null,
   onEvent,
 }) {
   const emit = (ev) => {
@@ -798,6 +802,16 @@ async function askStream({
         ? `\n\nThe user attached ${attachments.length} file(s). Analyse them alongside the connected data. Cite the file (e.g. "Source: your file") when you use it.`
         : `\n\nL'utilisateur a joint ${attachments.length} fichier(s). Analyse-les en plus des données connectées. Cite le fichier (ex : « Source : ton fichier ») quand tu t'en sers.`
   }
+  // Cahier 22b §3.2 — chip "filtre sources" : si l'user a explicitement
+  // restreint le scope (ex: que GA4), on en informe le LLM pour qu'il
+  // limite ses tool calls et ses citations a ces sources.
+  if (Array.isArray(sources) && sources.length > 0) {
+    const list = sources.join(', ')
+    systemPrompt +=
+      locale === 'en'
+        ? `\n\nIMPORTANT — The user explicitly filtered the active sources to: ${list}. Only query these sources in your tool calls and only cite these sources in your answer. Do not invent or include other sources.`
+        : `\n\nIMPORTANT — L'utilisateur a explicitement restreint les sources actives à : ${list}. N'interroge que ces sources dans tes tool calls et ne cite que ces sources dans ta réponse. N'invente ni n'inclus d'autres sources.`
+  }
 
   const t0 = Date.now()
   const initialParts = [{ text: message }]
@@ -880,10 +894,16 @@ async function askStream({
 
     const responses = await Promise.all(
       out.functionCalls.map(async (call) => {
+        // Emit le badge "tool running" cote UI (cahier 22b §3.5 — feedback
+        // temps reel pendant le streaming). status='running' au depart,
+        // status='done' apres l'execution. Le client affiche un chip
+        // "🔌 Lecture GA4…" qui disparait au 'done'.
+        emit({ type: 'tool', name: call.name, status: 'running' })
         const res = await chatTools.execute(
           { name: call.name, args: call.args || {} },
           { workspaceId, userId },
         )
+        emit({ type: 'tool', name: call.name, status: 'done' })
         toolsUsed.push(call.name)
         // Capture des séries temporelles pour auto-injection en highlight chart.
         // get_metric_series retourne { points: [{date,value},...] } — on garde
