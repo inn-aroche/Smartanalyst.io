@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 
 import ChatWidget from './ChatWidget'
 import LocaleSwitcher from './LocaleSwitcher'
+import QuotaChip from '@/components/billing/QuotaChip'
 import { useAuth } from '@/lib/auth'
 import { openGlobalSearch } from '@/components/GlobalSearch'
 import NotificationBell from '@/components/notifications/NotificationBell'
@@ -226,6 +227,9 @@ export function Topbar({
       </div>
       <div className="ml-4 flex flex-shrink-0 items-center gap-2.5">
         {rightChip}
+        {/* Quota chip — visible des 50% pour rendre la limite tangible (cf.
+            next-steps A). Hide tout seul si plan Pro/Agency (Infinity). */}
+        <QuotaChip />
         <SearchButton />
         <NotificationBell />
         {primaryAction && (
