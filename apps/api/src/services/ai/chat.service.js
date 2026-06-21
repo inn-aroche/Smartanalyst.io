@@ -97,6 +97,21 @@ jour/semaine ("évolution depuis X jours", "jour par jour", "détail quotidien",
 nombre de days — NE réponds JAMAIS que tu n'as pas accès à la granularité, tu
 l'as via ce tool.
 
+OUTPUTS GENERATIFS (cahier 22b §3.3) — Tu disposes aussi de :
+- compute_table_from_metrics : utilise-le quand l'user demande de COMPARER
+  N items entre eux ("compare mes canaux", "top 5 campagnes", "CA par
+  source"). Le frontend rendra une vraie table compacte sous ta réponse —
+  inutile d'en remettre une en texte/bullets, contente-toi du commentaire.
+- compare_metrics : utilise-le pour "compare GA4 vs Meta", "sessions
+  organic vs paid" — pour rendre 2 mini-charts côte à côte sous ta réponse.
+- compute_funnel : utilise-le pour les conversions multi-étapes
+  ("funnel e-commerce", "sessions → ajout panier → commande"). 2-6
+  étapes ordonnées du haut vers le bas du funnel.
+- build_dashboard_preview : utilise-le pour les questions très larges
+  ("santé globale", "vue d'ensemble", "tableau de bord rapide"). 4-6 KPI
+  cards avec delta vs N-1, que l'user peut épingler sur son dashboard.
+Préfère ces tools à des listes a puces de chiffres : c'est PLUS LISIBLE.
+
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
 un marqueur [N] (ex: [1], [2]). Quand tu cites un chiffre issu de ces métriques,
 AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture
@@ -142,6 +157,20 @@ TIME GRANULARITY — The "User's workspace metrics" block below contains
 view ("evolution over X days", "day by day", "daily breakdown", "weekly"),
 CALL the get_metric_series tool with the metric_key and days — NEVER answer
 that you don't have the granularity, you do via this tool.
+
+GENERATIVE OUTPUTS (cahier 22b §3.3) — You also have:
+- compute_table_from_metrics: use it when the user asks to COMPARE N items
+  ("compare my channels", "top 5 campaigns", "revenue by source"). The
+  frontend will render a real compact table under your answer — no need
+  to repeat it as bullets, just provide commentary.
+- compare_metrics: use it for "compare GA4 vs Meta", "organic vs paid
+  sessions" — to render 2 mini-charts side-by-side under your answer.
+- compute_funnel: use it for multi-step conversions ("e-commerce funnel",
+  "sessions → add-to-cart → orders"). 2-6 steps ordered top-of-funnel down.
+- build_dashboard_preview: use it for very broad questions ("overall
+  health", "quick overview", "dashboard"). 4-6 KPI cards with delta
+  vs previous period, that the user can pin to their dashboard.
+Prefer these tools over bullet lists of numbers: it's MORE READABLE.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
 with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
@@ -699,6 +728,10 @@ async function askStream({
   // Gemini pour ne pas casser l'UX — la promesse "Approfondi" est dégradée
   // mais le chat reste utilisable.
   mode = 'fast',
+  // Cahier 22b §3.2 — chip "filtre sources" : array de connecteur keys
+  // (ex: ['ga4', 'meta_ads']). Si fourni, on injecte une directive dans
+  // le system prompt pour que le LLM scope ses tool calls a ces sources.
+  sources = null,
   onEvent,
 }) {
   const emit = (ev) => {
@@ -798,6 +831,16 @@ async function askStream({
         ? `\n\nThe user attached ${attachments.length} file(s). Analyse them alongside the connected data. Cite the file (e.g. "Source: your file") when you use it.`
         : `\n\nL'utilisateur a joint ${attachments.length} fichier(s). Analyse-les en plus des données connectées. Cite le fichier (ex : « Source : ton fichier ») quand tu t'en sers.`
   }
+  // Cahier 22b §3.2 — chip "filtre sources" : si l'user a explicitement
+  // restreint le scope (ex: que GA4), on en informe le LLM pour qu'il
+  // limite ses tool calls et ses citations a ces sources.
+  if (Array.isArray(sources) && sources.length > 0) {
+    const list = sources.join(', ')
+    systemPrompt +=
+      locale === 'en'
+        ? `\n\nIMPORTANT — The user explicitly filtered the active sources to: ${list}. Only query these sources in your tool calls and only cite these sources in your answer. Do not invent or include other sources.`
+        : `\n\nIMPORTANT — L'utilisateur a explicitement restreint les sources actives à : ${list}. N'interroge que ces sources dans tes tool calls et ne cite que ces sources dans ta réponse. N'invente ni n'inclus d'autres sources.`
+  }
 
   const t0 = Date.now()
   const initialParts = [{ text: message }]
@@ -835,6 +878,13 @@ async function askStream({
   // Auto-injectées en fin de tour comme highlights `chart` pour rendre une vraie
   // viz au lieu d'une bullet list dans la prose.
   const toolSeries = []
+  // Lot V2.2 — capture des tables (compute_table_from_metrics) et compares
+  // (compare_metrics) pour auto-injection en highlight `table` / `compare`.
+  const toolTables = []
+  const toolCompares = []
+  // Lot V2.3 — funnels (compute_funnel) et dashboards (build_dashboard_preview).
+  const toolFunnels = []
+  const toolDashboards = []
   let finalText = ''
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
@@ -880,10 +930,16 @@ async function askStream({
 
     const responses = await Promise.all(
       out.functionCalls.map(async (call) => {
+        // Emit le badge "tool running" cote UI (cahier 22b §3.5 — feedback
+        // temps reel pendant le streaming). status='running' au depart,
+        // status='done' apres l'execution. Le client affiche un chip
+        // "🔌 Lecture GA4…" qui disparait au 'done'.
+        emit({ type: 'tool', name: call.name, status: 'running' })
         const res = await chatTools.execute(
           { name: call.name, args: call.args || {} },
           { workspaceId, userId },
         )
+        emit({ type: 'tool', name: call.name, status: 'done' })
         toolsUsed.push(call.name)
         // Capture des séries temporelles pour auto-injection en highlight chart.
         // get_metric_series retourne { points: [{date,value},...] } — on garde
@@ -899,6 +955,53 @@ async function askStream({
             sources: res.sources || [],
             points: res.points,
           })
+        }
+        // Auto-capture table (Lot V2.2). Pas de minimum sur rows : meme 1
+        // ligne se rend en card lisible — c'est mieux qu'une liste a puces.
+        if (
+          call.name === 'compute_table_from_metrics' &&
+          Array.isArray(res?.rows) &&
+          res.rows.length > 0 &&
+          Array.isArray(res?.columns)
+        ) {
+          toolTables.push({
+            columns: res.columns,
+            rows: res.rows,
+            days: res.days || 30,
+            truncated: !!res.truncated,
+          })
+        }
+        // Auto-capture compare (Lot V2.2). Besoin des 2 series avec >= 2 points
+        // chacune sinon le split-view est moche.
+        if (
+          call.name === 'compare_metrics' &&
+          res?.left?.points?.length >= 2 &&
+          res?.right?.points?.length >= 2
+        ) {
+          toolCompares.push({
+            metricKey: res.metric_key || call.args?.metric_key || 'series',
+            days: res.days || 30,
+            left: res.left,
+            right: res.right,
+          })
+        }
+        // Auto-capture funnel (Lot V2.3). Au moins 2 etapes avec value > 0
+        // sinon c'est une bar plate sans valeur visuelle.
+        if (
+          call.name === 'compute_funnel' &&
+          Array.isArray(res?.steps) &&
+          res.steps.length >= 2 &&
+          res.steps.some((s) => s.value > 0)
+        ) {
+          toolFunnels.push({ days: res.days || 30, steps: res.steps })
+        }
+        // Auto-capture dashboard preview (Lot V2.3).
+        if (
+          call.name === 'build_dashboard_preview' &&
+          Array.isArray(res?.cards) &&
+          res.cards.length > 0
+        ) {
+          toolDashboards.push({ days: res.days || 30, cards: res.cards })
         }
         return { functionResponse: { name: call.name, response: { result: res } } }
       }),
@@ -964,12 +1067,26 @@ async function askStream({
     locale,
   })
 
-  // Auto-injection des highlights `chart` à partir des séries retournées par
-  // les tools (typiquement get_metric_series). Posés AVANT les highlights
-  // extraits par la 2e passe Gemini pour qu'ils soient visuellement prioritaires.
+  // Auto-injection des highlights à partir des résultats de tools.
+  // Posés AVANT les highlights extraits par la 2e passe Gemini pour être
+  // visuellement prioritaires (charts/tables/funnel = nouveaux outputs).
   const chartHighlights = toolSeries.map((s) => buildChartHighlight(s, locale))
-  const highlights = [...chartHighlights, ...extractedHighlights]
+  const tableHighlights = toolTables.map((t) => buildTableHighlight(t, locale))
+  const compareHighlights = toolCompares.map((c) => buildCompareHighlight(c, locale))
+  const funnelHighlights = toolFunnels.map((f) => buildFunnelHighlight(f, locale))
+  const dashboardHighlights = toolDashboards.map((d) => buildDashboardHighlight(d, locale))
+  const highlights = [
+    ...dashboardHighlights,
+    ...funnelHighlights,
+    ...compareHighlights,
+    ...tableHighlights,
+    ...chartHighlights,
+    ...extractedHighlights,
+  ]
 
+  // Lot V2.2 — capture l'ID du message assistant persiste, pour l'exposer
+  // dans le `done` SSE (le frontend en a besoin pour appeler /export.xlsx).
+  let assistantMessageId = null
   if (conversation) {
     try {
       await chatConversations.appendMessage({
@@ -977,7 +1094,7 @@ async function askStream({
         role: 'user',
         content: message,
       })
-      await chatConversations.appendMessage({
+      const persisted = await chatConversations.appendMessage({
         conversationId: conversation.id,
         role: 'assistant',
         content: text,
@@ -985,6 +1102,7 @@ async function askStream({
         highlights,
         model: modelName,
       })
+      assistantMessageId = persisted?.id || null
     } catch (err) {
       logger.warn(
         { event: 'chat_persist_failed', conversationId: conversation.id, error: err.message },
@@ -1000,6 +1118,7 @@ async function askStream({
     sources: usedSources,
     highlights,
     conversationId: conversation?.id || null,
+    messageId: assistantMessageId,
   })
 }
 
@@ -1025,6 +1144,78 @@ function buildChartHighlight(series, locale) {
     metricKey: series.metricKey,
     unit: label?.unit || null,
     tone: 'info',
+  }
+}
+
+/**
+ * Lot V2.2 — bloc `table` (cahier 22b §3.3). Renderise une table compacte
+ * (max 10 lignes triees) sous une reponse assistant.
+ */
+function buildTableHighlight(table, locale) {
+  const mainMetric = table.columns[1] // 1ere metric (apres 'source')
+  const label = METRIC_LABELS[mainMetric]
+  const title = label
+    ? `${locale === 'en' ? label.en : label.fr} — ${table.days}j`
+    : `${locale === 'en' ? 'Breakdown' : 'Comparatif'} — ${table.days}j`
+  return {
+    type: 'table',
+    title,
+    summary: null,
+    tone: 'info',
+    columns: table.columns,
+    rows: table.rows,
+    truncated: !!table.truncated,
+  }
+}
+
+/**
+ * Lot V2.2 — bloc `compare` (cahier 22b §3.3). Split-view 2 mini-charts
+ * cote a cote pour comparer 2 sources sur la meme metric.
+ */
+function buildCompareHighlight(cmp, locale) {
+  const label = METRIC_LABELS[cmp.metricKey]
+  const title = label
+    ? `${locale === 'en' ? label.en : label.fr} — ${cmp.days}j`
+    : `${locale === 'en' ? 'Comparison' : 'Comparaison'} — ${cmp.days}j`
+  return {
+    type: 'compare',
+    title,
+    summary: `${cmp.left.source} vs ${cmp.right.source}`,
+    tone: 'info',
+    metricKey: cmp.metricKey,
+    unit: label?.unit || null,
+    left: { source: cmp.left.source, total: cmp.left.total, series: cmp.left.points },
+    right: { source: cmp.right.source, total: cmp.right.total, series: cmp.right.points },
+  }
+}
+
+/**
+ * Lot V2.3 — bloc `funnel` (cahier 22b §3.3). Barres decroissantes avec %
+ * retention entre etapes. L'humanisation des labels (metric_key →
+ * "Chiffre d'affaires") est faite cote frontend pour eviter de fixer ici
+ * une convention de naming.
+ */
+function buildFunnelHighlight(f, locale) {
+  return {
+    type: 'funnel',
+    title: locale === 'en' ? `Funnel — ${f.days}d` : `Funnel — ${f.days}j`,
+    summary: null,
+    tone: 'info',
+    steps: f.steps,
+  }
+}
+
+/**
+ * Lot V2.3 — bloc `dashboard` preview (cahier 22b §3.3). Grille 4-6 KPI
+ * cards. Chaque card est epinglable au dashboard reel via l'action shelf.
+ */
+function buildDashboardHighlight(d, locale) {
+  return {
+    type: 'dashboard',
+    title: locale === 'en' ? `Dashboard preview — ${d.days}d` : `Aperçu dashboard — ${d.days}j`,
+    summary: null,
+    tone: 'info',
+    cards: d.cards,
   }
 }
 

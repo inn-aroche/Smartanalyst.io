@@ -18,6 +18,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AppLayout, { Topbar } from '@/components/AppLayout'
 import DataFreshnessChip from '@/components/DataFreshnessChip'
 import KpiCard, { type Kpi } from '@/components/charts/KpiCard'
+import PinnedWidgets from '@/components/dashboard/PinnedWidgets'
 import ScoreRing from '@/components/charts/ScoreRing'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
@@ -184,13 +185,16 @@ export default function BriefHomePage() {
                 loading={kpisQ.isLoading}
                 locale={locale}
               />
+
+              {/* ─── Mes épingles depuis le chat (cahier 22b §3.4 — Lot V2.3) ─── */}
+              {wsId && <PinnedWidgets workspaceId={wsId} />}
             </>
           )}
 
           {/* ─── Barre "ask" : bandeau dégradé ─── */}
           <Link
             to="/chat"
-            className="flex cursor-pointer items-center gap-3.5 rounded-brief bg-brand-grad px-5 py-4 shadow-float transition-transform hover:-translate-y-0.5"
+            className="flex cursor-pointer items-center gap-3 rounded-brief bg-brand-grad px-4 py-4 shadow-float transition-transform hover:-translate-y-0.5 sm:gap-3.5 sm:px-5"
           >
             <img
               src="/brand/ascent-mark-onlight-512.png"
@@ -200,9 +204,18 @@ export default function BriefHomePage() {
               className="flex-shrink-0"
               style={{ filter: 'brightness(0) invert(1)' }}
             />
-            <span className="flex-1 text-sm font-medium text-white">{t('brief.ask.body')}</span>
-            <span className="whitespace-nowrap font-mono text-[13px] text-white">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-white sm:whitespace-normal">
+              {t('brief.ask.body')}
+            </span>
+            {/* CTA texte cache sur mobile (debordement) — la fleche reste comme signal visuel. */}
+            <span className="hidden whitespace-nowrap font-mono text-[13px] text-white sm:inline">
               {t('brief.ask.cta')} →
+            </span>
+            <span
+              aria-hidden="true"
+              className="font-mono text-[16px] leading-none text-white sm:hidden"
+            >
+              →
             </span>
           </Link>
         </div>

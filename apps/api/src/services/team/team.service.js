@@ -15,6 +15,7 @@ const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { UserFacingError, NotFoundError } = require('../../lib/error-handler')
 const resend = require('../email/resend.service')
+const emailTemplate = require('../email/email-template.service')
 
 const VALID_ROLES = ['admin', 'editor', 'viewer']
 const INVITE_TTL_DAYS = 7
@@ -139,16 +140,26 @@ async function inviteMember(workspaceId, invitedByUserId, { email, role = 'edito
 
   const acceptUrl = buildAcceptUrl(token)
   const wsName = ws?.name || 'SmartAnalyst'
+  const roleLabels = { admin: 'admin', editor: 'éditeur', viewer: 'lecteur' }
+  const roleLabel = roleLabels[role] || role
+  const { html, text } = emailTemplate.renderEmail({
+    preview: `Tu as été invité à rejoindre ${wsName}.`,
+    title: 'Tu as une invitation 🎉',
+    intro: `Tu as été invité à rejoindre l'espace de travail « ${wsName} » sur SmartAnalyst en tant que ${roleLabel}.`,
+    body: `<p style="margin:0 0 8px 0;font-size:14px;line-height:1.55;color:#5C5C78">En acceptant, tu pourras :</p>
+      <ul style="margin:0 0 8px 0;padding-left:22px;font-size:14px;line-height:1.6;color:#14142A">
+        <li>Voir les insights et tableaux de bord du workspace</li>
+        <li>Poser des questions à l'IA sur les données connectées</li>
+        ${role !== 'viewer' ? '<li>Créer des rapports et des veilles</li>' : ''}
+      </ul>`,
+    cta: { label: "Accepter l'invitation", href: acceptUrl },
+    footer: `Ce lien expire dans ${INVITE_TTL_DAYS} jours. Si tu n'attendais pas cette invitation, tu peux l'ignorer en toute sécurité.`,
+  })
   const emailResult = await resend.sendEmail({
     to: cleanEmail,
-    subject: `Tu es invite a rejoindre ${wsName} sur SmartAnalyst`,
-    html: `<!doctype html><html><body style="font-family:-apple-system,sans-serif;line-height:1.5;max-width:520px;margin:32px auto;color:#111">
-      <h2 style="margin:0 0 12px">Tu as une invitation</h2>
-      <p>Tu as ete invite a rejoindre l'espace de travail <strong>${wsName}</strong> sur SmartAnalyst en tant que <strong>${role}</strong>.</p>
-      <p style="margin:24px 0"><a href="${acceptUrl}" style="display:inline-block;background:#111;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Accepter l'invitation</a></p>
-      <p style="font-size:13px;color:#666">Ce lien expire dans ${INVITE_TTL_DAYS} jours. Si tu n'as pas demande cette invitation, tu peux l'ignorer.</p>
-    </body></html>`,
-    text: `Tu as ete invite a rejoindre ${wsName} sur SmartAnalyst (role: ${role}).\nAccepte ici : ${acceptUrl}\nCe lien expire dans ${INVITE_TTL_DAYS} jours.`,
+    subject: `Invitation à rejoindre « ${wsName} » sur SmartAnalyst`,
+    html,
+    text,
   })
 
   if (!emailResult.ok) {

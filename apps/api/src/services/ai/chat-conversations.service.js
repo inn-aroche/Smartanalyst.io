@@ -189,6 +189,34 @@ function toGeminiContents(messages) {
     .filter(Boolean)
 }
 
+/**
+ * Charge UN message + son conversation_id + workspace_id (via jointure)
+ * pour permettre les checks d'autorisation cote endpoint export
+ * (Lot V2.2 — chat-export.service).
+ */
+async function getMessageWithWorkspace(messageId) {
+  if (!messageId) return null
+  const supabase = getServiceRoleClient()
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select(
+      'id, role, content, sources, highlights, conversation_id, chat_conversations!inner(workspace_id)',
+    )
+    .eq('id', messageId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return {
+    id: data.id,
+    role: data.role,
+    content: data.content,
+    sources: data.sources,
+    highlights: data.highlights,
+    conversationId: data.conversation_id,
+    workspaceId: data.chat_conversations?.workspace_id || null,
+  }
+}
+
 module.exports = {
   MAX_CONTEXT_MESSAGES,
   getConversation,
@@ -198,6 +226,7 @@ module.exports = {
   listMessages,
   appendMessage,
   deleteConversation,
+  getMessageWithWorkspace,
   toGeminiContents,
   // Internal helpers exposés pour les tests
   deriveTitle,

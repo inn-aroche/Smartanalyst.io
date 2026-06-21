@@ -50,6 +50,10 @@ export type TrackEvent =
   | 'chat_error_shown'
   | 'chat_budget_blocked'
   | 'insight_dismissed_as_wrong'
+  // ── Chat V2.1 (cahier 22b — copilote génératif) ───────────────────────
+  | 'chat_quickcard_clicked'
+  | 'chat_action_taken'
+  | 'chat_export_generated'
 
 type EventProps = Record<string, string | number | boolean | null | undefined>
 

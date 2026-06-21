@@ -1,12 +1,20 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
+import ActionShelf from '@/components/chat/ActionShelf'
+import ChatComposer from '@/components/chat/ChatComposer'
+import EmptyStateHero, { useRotatingPlaceholder } from '@/components/chat/EmptyStateHero'
 import HighlightStack, { type Highlight } from '@/components/chat/HighlightStack'
+import { type SourceOption } from '@/components/chat/SourceFilter'
+import ToolBadge, {
+  pickSkeletonKinds,
+  useRunningTools,
+  VisualSkeleton,
+} from '@/components/chat/ToolBadge'
 import { apiFetch, apiStream, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { pickSuggestions } from '@/lib/chat-suggestions'
 import { useLocale, useT } from '@/lib/i18n'
 import { useEntitlements } from '@/lib/use-entitlements'
 import { renderMarkdown } from '@/lib/markdown'
@@ -43,6 +51,10 @@ type Message =
       // au moment du 'done'. Permet à l'UI d'afficher un curseur clignotant
       // pendant la frappe.
       streaming?: boolean
+      // Lot V2.2 — ID Supabase du message persiste. Necessaire pour appeler
+      // /chat/messages/:id/export.xlsx. null pendant le streaming, recu au
+      // 'done' depuis le backend.
+      serverMessageId?: string | null
     }
   | { id: string; role: 'assistant'; pending: true }
 
@@ -68,6 +80,17 @@ function nextId() {
   return Math.random().toString(36).slice(2, 10)
 }
 
+// Libelles affiches dans le picker SourceFilter. Pour les connecteurs non
+// mappes ici on retombe sur la cle brute (ex: 'shopify').
+const SOURCE_LABELS: Record<string, string> = {
+  ga4: 'Google Analytics',
+  meta_ads: 'Meta Ads',
+  google_ads: 'Google Ads',
+  stripe: 'Stripe',
+  search_console: 'Search Console',
+  smarttag: 'SmartTag',
+}
+
 // localStorage key — la conversation en cours, par workspace, pour qu'un
 // refresh / retour sur /chat reprenne là où on en était. On stocke par
 // workspace pour ne pas mélanger des conversations entre clients d'une
@@ -81,6 +104,8 @@ export default function ChatPage() {
   const { state } = useAuth()
   const { locale } = useLocale()
   const t = useT()
+  const navigate = useNavigate()
+  const heroPlaceholder = useRotatingPlaceholder()
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [input, setInput] = useState('')
@@ -88,6 +113,19 @@ export default function ChatPage() {
   // Fichier joint à la prochaine requête. Persiste tant que l'user ne
   // l'enlève pas — l'assistant peut s'y référer dans plusieurs échanges.
   const [attachedFileId, setAttachedFileId] = useState<string | null>(null)
+  // Chip "filtre sources" (cahier 22b §3.2). Persiste dans localStorage
+  // par workspace — un user qui taffe sur Meta veut rester focus dessus.
+  const [selectedSources, setSelectedSources] = useState<string[]>([])
+  // Trace des tool events SSE pour les badges "🔌 Lecture GA4…" pendant
+  // le streaming. Reset a chaque nouveau message.
+  const [toolEvents, setToolEvents] = useState<Array<{ name: string; status: 'running' | 'done' }>>(
+    [],
+  )
+  const runningTools = useRunningTools(toolEvents)
+  // Feedback transient ("Épinglé !", "Erreur…") affiche en haut de la
+  // colonne chat 2.5s puis disparait. Pas de toast provider pour eviter
+  // de refactor ChatPage en sub-component dans AppLayout.
+  const [pinFeedback, setPinFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   // Toggle Rapide/Approfondi (cahier ADR-04). Persiste dans localStorage
   // pour qu'un user qui préfère "Approfondi" ne reswitche pas à chaque
   // ouverture. Jamais "Gemini"/"Claude" exposés en UI (terminologie CLAUDE.md).
@@ -125,6 +163,10 @@ export default function ChatPage() {
               text: m.content,
               sources: m.sources,
               highlights: m.highlights,
+              // Pour les messages reloads depuis l'historique, l'ID local =
+              // l'ID Supabase (pas de generation client-side). On le branche
+              // donc directement pour permettre l'export XLSX.
+              serverMessageId: m.id,
             },
       )
       setMessages(hydrated)
@@ -215,11 +257,20 @@ export default function ChatPage() {
       (connectors.data?.connectors ?? []).filter((c) => c.status === 'active').map((c) => c.source),
     [connectors.data],
   )
-  const suggestions = useMemo(
-    () =>
-      pickSuggestions(activeSources, locale === 'fr' ? 'fr' : 'en', insightsQ.data?.insights ?? []),
-    [activeSources, locale, insightsQ.data],
+  // Options pour le picker SourceFilter (label lisible derive de la cle).
+  const sourceOptions: SourceOption[] = useMemo(
+    () => activeSources.map((src) => ({ key: src, label: SOURCE_LABELS[src] || src })),
+    [activeSources],
   )
+  // Reference a insightsQ pour ne pas casser le contrat de queries paralleles.
+  void insightsQ
+  // Plan Pro pour gating action shelf (Pin / Slides). Starter NE compte PAS
+  // comme Pro (cf. entitlements.service : Starter a ses propres quotas et n'a
+  // pas pin_to_dashboard ni generate_slides). On lit directement les feature
+  // flags retournes par le backend pour ne pas dupliquer la logique de plan.
+  const entitlementsQ = useEntitlements()
+  const isPro = Boolean(entitlementsQ.data?.features.canPinToDashboard)
+  const deepLocked = entitlementsQ.data?.features.canUseDeepChat === false
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -252,6 +303,8 @@ export default function ChatPage() {
     let errored = false
     const controller = new AbortController()
     abortRef.current = controller
+    // Reset les badges tool a chaque nouvelle requete.
+    setToolEvents([])
     try {
       await apiStream('/api/v1/chat/stream', {
         signal: controller.signal,
@@ -262,6 +315,7 @@ export default function ChatPage() {
           mode,
           fileIds: attachedFileId ? [attachedFileId] : undefined,
           ...(conversationId ? { conversationId } : {}),
+          ...(selectedSources.length > 0 ? { sources: selectedSources } : {}),
         },
         onEvent: (ev) => {
           const payload = ev.data as Record<string, unknown>
@@ -274,6 +328,11 @@ export default function ChatPage() {
                 if (key) window.localStorage.setItem(key, cid)
               }
             }
+          } else if (ev.event === 'tool') {
+            // Cahier 22b §3.5 — badge "🔌 Lecture GA4…" pendant le tool call.
+            const name = typeof payload?.name === 'string' ? payload.name : null
+            const status = payload?.status === 'done' ? 'done' : 'running'
+            if (name) setToolEvents((evs) => [...evs, { name, status }])
           } else if (ev.event === 'delta') {
             const delta = typeof payload?.text === 'string' ? payload.text : ''
             if (!delta) return
@@ -290,6 +349,7 @@ export default function ChatPage() {
             const sources = payload?.sources as Source[] | undefined
             const highlights = payload?.highlights as Highlight[] | undefined
             const cid = payload?.conversationId as string | null | undefined
+            const serverMessageId = (payload?.messageId as string | null | undefined) ?? null
             if (cid && cid !== conversationId) {
               setConversationId(cid)
               if (workspaceId) {
@@ -307,6 +367,7 @@ export default function ChatPage() {
                       sources,
                       highlights,
                       streaming: false,
+                      serverMessageId,
                     }
                   : msg,
               ),
@@ -348,6 +409,40 @@ export default function ChatPage() {
     }
   }
 
+  // Lot V2.3 — Pin highlight to dashboard. POST vers /pinned-widgets puis
+  // affiche un feedback transient. Si plan Free → 402 → message specifique.
+  async function handlePin(args: {
+    kind: 'kpi' | 'chart'
+    spec: Record<string, unknown>
+    sourceMessageId: string | null
+  }) {
+    if (!workspaceId) return
+    try {
+      await apiFetch('/api/v1/pinned-widgets', {
+        method: 'POST',
+        body: {
+          workspaceId,
+          kind: args.kind,
+          spec: args.spec,
+          sourceMessageId: args.sourceMessageId,
+        },
+      })
+      setPinFeedback({ kind: 'ok', text: t('chat.pin.success') })
+      track('chat_action_taken', { kind: 'pin', widget_kind: args.kind })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError && err.status === 402
+          ? t('chat.shelf.proOnly')
+          : err instanceof ApiError && err.code === 'MAX_WIDGETS'
+            ? t('chat.pin.max')
+            : err instanceof Error
+              ? err.message
+              : t('chat.pin.error')
+      setPinFeedback({ kind: 'err', text: msg })
+    }
+    setTimeout(() => setPinFeedback(null), 2500)
+  }
+
   function stopGeneration() {
     abortRef.current?.abort()
   }
@@ -356,6 +451,31 @@ export default function ChatPage() {
     setMode(next)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('sa-chat:mode', next)
+    }
+  }
+
+  // Sources filtrees persistees par workspace pour ne pas resetter entre
+  // sessions. Cle distincte par ws pour ne pas melanger les filtres entre
+  // clients/business chez un meme user.
+  const sourcesKey = workspaceId ? `sa-chat:sources:${workspaceId}` : null
+  useEffect(() => {
+    if (!sourcesKey) return
+    try {
+      const raw = window.localStorage.getItem(sourcesKey)
+      if (raw) setSelectedSources(JSON.parse(raw))
+    } catch (_) {
+      // ignore — localStorage indispo / JSON pourri
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourcesKey])
+  function setSelectedSourcesAndPersist(next: string[]) {
+    setSelectedSources(next)
+    if (sourcesKey) {
+      try {
+        window.localStorage.setItem(sourcesKey, JSON.stringify(next))
+      } catch (_) {
+        // ignore
+      }
     }
   }
 
@@ -368,11 +488,6 @@ export default function ChatPage() {
     if (value === 'down') {
       track('insight_dismissed_as_wrong', { source: 'chat', message_id: messageId })
     }
-  }
-
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    void send(input)
   }
 
   return (
@@ -392,19 +507,52 @@ export default function ChatPage() {
             highlights/tableaux dans les réponses. La sidebar conversations
             prend 280px à gauche, le reste est au chat. */}
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-8 md:py-10">
-          <div className="mb-6 flex-shrink-0">
-            <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
-              {t('chat.kicker')}
-            </span>
-            <h1 className="mt-2 font-head text-3xl font-bold text-text-1">{t('chat.title')}</h1>
-          </div>
+          {/* Header compact uniquement en conversation active — en empty state,
+              le hero EmptyStateHero porte tout le titre (Julius-style). */}
+          {messages.length > 0 && (
+            <div className="mb-4 flex-shrink-0">
+              <span className="font-mono text-xs uppercase tracking-widest text-brand-cyan">
+                {t('chat.kicker')}
+              </span>
+              <h1 className="mt-1 font-head text-2xl font-bold text-text-1">{t('chat.title')}</h1>
+            </div>
+          )}
+
+          {/* Feedback transient pin (Lot V2.3). */}
+          {pinFeedback && (
+            <div
+              className={[
+                'mb-3 flex-shrink-0 rounded-lg border px-3 py-2 text-sm',
+                pinFeedback.kind === 'ok'
+                  ? 'border-brand-green/30 bg-brand-green/10 text-brand-green'
+                  : 'border-brand-red/30 bg-brand-red/10 text-brand-red',
+              ].join(' ')}
+              role="status"
+            >
+              {pinFeedback.kind === 'ok' ? '📌 ' : '⚠ '}
+              {pinFeedback.text}
+            </div>
+          )}
 
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-card"
+            className={[
+              'flex-1 overflow-y-auto',
+              messages.length === 0
+                ? '' // empty state : pas de card, le hero prend la place
+                : 'rounded-2xl border border-border bg-card p-5 shadow-card',
+            ].join(' ')}
           >
             {messages.length === 0 ? (
-              <EmptyState onPick={(s) => void send(s)} suggestions={suggestions} />
+              <EmptyStateHero
+                onPick={(prompt) => {
+                  setInput(prompt)
+                  void send(prompt)
+                  track('chat_quickcard_clicked', { prompt_preview: prompt.slice(0, 40) })
+                }}
+                activeSources={activeSources}
+                maxCards={isPro ? 8 : 4}
+              />
             ) : (
               <div className="flex flex-col gap-5">
                 {messages.map((m) => (
@@ -413,8 +561,44 @@ export default function ChatPage() {
                     message={m}
                     feedback={m.role === 'assistant' && 'text' in m ? feedback[m.id] : undefined}
                     onFeedback={(v) => recordFeedback(m.id, v)}
+                    mode={mode}
+                    isPro={isPro}
+                    workspaceId={workspaceId}
+                    conversationId={conversationId}
+                    onRerun={(newMode) => {
+                      // Trouve le dernier message user juste avant la reponse
+                      // assistant en question — on reprend la meme question
+                      // avec le mode oppose.
+                      const idx = messages.findIndex((x) => x.id === m.id)
+                      const prevUser = [...messages.slice(0, idx)]
+                        .reverse()
+                        .find((x) => x.role === 'user') as
+                        | { id: string; role: 'user'; text: string }
+                        | undefined
+                      if (prevUser) {
+                        setModeAndPersist(newMode)
+                        void send(prevUser.text)
+                      }
+                    }}
+                    onPin={(args) => void handlePin(args)}
                   />
                 ))}
+                {/* Badges tool en cours (cahier 22b §3.5) — sous la derniere bulle pendant streaming. */}
+                {runningTools.length > 0 && (
+                  <div className="flex flex-col gap-2 px-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {runningTools.map((name) => (
+                        <ToolBadge key={name} toolName={name} />
+                      ))}
+                    </div>
+                    {/* Skeleton intelligent : place-holder de la FORME du bloc qui
+                        va arriver (chart / table / compare). Pulse doucement
+                        pour signaler "ca arrive". */}
+                    {pickSkeletonKinds(runningTools).map((kind) => (
+                      <VisualSkeleton key={kind} kind={kind} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -425,92 +609,32 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Pastille fichier joint */}
-          {attachedFileId && (
-            <div className="mt-3 flex flex-shrink-0 items-center gap-2 self-start rounded-full border border-brand-blue-deep/30 bg-brand-blue-dim px-3 py-1.5 text-xs">
-              <span className="text-brand-blue-deep">📎</span>
-              <span className="max-w-[260px] truncate font-medium text-text-1">
-                {attachedFileQ.data?.filename ?? t('chat.attachedFile')}
-              </span>
-              <button
-                type="button"
-                onClick={() => setAttachedFileId(null)}
-                aria-label={t('chat.removeAttachment')}
-                className="ml-1 text-text-3 hover:text-brand-red"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* Toggle Rapide/Approfondi (cahier ADR-04). Jamais "Gemini"/"Claude"
-              exposés. Approfondi = analyse plus lente, plus profonde. */}
-          <div className="mt-4 flex flex-shrink-0 items-center justify-between">
-            <ModeToggle mode={mode} onChange={setModeAndPersist} disabled={pending} />
-            {pending && (
-              <button
-                type="button"
-                onClick={stopGeneration}
-                className="sa-btn !text-[12px]"
-                aria-label={t('chat.stop.aria')}
-              >
-                ◼ {t('chat.stop')}
-              </button>
-            )}
-          </div>
-
-          <form onSubmit={handleSubmit} className="mt-2 flex flex-shrink-0 gap-2">
-            <input
-              type="text"
+          {/* Composer pro (cahier 22b §3.2) — toolbar attach/sources/mode/send,
+              sticky en bas, chip sources persistante au-dessus si filtre actif. */}
+          <div className="mt-4 flex-shrink-0">
+            <ChatComposer
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={t('chat.placeholder')}
-              className="sa-input flex-1"
-              disabled={pending}
+              onChange={setInput}
+              onSubmit={() => void send(input)}
+              onStop={stopGeneration}
+              busy={pending}
+              placeholder={messages.length === 0 ? heroPlaceholder : t('chat.placeholder')}
+              mode={mode}
+              onModeChange={setModeAndPersist}
+              sourceOptions={sourceOptions}
+              selectedSources={selectedSources}
+              onSourcesChange={setSelectedSourcesAndPersist}
+              attachedFileName={
+                attachedFileId ? (attachedFileQ.data?.filename ?? t('chat.attachedFile')) : null
+              }
+              onPickFile={() => navigate('/sources?tab=library')}
+              onRemoveFile={() => setAttachedFileId(null)}
+              modeHint={deepLocked && mode === 'deep' ? t('chat.shelf.proOnly') : null}
             />
-            <button
-              type="submit"
-              disabled={pending || !input.trim()}
-              className="sa-btn sa-btn-primary !px-6 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {pending ? t('chat.thinking') : t('chat.send')}
-            </button>
-          </form>
+          </div>
         </div>
       </div>
     </AppLayout>
-  )
-}
-
-function EmptyState({
-  onPick,
-  suggestions,
-}: {
-  onPick: (s: string) => void
-  suggestions: string[]
-}) {
-  const t = useT()
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
-      <div className="max-w-md text-sm leading-relaxed text-text-2">{t('chat.emptyState')}</div>
-      <div className="flex flex-col items-center gap-3">
-        <div className="font-mono text-[11px] uppercase tracking-widest text-text-3">
-          {t('chat.suggestions')}
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onPick(s)}
-              className="rounded-full border border-border bg-bg-2 px-4 py-2 text-sm text-text-2 transition hover:border-brand-blue-deep hover:text-text-1"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -518,10 +642,28 @@ function MessageBubble({
   message,
   feedback,
   onFeedback,
+  mode,
+  isPro,
+  workspaceId,
+  conversationId,
+  onRerun,
+  onPin,
 }: {
   message: Message
   feedback?: 'up' | 'down'
   onFeedback: (v: 'up' | 'down') => void
+  // Optionnels — utilises uniquement pour les bubbles assistant non-pending.
+  mode?: 'fast' | 'deep'
+  isPro?: boolean
+  workspaceId?: string | null
+  conversationId?: string | null
+  onRerun?: (newMode: 'fast' | 'deep') => void
+  /** Lot V2.3 — appel quand l'user clique 📌 sur un highlight (kpi/chart). */
+  onPin?: (args: {
+    kind: 'kpi' | 'chart'
+    spec: Record<string, unknown>
+    sourceMessageId: string | null
+  }) => void
 }) {
   const t = useT()
   if (message.role === 'user') {
@@ -568,18 +710,42 @@ function MessageBubble({
           {renderMarkdown(text, (id, key) => renderCitation(id, key, byId))}
           {streaming && <StreamCursor />}
         </div>
-        {/* Actions au survol — copier + feedback ↑↓ (cahier §4.3). Non
-            affichées pendant le streaming pour ne pas distraire. */}
+        {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini.
+            Lot V2.3 : onPin pour epingler un highlight au dashboard. */}
+        <HighlightStack
+          highlights={highlights}
+          canPin={Boolean(isPro)}
+          onPin={
+            onPin
+              ? (args) =>
+                  onPin({
+                    ...args,
+                    sourceMessageId:
+                      'serverMessageId' in message ? (message.serverMessageId ?? null) : null,
+                  })
+              : undefined
+          }
+        />
+        {/* Action shelf (cahier 22b §3.4) : Excel / CSV / Copier / Rejouer /
+            Pin (Pro) / Rapport (Pro). Non affichee pendant le streaming. */}
         {!streaming && text && (
-          <MessageActions
-            text={text}
-            messageId={message.id}
-            feedback={feedback}
-            onFeedback={onFeedback}
-          />
+          <>
+            <ActionShelf
+              text={text}
+              highlights={highlights}
+              mode={mode || 'fast'}
+              isPro={Boolean(isPro)}
+              workspaceId={workspaceId}
+              onRerun={onRerun}
+              conversationId={conversationId}
+              messageId={message.id}
+              serverMessageId={
+                'serverMessageId' in message ? (message.serverMessageId ?? null) : null
+              }
+            />
+            <FeedbackButtons feedback={feedback} onFeedback={onFeedback} />
+          </>
         )}
-        {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini. */}
-        <HighlightStack highlights={highlights} />
         {sources.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
@@ -597,84 +763,18 @@ function MessageBubble({
 
 // Toggle Rapide/Approfondi — segmented control. Pas de label "Gemini"/"Claude"
 // (terminologie cahier CLAUDE.md).
-function ModeToggle({
-  mode,
-  onChange,
-  disabled,
-}: {
-  mode: 'fast' | 'deep'
-  onChange: (m: 'fast' | 'deep') => void
-  disabled?: boolean
-}) {
-  const t = useT()
-  // Gating Pro (cahier §3 Lot 3). Si l'user est en Free, l'option "Approfondi"
-  // affiche un badge Pro et reste activable (mais côté backend on fallback
-  // silencieusement sur Gemini si plan ne le permet pas). L'idée est d'éveiller
-  // l'envie d'upgrader sans frustrer.
-  const entitlementsQ = useEntitlements()
-  const deepLocked = entitlementsQ.data?.features.canUseDeepChat === false
-  return (
-    <div
-      className="inline-flex rounded-[8px] border border-border bg-bg-2 p-0.5 text-[12px]"
-      role="group"
-      aria-label={t('chat.mode.aria')}
-    >
-      {(['fast', 'deep'] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(m)}
-          aria-pressed={mode === m}
-          className={[
-            'inline-flex items-center gap-1 rounded-[6px] px-2.5 py-1 transition-colors',
-            mode === m
-              ? 'bg-card font-semibold text-text-1 shadow-sm'
-              : 'text-text-3 hover:text-text-2',
-            disabled ? 'cursor-not-allowed opacity-50' : '',
-          ].join(' ')}
-        >
-          {m === 'fast' ? t('chat.mode.fast') : t('chat.mode.deep')}
-          {m === 'deep' && deepLocked && (
-            <span className="rounded-full bg-brand-amber/15 px-1 font-mono text-[9px] uppercase text-brand-amber">
-              Pro
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// Actions au survol d'un message assistant : copier, feedback ↑↓.
-// Pas de "régénérer" / "éditer" sur ce 1er round (effort vs valeur).
-function MessageActions({
-  text,
+// Feedback ↑↓ sur une reponse assistant. Copier / Excel / etc. sont
+// maintenant geres par <ActionShelf> (cahier 22b §3.4).
+function FeedbackButtons({
   feedback,
   onFeedback,
 }: {
-  text: string
-  messageId: string
   feedback: 'up' | 'down' | undefined
   onFeedback: (v: 'up' | 'down') => void
 }) {
   const t = useT()
-  function copy() {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(text)
-    }
-  }
   return (
-    <div className="mt-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-      <button
-        type="button"
-        onClick={copy}
-        className="rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-text-3 hover:bg-bg-3 hover:text-text-1"
-        aria-label={t('chat.copy')}
-        title={t('chat.copy')}
-      >
-        ⧉ {t('chat.copy')}
-      </button>
+    <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
       <button
         type="button"
         onClick={() => onFeedback('up')}

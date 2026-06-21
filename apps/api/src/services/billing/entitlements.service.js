@@ -15,29 +15,52 @@
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 
-// MVP gating : Free + Pro uniquement. Les autres plans hérités sont mappés
-// vers Pro pour ne pas casser un compte existant qui aurait Starter/Agency.
+// MVP gating : Free + Starter + Pro. Starter est un tier intermediaire reel
+// (cf. marketing pricing page) — plus de connecteurs/insights que Free, mais
+// pas les features premium (deep_chat, pin to dashboard, slide deck).
 const PLAN_FEATURES = {
   free: {
     maxConnectors: 1,
     maxInsightsPerMonth: 3,
     canGenerateReports: false,
     canUseDeepChat: false,
+    // Lot V2.3 — Pin / Slide deck Pro-only (cahier 22b §5).
+    canPinToDashboard: false,
+    canGenerateSlides: false,
+  },
+  starter: {
+    maxConnectors: 3,
+    maxInsightsPerMonth: 100,
+    // Rapports OK pour Starter (cas d'usage cle du freelance : envoyer son
+    // rapport mensuel au client meme sans toute la suite Pro).
+    canGenerateReports: true,
+    // Mais pas les "Pro flagship features" — c'est ce qui justifie le 59€ Pro.
+    canUseDeepChat: false,
+    canPinToDashboard: false,
+    canGenerateSlides: false,
   },
   pro: {
     maxConnectors: Infinity,
     maxInsightsPerMonth: Infinity,
     canGenerateReports: true,
     canUseDeepChat: true,
+    canPinToDashboard: true,
+    canGenerateSlides: true,
   },
 }
-// Plans non-MVP :
-//   - starter, agency = comptes existants à ne pas régresser → mappés sur 'pro'
-//     (ils paient déjà, ils gardent l'accès complet le temps qu'on migre)
+// Plans hérités / non-MVP :
+//   - agency = clients en grandfather de l'ancien plan 199€, on les garde sur 'pro'
+//     pour ne pas régresser (ils paient deja le top tier).
 //   - trial = état initial d'inscription (créé par auth.service à l'inscription),
 //     PAS un plan payé → doit être traité comme 'free' (sinon tout nouveau user
 //     a accès à tout gratuitement, fuite de revenus garantie)
-const LEGACY_TO_MVP = { starter: 'pro', agency: 'pro', trial: 'free' }
+//
+// NOTE : 'starter' a ETE retire de cette map. Il etait auparavant mappe a 'pro'
+// pour ne pas casser les clients existants, mais on vend le plan Starter
+// publiquement avec ses propres quotas — il doit donc avoir ses propres
+// features. Si tu as un Starter historique, il garde Starter (ses quotas
+// matchent ce qu'il a achete).
+const LEGACY_TO_MVP = { agency: 'pro', trial: 'free' }
 
 function normalizePlan(plan) {
   if (!plan) return 'free'
@@ -99,7 +122,7 @@ async function getOrganizationPlan(organizationId) {
 
 /**
  * @param {string} plan — 'free' | 'pro'
- * @param {string} feature — 'reports' | 'deep_chat'
+ * @param {string} feature — 'reports' | 'deep_chat' | 'pin_to_dashboard' | 'generate_slides'
  * @returns {boolean}
  */
 function canUseFeature(plan, feature) {
@@ -110,6 +133,10 @@ function canUseFeature(plan, feature) {
       return features.canGenerateReports
     case 'deep_chat':
       return features.canUseDeepChat
+    case 'pin_to_dashboard':
+      return features.canPinToDashboard
+    case 'generate_slides':
+      return features.canGenerateSlides
     default:
       return false
   }
@@ -185,6 +212,8 @@ async function getEntitlementsSummary(workspaceId) {
     features: {
       canGenerateReports: PLAN_FEATURES[plan].canGenerateReports,
       canUseDeepChat: PLAN_FEATURES[plan].canUseDeepChat,
+      canPinToDashboard: PLAN_FEATURES[plan].canPinToDashboard,
+      canGenerateSlides: PLAN_FEATURES[plan].canGenerateSlides,
     },
     quotas: {
       connectors: {

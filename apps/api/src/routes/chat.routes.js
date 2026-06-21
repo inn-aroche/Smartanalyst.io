@@ -7,8 +7,12 @@ const { body, param, query } = require('express-validator')
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const { UserFacingError } = require('../lib/error-handler')
+const { workspaceScope } = require('../middleware/workspace-scope.middleware')
+const { requireFeature } = require('../middleware/quota-gate.middleware')
 const chatService = require('../services/ai/chat.service')
 const chatConversations = require('../services/ai/chat-conversations.service')
+const chatExport = require('../services/ai/chat-export.service')
+const chatPptx = require('../services/ai/chat-pptx.service')
 
 const router = express.Router()
 
@@ -143,6 +147,10 @@ router.post(
     // Cahier ADR-04 — toggle Rapide/Approfondi côté UI (Claude/Gemini côté
     // backend, transparent pour l'user qui voit juste "Rapide"/"Approfondi").
     body('mode').optional().isIn(['fast', 'deep']),
+    // Cahier 22b §3.2 — chip "filtre sources" persistante au-dessus de l'input.
+    // Limite le scope de la reponse a un sous-ensemble de connecteurs.
+    body('sources').optional().isArray({ max: 10 }),
+    body('sources.*').optional().isString().isLength({ min: 2, max: 40 }),
   ],
   runValidation,
   async (req, res, next) => {
@@ -187,6 +195,7 @@ router.post(
         fileIds: req.body.fileIds || [],
         conversationId: req.body.conversationId || null,
         mode: req.body.mode || 'fast',
+        sources: Array.isArray(req.body.sources) ? req.body.sources : null,
         onEvent: (ev) => {
           if (closed) return
           send(ev.type, ev)
@@ -313,6 +322,130 @@ router.delete(
       }
       res.json({ deleted: true })
     } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ─── Export XLSX d'une reponse chat (cahier 22b §3.4 + §4.3) ─────────────
+// L'user clique "📥 Excel" dans l'ActionShelf → on streame un .xlsx genere
+// a la volee (text + highlights chart/table/compare). Aucun stockage : le
+// fichier vit le temps de la reponse HTTP. Cap 50K cellules (cahier 22b §4.3).
+router.get(
+  '/messages/:id/export.xlsx',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('message id invalide.'),
+    query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+  ],
+  runValidation,
+  async (req, res, next) => {
+    try {
+      const msg = await chatConversations.getMessageWithWorkspace(req.params.id)
+      if (!msg) {
+        return next(
+          new UserFacingError('Message introuvable.', {
+            statusCode: 404,
+            code: 'MESSAGE_NOT_FOUND',
+          }),
+        )
+      }
+      // Defense en profondeur : verifie que le message appartient au
+      // workspace passe en query (qui a deja ete contrarie par le JWT).
+      if (msg.workspaceId !== req.query.workspaceId) {
+        return next(new UserFacingError('Accès refusé.', { statusCode: 403, code: 'WS_MISMATCH' }))
+      }
+      if (msg.role !== 'assistant') {
+        return next(
+          new UserFacingError("On n'exporte que les réponses assistant.", {
+            statusCode: 400,
+            code: 'NOT_ASSISTANT_MESSAGE',
+          }),
+        )
+      }
+
+      const { buffer, filename } = await chatExport.buildXlsx({
+        text: msg.content || '',
+        highlights: Array.isArray(msg.highlights) ? msg.highlights : [],
+        conversationId: msg.conversationId,
+        messageId: msg.id,
+      })
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      )
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      res.setHeader('Content-Length', String(buffer.length))
+      res.send(buffer)
+    } catch (err) {
+      if (err && err.code === 'XLSX_CELL_LIMIT') {
+        return next(
+          new UserFacingError(
+            'Export trop volumineux. Réduis la période ou filtre par source pour réessayer.',
+            { statusCode: 413, code: 'XLSX_CELL_LIMIT' },
+          ),
+        )
+      }
+      next(err)
+    }
+  },
+)
+
+// ─── Export PPTX d'une reponse chat (cahier 22b §4.4 — Pro only) ─────────
+// Meme pattern que .xlsx : stream binaire, defense en profondeur, gated Pro.
+router.get(
+  '/messages/:id/export.pptx',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('message id invalide.'),
+    query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+  ],
+  runValidation,
+  workspaceScope,
+  requireFeature('generate_slides'),
+  async (req, res, next) => {
+    try {
+      const msg = await chatConversations.getMessageWithWorkspace(req.params.id)
+      if (!msg) {
+        return next(
+          new UserFacingError('Message introuvable.', {
+            statusCode: 404,
+            code: 'MESSAGE_NOT_FOUND',
+          }),
+        )
+      }
+      if (msg.workspaceId !== req.workspaceId) {
+        return next(new UserFacingError('Accès refusé.', { statusCode: 403, code: 'WS_MISMATCH' }))
+      }
+      if (msg.role !== 'assistant') {
+        return next(
+          new UserFacingError("On n'exporte que les réponses assistant.", {
+            statusCode: 400,
+            code: 'NOT_ASSISTANT_MESSAGE',
+          }),
+        )
+      }
+      const { buffer, filename } = await chatPptx.buildPptx({
+        title: 'SmartAnalyst — Synthèse',
+        subtitle: `Généré le ${new Date().toLocaleDateString('fr-FR')}`,
+        highlights: Array.isArray(msg.highlights) ? msg.highlights : [],
+      })
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      )
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      res.setHeader('Content-Length', String(buffer.length))
+      res.send(buffer)
+    } catch (err) {
+      if (err && err.code === 'PPTX_SLIDE_LIMIT') {
+        return next(
+          new UserFacingError(
+            'Trop de visuels dans la réponse — réduis ou refais une question plus ciblée.',
+            { statusCode: 413, code: 'PPTX_SLIDE_LIMIT' },
+          ),
+        )
+      }
       next(err)
     }
   },

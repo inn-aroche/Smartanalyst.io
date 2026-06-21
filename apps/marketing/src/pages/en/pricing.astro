@@ -4,10 +4,10 @@ import { PLANS, PUBLIC_PLAN_ORDER, TRIAL_DAYS } from '@smartanalyst/shared/prici
 
 // English UI strings for plans (the shared package is French-only for now).
 const PLAN_LABELS_EN = {
-  FREE:    { label: 'Discovery', tagline: 'To discover the product, no strings attached' },
-  STARTER: { label: 'Starter',   tagline: 'For the freelance or small business owning their marketing' },
-  PRO:     { label: 'Pro',       tagline: 'For the agency managing 5 to 20 clients' },
-  AGENCY:  { label: 'Agency',    tagline: 'For agencies with an unlimited client portfolio' },
+  FREE: { label: 'Discovery', tagline: 'To discover the product, no strings attached' },
+  STARTER: { label: 'Starter', tagline: 'For the freelance or small business owning their marketing' },
+  PRO: { label: 'Pro', tagline: 'For the indie or SMB managing their marketing day to day' },
+  AGENCY: { label: 'Agency', tagline: 'For agencies with an unlimited client portfolio' },
 };
 
 function quotaEn(value) {
@@ -40,7 +40,7 @@ const faqEntries = [
   },
   {
     q: 'Is AI limited on the Discovery plan?',
-    a: 'Yes, every plan includes a monthly AI credit allowance (messages sent to the model). Discovery is sized to evaluate the product, Starter for steady solo use, Pro and Agency for intensive multi-client work. You see your remaining balance in real time and get an 80% alert. No surprise overage charges.',
+    a: 'Yes, every plan includes a monthly AI credit allowance (messages sent to the model). Discovery is sized to evaluate the product, Starter for steady solo use, Pro for intensive multi-source work with Deep mode. You see your remaining balance in real time and get an 80% alert. No surprise overage charges.',
   },
   {
     q: 'Is my data safe?',
@@ -182,10 +182,27 @@ const productJsonLd = {
             </tr>
             <tr>
               <td>Competitive benchmark</td>
-              <td>·</td>
-              <td>✓</td>
-              <td>✓</td>
-              <td>✓</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{PLANS[key].priceEurMonth > 0 ? '✓' : '·'}</td>
+              ))}
+            </tr>
+            <tr>
+              <td>Deep mode (AI)</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{key === 'PRO' || key === 'AGENCY' ? '✓' : '·'}</td>
+              ))}
+            </tr>
+            <tr>
+              <td>Pin to dashboard (chat)</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{key === 'PRO' || key === 'AGENCY' ? '✓' : '·'}</td>
+              ))}
+            </tr>
+            <tr>
+              <td>Slide deck export</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{key === 'PRO' || key === 'AGENCY' ? '✓' : '·'}</td>
+              ))}
             </tr>
           </tbody>
         </table>

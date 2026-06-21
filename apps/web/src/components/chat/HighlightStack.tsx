@@ -4,12 +4,14 @@
 // cartes design pour rendre le chat lisible "pour tous les niveaux" sans
 // noyer l'user de chiffres dans le texte.
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import Sparkline from '@/components/charts/Sparkline'
 
 export type Highlight = {
-  type: 'kpi' | 'callout' | 'chart'
+  // Lot V2.3 — ajout des types `funnel` et `dashboard` (cahier 22b §3.3).
+  type: 'kpi' | 'callout' | 'chart' | 'table' | 'compare' | 'funnel' | 'dashboard'
   title: string
   value?: string | null
   delta?: string | null
@@ -27,15 +29,49 @@ export type Highlight = {
   series?: Array<{ date: string; value: number }> | null
   chartKind?: 'bar' | 'line' | null
   unit?: string | null
+  // Pour type='table' (Lot V2.2) — auto-inject par compute_table_from_metrics.
+  // columns[] = noms de colonnes (1ere = dim, suivantes = metrics).
+  // rows[] = objets {[col]: value}. truncated = true si le backend a coupe a 10.
+  columns?: string[] | null
+  rows?: Array<Record<string, string | number | null>> | null
+  truncated?: boolean | null
+  // Pour type='compare' (Lot V2.2) — auto-inject par compare_metrics.
+  left?: { source: string; total: number; series: Array<{ date: string; value: number }> } | null
+  right?: { source: string; total: number; series: Array<{ date: string; value: number }> } | null
+  // Pour type='funnel' (Lot V2.3) — auto-inject par compute_funnel.
+  steps?: Array<{ label: string; value: number; retentionPct: number | null }> | null
+  // Pour type='dashboard' (Lot V2.3) — auto-inject par build_dashboard_preview.
+  cards?: Array<{
+    metricKey: string
+    value: number
+    previousValue?: number | null
+    deltaPct?: number | null
+  }> | null
 }
 
-export default function HighlightStack({ highlights }: { highlights: Highlight[] }) {
+export default function HighlightStack({
+  highlights,
+  onPin,
+  canPin = false,
+}: {
+  highlights: Highlight[]
+  /** Callback Pin to dashboard (cahier 22b §3.4). Optionnel : si absent, pas de bouton. */
+  onPin?: (spec: { kind: 'kpi' | 'chart'; spec: Record<string, unknown> }) => void
+  /** Plan Pro requis pour Pin — sinon bouton montre un cadenas. */
+  canPin?: boolean
+}) {
   if (!highlights || highlights.length === 0) return null
   return (
     <div className="mt-3 flex flex-col gap-2.5">
       {highlights.map((h, i) => {
-        if (h.type === 'chart') return <ChartHighlight key={i} h={h} />
-        if (h.type === 'kpi') return <KpiHighlight key={i} h={h} />
+        if (h.type === 'dashboard')
+          return <DashboardHighlight key={i} h={h} onPin={onPin} canPin={canPin} />
+        if (h.type === 'funnel') return <FunnelHighlight key={i} h={h} />
+        if (h.type === 'compare') return <CompareHighlight key={i} h={h} />
+        if (h.type === 'table') return <TableHighlight key={i} h={h} />
+        if (h.type === 'chart')
+          return <ChartHighlight key={i} h={h} onPin={onPin} canPin={canPin} />
+        if (h.type === 'kpi') return <KpiHighlight key={i} h={h} onPin={onPin} canPin={canPin} />
         return <CalloutHighlight key={i} h={h} />
       })}
     </div>
@@ -46,18 +82,42 @@ export default function HighlightStack({ highlights }: { highlights: Highlight[]
 // Pleine largeur, axe x = dates abrégées, axe y = max auto. Bar par défaut
 // (plus lisible pour les daily breakdowns courts) ; line si chartKind='line'.
 
-function ChartHighlight({ h }: { h: Highlight }) {
+function ChartHighlight({
+  h,
+  onPin,
+  canPin,
+}: {
+  h: Highlight
+  onPin?: (spec: { kind: 'kpi' | 'chart'; spec: Record<string, unknown> }) => void
+  canPin?: boolean
+}) {
   const data = h.series && h.series.length >= 2 ? h.series : null
   if (!data) return null
   const max = Math.max(...data.map((p) => p.value), 1)
   const kind = h.chartKind || 'bar'
   return (
-    <div className="rounded-brief border border-border bg-card p-4 shadow-card">
+    <div className="group/highlight relative rounded-brief border border-border bg-card p-4 shadow-card">
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <div className="text-[13px] font-semibold text-text-1">{h.title}</div>
         {h.summary && <div className="truncate text-[11.5px] text-text-3">{h.summary}</div>}
       </div>
       {kind === 'bar' ? <BarChart data={data} max={max} /> : <LineChart data={data} max={max} />}
+      {onPin && (
+        <PinButton
+          canPin={canPin}
+          onClick={() =>
+            onPin({
+              kind: 'chart',
+              spec: {
+                title: h.title,
+                series: data,
+                unit: h.unit ?? null,
+                metricKey: h.metricKey ?? null,
+              },
+            })
+          }
+        />
+      )}
     </div>
   )
 }
@@ -144,12 +204,20 @@ function formatDateShort(iso: string): string {
 
 // ─── KPI ────────────────────────────────────────────────────────────────
 
-function KpiHighlight({ h }: { h: Highlight }) {
+function KpiHighlight({
+  h,
+  onPin,
+  canPin,
+}: {
+  h: Highlight
+  onPin?: (spec: { kind: 'kpi' | 'chart'; spec: Record<string, unknown> }) => void
+  canPin?: boolean
+}) {
   // Si l'IA a marqué `deltaUp` on l'utilise tel quel ; sinon on fait au mieux
   // en sniffant le signe du delta ("+8%" → up, "-3%" → down).
   const up = h.deltaUp ?? (h.delta ? !h.delta.trimStart().startsWith('-') : true)
   return (
-    <div className="flex items-center justify-between gap-4 rounded-brief border border-border bg-card p-4 shadow-card">
+    <div className="group/highlight relative flex items-center justify-between gap-4 rounded-brief border border-border bg-card p-4 shadow-card">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span
@@ -179,7 +247,43 @@ function KpiHighlight({ h }: { h: Highlight }) {
       {h.sparkline && h.sparkline.length >= 2 && (
         <Sparkline data={h.sparkline} up={up} w={88} h={32} />
       )}
+      {onPin && (
+        <PinButton
+          canPin={canPin}
+          onClick={() =>
+            onPin({
+              kind: 'kpi',
+              spec: {
+                title: h.title,
+                value: h.value,
+                delta: h.delta,
+                unit: h.unit ?? null,
+                metricKey: h.metricKey ?? null,
+              },
+            })
+          }
+        />
+      )}
     </div>
+  )
+}
+
+/**
+ * Bouton "📌 Épingler" rendu en absolute top-right des cartes pinnables
+ * (kpi / chart / dashboard cards). Apparait au hover desktop, toujours
+ * visible sur mobile. Si canPin=false, montre un cadenas + title="Pro requis".
+ */
+function PinButton({ onClick, canPin }: { onClick: () => void; canPin?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={canPin ? 'Épingler au dashboard' : 'Plan Pro requis pour épingler'}
+      aria-label={canPin ? 'Épingler au dashboard' : 'Épingler (Plan Pro requis)'}
+      className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-[14px] text-text-3 opacity-0 transition-opacity hover:bg-bg-3 hover:text-text-1 group-hover/highlight:opacity-100 md:group-hover/highlight:opacity-100"
+    >
+      {canPin ? '📌' : '🔒'}
+    </button>
   )
 }
 
@@ -281,4 +385,322 @@ function iconGlyph(icon: string | null | undefined, tone: Highlight['tone']) {
       // Fallback selon la tonalité.
       return tone === 'good' ? '✓' : tone === 'bad' ? '!' : tone === 'mid' ? '!' : 'i'
   }
+}
+
+// ─── Table (Lot V2.2 — cahier 22b §3.3) ──────────────────────────────────
+// Auto-injectee par compute_table_from_metrics. Tri client sur n'importe
+// quelle colonne (click sur le header), max 10 lignes visibles.
+
+function TableHighlight({ h }: { h: Highlight }) {
+  const columns = h.columns || []
+  const rows = h.rows || []
+  if (columns.length === 0 || rows.length === 0) return null
+  return (
+    <SortableTable
+      title={h.title}
+      summary={h.summary}
+      columns={columns}
+      rows={rows}
+      truncated={!!h.truncated}
+    />
+  )
+}
+
+function SortableTable({
+  title,
+  summary,
+  columns,
+  rows,
+  truncated,
+}: {
+  title: string
+  summary?: string | null
+  columns: string[]
+  rows: Array<Record<string, string | number | null>>
+  truncated: boolean
+}) {
+  // Tri par defaut : 2e colonne desc (la 1ere = dimension/source, 2eme =
+  // metric principale). L'user peut cliquer un header pour changer.
+  const defaultCol = columns[1] || columns[0]
+  const [sortCol, setSortCol] = useStateLocal<string>(defaultCol)
+  const [sortDir, setSortDir] = useStateLocal<'asc' | 'desc'>('desc')
+
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortCol]
+    const bv = b[sortCol]
+    const an = typeof av === 'number' ? av : Number.isFinite(Number(av)) ? Number(av) : null
+    const bn = typeof bv === 'number' ? bv : Number.isFinite(Number(bv)) ? Number(bv) : null
+    if (an !== null && bn !== null) return sortDir === 'desc' ? bn - an : an - bn
+    const as = String(av ?? '')
+    const bs = String(bv ?? '')
+    return sortDir === 'desc' ? bs.localeCompare(as) : as.localeCompare(bs)
+  })
+
+  function toggleSort(col: string) {
+    if (col === sortCol) setSortDir(sortDir === 'desc' ? 'asc' : 'desc')
+    else {
+      setSortCol(col)
+      setSortDir('desc')
+    }
+  }
+
+  return (
+    <div className="overflow-hidden rounded-brief border border-border bg-card shadow-card">
+      <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2.5">
+        <div className="text-[13px] font-semibold text-text-1">{title}</div>
+        {summary && <div className="truncate text-[11.5px] text-text-3">{summary}</div>}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[12.5px]">
+          <thead className="sticky top-0 bg-bg-2">
+            <tr>
+              {columns.map((c) => {
+                const isSort = c === sortCol
+                return (
+                  <th
+                    key={c}
+                    onClick={() => toggleSort(c)}
+                    className={[
+                      'cursor-pointer select-none px-3 py-2 text-left font-mono text-[10.5px] uppercase tracking-wider transition-colors',
+                      isSort ? 'text-text-1' : 'text-text-3 hover:text-text-1',
+                    ].join(' ')}
+                  >
+                    {c}
+                    {isSort && (
+                      <span aria-hidden="true" className="ml-1 text-[9px]">
+                        {sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    )}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row, i) => (
+              <tr key={i} className="border-t border-border/60 hover:bg-bg-2/40">
+                {columns.map((c) => {
+                  const v = row[c]
+                  const isNum = typeof v === 'number'
+                  return (
+                    <td
+                      key={c}
+                      className={[
+                        'px-3 py-1.5 text-text-1',
+                        isNum ? 'text-right font-mono tabular-nums' : '',
+                      ].join(' ')}
+                    >
+                      {v == null ? '—' : isNum ? formatValue(v) : String(v)}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {truncated && (
+        <div className="border-t border-border bg-bg-2/60 px-3 py-1.5 text-center font-mono text-[10px] uppercase tracking-widest text-text-3">
+          Top 10 — pour le détail, exporte en Excel
+        </div>
+      )}
+    </div>
+  )
+}
+
+function useStateLocal<T>(initial: T): [T, (v: T) => void] {
+  const [v, setV] = useState<T>(initial)
+  return [v, setV]
+}
+
+// ─── Compare (Lot V2.2 — cahier 22b §3.3) ────────────────────────────────
+// Split-view 2 mini-charts cote a cote. Echelle Y partagee pour comparer
+// visuellement les deux series sans biais.
+
+function CompareHighlight({ h }: { h: Highlight }) {
+  const left = h.left
+  const right = h.right
+  if (!left?.series?.length || !right?.series?.length) return null
+  // Echelle Y commune = max des 2 series pour comparaison honnete.
+  const sharedMax = Math.max(
+    ...left.series.map((p) => p.value),
+    ...right.series.map((p) => p.value),
+    1,
+  )
+  return (
+    <div className="rounded-brief border border-border bg-card p-4 shadow-card">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <div className="text-[13px] font-semibold text-text-1">{h.title}</div>
+        {h.summary && <div className="truncate text-[11.5px] text-text-3">{h.summary}</div>}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <CompareSide
+          source={left.source}
+          total={left.total}
+          series={left.series}
+          max={sharedMax}
+          unit={h.unit}
+        />
+        <CompareSide
+          source={right.source}
+          total={right.total}
+          series={right.series}
+          max={sharedMax}
+          unit={h.unit}
+        />
+      </div>
+    </div>
+  )
+}
+
+function CompareSide({
+  source,
+  total,
+  series,
+  max,
+  unit,
+}: {
+  source: string
+  total: number
+  series: Array<{ date: string; value: number }>
+  max: number
+  unit: string | null | undefined
+}) {
+  return (
+    <div className="rounded-[10px] border border-border bg-bg-2/40 p-3">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+          {source}
+        </span>
+        <span className="font-mono text-[11px] tabular-nums text-text-1">
+          {formatValue(total)}
+          {unit || ''}
+        </span>
+      </div>
+      <div className="h-[80px]">
+        <BarChart data={series} max={max} />
+      </div>
+    </div>
+  )
+}
+
+// ─── Funnel (Lot V2.3 — cahier 22b §3.3) ─────────────────────────────────
+// Barres decroissantes avec % retention entre etapes. Le visuel est plus
+// parlant qu'une bullet-list "1000 → 250 → 50".
+
+function FunnelHighlight({ h }: { h: Highlight }) {
+  const steps = h.steps || []
+  if (steps.length < 2) return null
+  const max = Math.max(...steps.map((s) => s.value), 1)
+  return (
+    <div className="rounded-brief border border-border bg-card p-4 shadow-card">
+      <div className="mb-3 text-[13px] font-semibold text-text-1">{h.title}</div>
+      <div className="flex flex-col gap-2">
+        {steps.map((s, i) => {
+          const widthPct = (s.value / max) * 100
+          return (
+            <div key={i} className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-mono text-[10.5px] uppercase tracking-wider text-text-3">
+                  {humanizeLabel(s.label)}
+                </span>
+                <span className="font-mono text-[12px] tabular-nums text-text-1">
+                  {formatValue(s.value)}
+                  {s.retentionPct != null && (
+                    <span className="ml-2 text-[10.5px] text-text-3">
+                      ({s.retentionPct}% vs étape préc.)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-bg-2">
+                <div
+                  className="h-full rounded-full bg-brand-blue-deep transition-all"
+                  style={{ width: `${Math.max(widthPct, 2)}%` }}
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Dashboard preview (Lot V2.3 — cahier 22b §3.3) ──────────────────────
+// Grille de 4-6 KPI cards avec delta vs N-1. Chaque card est epinglable
+// individuellement au dashboard reel (BriefHome).
+
+function DashboardHighlight({
+  h,
+  onPin,
+  canPin,
+}: {
+  h: Highlight
+  onPin?: (spec: { kind: 'kpi' | 'chart'; spec: Record<string, unknown> }) => void
+  canPin?: boolean
+}) {
+  const cards = h.cards || []
+  if (cards.length === 0) return null
+  return (
+    <div className="rounded-brief border border-border bg-card p-4 shadow-card">
+      <div className="mb-3 text-[13px] font-semibold text-text-1">{h.title}</div>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {cards.map((c, i) => (
+          <DashboardCard key={i} card={c} onPin={onPin} canPin={canPin} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DashboardCard({
+  card,
+  onPin,
+  canPin,
+}: {
+  card: NonNullable<Highlight['cards']>[number]
+  onPin?: (spec: { kind: 'kpi' | 'chart'; spec: Record<string, unknown> }) => void
+  canPin?: boolean
+}) {
+  const isUp = (card.deltaPct ?? 0) >= 0
+  const label = humanizeLabel(card.metricKey)
+  return (
+    <div className="group/highlight relative rounded-[10px] border border-border bg-bg-2/40 p-3">
+      <div className="font-mono text-[10px] uppercase tracking-wider text-text-3">{label}</div>
+      <div className="mt-1 font-head text-[20px] font-bold tracking-[-0.02em] text-text-1">
+        {formatValue(card.value)}
+      </div>
+      {card.deltaPct != null && (
+        <div
+          className={`mt-0.5 font-mono text-[11px] ${isUp ? 'text-brand-green' : 'text-brand-red'}`}
+        >
+          {isUp ? '+' : ''}
+          {card.deltaPct}% vs N-1
+        </div>
+      )}
+      {onPin && (
+        <PinButton
+          canPin={canPin}
+          onClick={() =>
+            onPin({
+              kind: 'kpi',
+              spec: {
+                title: label,
+                value: formatValue(card.value),
+                delta: card.deltaPct != null ? `${isUp ? '+' : ''}${card.deltaPct}%` : null,
+                metricKey: card.metricKey,
+              },
+            })
+          }
+        />
+      )}
+    </div>
+  )
+}
+
+function humanizeLabel(raw: string | null | undefined): string {
+  if (!raw) return '—'
+  // metric_key → "Add To Cart"
+  return raw.replace(/_/g, ' ').replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1))
 }
