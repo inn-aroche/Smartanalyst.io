@@ -264,12 +264,12 @@ export default function ChatPage() {
   )
   // Reference a insightsQ pour ne pas casser le contrat de queries paralleles.
   void insightsQ
-  // Plan Pro pour gating action shelf (Pin / Report). Starter compte comme Pro.
+  // Plan Pro pour gating action shelf (Pin / Slides). Starter NE compte PAS
+  // comme Pro (cf. entitlements.service : Starter a ses propres quotas et n'a
+  // pas pin_to_dashboard ni generate_slides). On lit directement les feature
+  // flags retournes par le backend pour ne pas dupliquer la logique de plan.
   const entitlementsQ = useEntitlements()
-  const isPro =
-    entitlementsQ.data?.plan === 'pro' ||
-    entitlementsQ.data?.plan === 'agency' ||
-    entitlementsQ.data?.plan === 'starter'
+  const isPro = Boolean(entitlementsQ.data?.features.canPinToDashboard)
   const deepLocked = entitlementsQ.data?.features.canUseDeepChat === false
 
   useEffect(() => {

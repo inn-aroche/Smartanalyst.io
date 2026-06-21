@@ -15,6 +15,9 @@ export type Entitlements = {
   features: {
     canGenerateReports: boolean
     canUseDeepChat: boolean
+    // Lot V2.3 — flags pour le gating de l'action shelf chat (cahier 22b §5).
+    canPinToDashboard: boolean
+    canGenerateSlides: boolean
   }
   quotas: {
     connectors: { current: number; limit: number | null; exceeded: boolean }

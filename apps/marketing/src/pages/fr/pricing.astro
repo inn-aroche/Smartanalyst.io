@@ -26,7 +26,7 @@ const faqEntries = [
   },
   {
     q: 'L’IA est-elle limitée sur le plan Découverte ?',
-    a: "Oui, chaque plan inclut un quota mensuel de crédits IA (messages au modèle). Découverte est calibré pour évaluer le produit, Starter pour un usage solo régulier, Pro et Agence pour une utilisation intensive multi-clients. Tu vois ton solde en temps réel et reçois une alerte à 80 %. Pas de surfacturation surprise.",
+    a: "Oui, chaque plan inclut un quota mensuel de crédits IA (messages au modèle). Découverte est calibré pour évaluer le produit, Starter pour un usage solo régulier, Pro pour une utilisation intensive multi-sources avec le mode Approfondi. Tu vois ton solde en temps réel et reçois une alerte à 80 %. Pas de surfacturation surprise.",
   },
   {
     q: 'Mes données sont-elles en sécurité ?',
@@ -167,10 +167,27 @@ const productJsonLd = {
             </tr>
             <tr>
               <td>Benchmark concurrentiel</td>
-              <td>·</td>
-              <td>✓</td>
-              <td>✓</td>
-              <td>✓</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{PLANS[key].priceEurMonth > 0 ? '✓' : '·'}</td>
+              ))}
+            </tr>
+            <tr>
+              <td>Mode Approfondi (IA)</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{key === 'PRO' || key === 'AGENCY' ? '✓' : '·'}</td>
+              ))}
+            </tr>
+            <tr>
+              <td>Épingler au dashboard (chat)</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{key === 'PRO' || key === 'AGENCY' ? '✓' : '·'}</td>
+              ))}
+            </tr>
+            <tr>
+              <td>Export slide deck</td>
+              {PUBLIC_PLAN_ORDER.map((key) => (
+                <td>{key === 'PRO' || key === 'AGENCY' ? '✓' : '·'}</td>
+              ))}
             </tr>
           </tbody>
         </table>
