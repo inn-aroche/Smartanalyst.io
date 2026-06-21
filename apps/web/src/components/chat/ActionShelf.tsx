@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 
+import { apiDownload, ApiError } from '@/lib/api'
 import { useT } from '@/lib/i18n'
 import { track } from '@/lib/tracking'
 
@@ -25,11 +26,17 @@ export type ActionShelfProps = {
   mode: 'fast' | 'deep'
   /** Plan workspace pour gating Pin/Report. */
   isPro: boolean
+  /** Workspace courant — requis pour l'export XLSX qui passe par le backend. */
+  workspaceId?: string | null
   /** Re-pose la meme question avec le mode oppose. */
   onRerun?: (newMode: 'fast' | 'deep') => void
   /** Slug stable pour le nom de fichier export. */
   conversationId?: string | null
   messageId: string
+  /** Message id valide cote backend (UUID Supabase) — distinct du messageId local
+   *  qui peut etre genere cote client avant la 1ere SSE. Si fourni, l'export
+   *  XLSX passe par le backend ; sinon on retombe sur l'export CSV client. */
+  serverMessageId?: string | null
 }
 
 export default function ActionShelf({
@@ -37,12 +44,16 @@ export default function ActionShelf({
   highlights = [],
   mode,
   isPro,
+  workspaceId,
   onRerun,
   conversationId,
   messageId,
+  serverMessageId,
 }: ActionShelfProps) {
   const t = useT()
   const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   // Si la reponse contient au moins une serie / table exportable.
   const hasExportableData = highlights.some(
@@ -64,12 +75,35 @@ export default function ActionShelf({
     track('chat_export_generated', { format: 'csv' })
   }
 
-  function downloadExcel() {
-    // V2.1 : on livre un .csv encode UTF-8 BOM, Excel l'ouvre proprement.
-    // Le vrai .xlsx (exceljs + Storage signe) arrive en V2.2 (cahier 22b §4.3).
-    const csv = '﻿' + buildCsv(text, highlights)
-    triggerDownload(csv, fileName(conversationId, messageId, 'csv'), 'text/csv;charset=utf-8;')
-    track('chat_export_generated', { format: 'excel-csv' })
+  async function downloadExcel() {
+    setExportError(null)
+    // V2.2 (cahier 22b §4.3) — XLSX reel via backend (exceljs). Si on n'a pas
+    // de serverMessageId (= message pas encore persiste), fallback CSV client.
+    if (!serverMessageId || !workspaceId) {
+      const csv = '﻿' + buildCsv(text, highlights)
+      triggerDownload(csv, fileName(conversationId, messageId, 'csv'), 'text/csv;charset=utf-8;')
+      track('chat_export_generated', { format: 'excel-csv-fallback' })
+      return
+    }
+    setExporting(true)
+    try {
+      await apiDownload(
+        `/api/v1/chat/messages/${serverMessageId}/export.xlsx?workspaceId=${workspaceId}`,
+        fileName(conversationId, serverMessageId, 'xlsx'),
+      )
+      track('chat_export_generated', { format: 'xlsx' })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError && err.code === 'XLSX_CELL_LIMIT'
+          ? 'Export trop volumineux — affine la période ou les sources.'
+          : err instanceof Error
+            ? err.message
+            : 'Export failed'
+      setExportError(msg)
+      track('chat_export_generated', { format: 'xlsx-failed' })
+    } finally {
+      setExporting(false)
+    }
   }
 
   function rerun() {
@@ -110,9 +144,11 @@ export default function ActionShelf({
         <>
           <ShelfButton
             icon="📥"
-            label={t('chat.shelf.excel')}
+            label={exporting ? '…' : t('chat.shelf.excel')}
             ariaLabel={t('chat.shelf.excel.aria')}
-            onClick={downloadExcel}
+            onClick={() => {
+              void downloadExcel()
+            }}
           />
           <ShelfButton
             icon="📋"
@@ -121,6 +157,11 @@ export default function ActionShelf({
             onClick={downloadCsv}
           />
         </>
+      )}
+      {exportError && (
+        <span className="font-mono text-[10.5px] text-brand-red" role="alert">
+          {exportError}
+        </span>
       )}
       {onRerun && (
         <ShelfButton

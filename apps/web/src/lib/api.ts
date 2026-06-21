@@ -95,6 +95,54 @@ function safeJson(text: string): unknown {
   }
 }
 
+/**
+ * Telecharge un fichier binaire authentifie (XLSX, PDF...). Fait un fetch
+ * GET avec le JWT, recupere le Blob, puis declenche un download navigateur.
+ * Le `fallbackFilename` est utilise si le serveur ne pose pas de
+ * Content-Disposition. Throw ApiError si reponse !2xx.
+ */
+export async function apiDownload(
+  path: string,
+  fallbackFilename: string,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<void> {
+  const headers: Record<string, string> = {}
+  if (currentToken) headers.Authorization = `Bearer ${currentToken}`
+  const res = await fetch(`${BASE_URL}${path}`, { method: 'GET', headers, signal })
+  if (!res.ok) {
+    let parsed: unknown = null
+    try {
+      parsed = await res.json()
+    } catch (_) {
+      // not JSON
+    }
+    const errorField = (parsed as { error?: unknown })?.error
+    const message =
+      (typeof errorField === 'object' && errorField !== null
+        ? (errorField as { message?: string }).message
+        : typeof errorField === 'string'
+          ? errorField
+          : undefined) ??
+      (parsed as { message?: string })?.message ??
+      `${res.status} ${res.statusText}`
+    throw new ApiError(message, res.status, parsed, res.headers.get('X-Request-Id'))
+  }
+  // Tente de lire le filename du Content-Disposition (RFC 6266).
+  const cd = res.headers.get('Content-Disposition') || ''
+  const match = /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i.exec(cd)
+  const filename = match?.[1] || fallbackFilename
+  const blob = await res.blob()
+  if (typeof window === 'undefined') return
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ─── Server-Sent Events (SSE) — chat streaming (cahier §3 Lot 1) ────────
 //
 // Pourquoi pas EventSource natif : il ne supporte que GET. Le streaming

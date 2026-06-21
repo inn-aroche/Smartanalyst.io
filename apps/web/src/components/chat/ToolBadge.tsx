@@ -20,6 +20,8 @@ function labelKey(toolName: string): StringKey | null {
     get_traffic_sources: 'chat.tool.running.get_traffic_sources',
     create_action_card: 'chat.tool.running.create_action_card',
     create_watch: 'chat.tool.running.create_watch',
+    compute_table_from_metrics: 'chat.tool.running.compute_table_from_metrics',
+    compare_metrics: 'chat.tool.running.compare_metrics',
   }
   return map[toolName] || null
 }
@@ -81,4 +83,90 @@ export function useRunningTools(
     return () => clearTimeout(tm)
   }, [events])
   return running
+}
+
+/**
+ * Liste des tools dont le retour produit un visuel auto-injecte (chart / table
+ * / compare). Cahier 22b §3.5 — "skeleton intelligent" : on affiche un
+ * placeholder de la bonne FORME pendant le tool call pour rassurer l'user
+ * (qu'il sait qu'un chart va arriver).
+ */
+const VISUAL_TOOLS = new Set(['get_metric_series', 'compute_table_from_metrics', 'compare_metrics'])
+
+export function visualKindFor(toolName: string): 'chart' | 'table' | 'compare' | null {
+  if (toolName === 'get_metric_series') return 'chart'
+  if (toolName === 'compute_table_from_metrics') return 'table'
+  if (toolName === 'compare_metrics') return 'compare'
+  return null
+}
+
+/**
+ * Skeleton place-holder de la forme du bloc qui va arriver. Pulsation lente
+ * (ne distrait pas), couleur cohérente avec le bloc final.
+ */
+export function VisualSkeleton({ kind }: { kind: 'chart' | 'table' | 'compare' }) {
+  if (kind === 'chart') {
+    return (
+      <div
+        className="h-[160px] w-full animate-pulse rounded-brief border border-border bg-bg-2/40 p-4"
+        aria-label="Loading chart"
+      >
+        <div className="mb-3 h-3 w-1/3 rounded bg-bg-3" />
+        <div className="flex h-[100px] items-end gap-1.5">
+          {Array.from({ length: 14 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t bg-bg-3"
+              style={{ height: `${30 + ((i * 13) % 60)}%` }}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (kind === 'compare') {
+    return (
+      <div className="grid grid-cols-2 gap-3 rounded-brief border border-border bg-bg-2/40 p-4">
+        {[0, 1].map((i) => (
+          <div key={i} className="animate-pulse">
+            <div className="mb-2 h-2 w-1/2 rounded bg-bg-3" />
+            <div className="flex h-[80px] items-end gap-1">
+              {Array.from({ length: 8 }).map((_, j) => (
+                <div
+                  key={j}
+                  className="flex-1 rounded-t bg-bg-3"
+                  style={{ height: `${40 + ((j * 13) % 50)}%` }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  // table
+  return (
+    <div className="w-full animate-pulse overflow-hidden rounded-brief border border-border bg-bg-2/40">
+      <div className="border-b border-border px-3 py-2">
+        <div className="h-3 w-1/4 rounded bg-bg-3" />
+      </div>
+      <div className="flex flex-col gap-1.5 p-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-3 w-full rounded bg-bg-3" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function pickSkeletonKinds(
+  runningToolNames: string[],
+): Array<'chart' | 'table' | 'compare'> {
+  const kinds: Array<'chart' | 'table' | 'compare'> = []
+  for (const name of runningToolNames) {
+    if (!VISUAL_TOOLS.has(name)) continue
+    const k = visualKindFor(name)
+    if (k && !kinds.includes(k)) kinds.push(k)
+  }
+  return kinds
 }

@@ -4,12 +4,14 @@
 // cartes design pour rendre le chat lisible "pour tous les niveaux" sans
 // noyer l'user de chiffres dans le texte.
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import Sparkline from '@/components/charts/Sparkline'
 
 export type Highlight = {
-  type: 'kpi' | 'callout' | 'chart'
+  // Lot V2.2 — types `table` et `compare` ajoutes au catalogue (cahier 22b §3.3).
+  type: 'kpi' | 'callout' | 'chart' | 'table' | 'compare'
   title: string
   value?: string | null
   delta?: string | null
@@ -27,6 +29,15 @@ export type Highlight = {
   series?: Array<{ date: string; value: number }> | null
   chartKind?: 'bar' | 'line' | null
   unit?: string | null
+  // Pour type='table' (Lot V2.2) — auto-inject par compute_table_from_metrics.
+  // columns[] = noms de colonnes (1ere = dim, suivantes = metrics).
+  // rows[] = objets {[col]: value}. truncated = true si le backend a coupe a 10.
+  columns?: string[] | null
+  rows?: Array<Record<string, string | number | null>> | null
+  truncated?: boolean | null
+  // Pour type='compare' (Lot V2.2) — auto-inject par compare_metrics.
+  left?: { source: string; total: number; series: Array<{ date: string; value: number }> } | null
+  right?: { source: string; total: number; series: Array<{ date: string; value: number }> } | null
 }
 
 export default function HighlightStack({ highlights }: { highlights: Highlight[] }) {
@@ -34,6 +45,8 @@ export default function HighlightStack({ highlights }: { highlights: Highlight[]
   return (
     <div className="mt-3 flex flex-col gap-2.5">
       {highlights.map((h, i) => {
+        if (h.type === 'compare') return <CompareHighlight key={i} h={h} />
+        if (h.type === 'table') return <TableHighlight key={i} h={h} />
         if (h.type === 'chart') return <ChartHighlight key={i} h={h} />
         if (h.type === 'kpi') return <KpiHighlight key={i} h={h} />
         return <CalloutHighlight key={i} h={h} />
@@ -281,4 +294,201 @@ function iconGlyph(icon: string | null | undefined, tone: Highlight['tone']) {
       // Fallback selon la tonalité.
       return tone === 'good' ? '✓' : tone === 'bad' ? '!' : tone === 'mid' ? '!' : 'i'
   }
+}
+
+// ─── Table (Lot V2.2 — cahier 22b §3.3) ──────────────────────────────────
+// Auto-injectee par compute_table_from_metrics. Tri client sur n'importe
+// quelle colonne (click sur le header), max 10 lignes visibles.
+
+function TableHighlight({ h }: { h: Highlight }) {
+  const columns = h.columns || []
+  const rows = h.rows || []
+  if (columns.length === 0 || rows.length === 0) return null
+  return (
+    <SortableTable
+      title={h.title}
+      summary={h.summary}
+      columns={columns}
+      rows={rows}
+      truncated={!!h.truncated}
+    />
+  )
+}
+
+function SortableTable({
+  title,
+  summary,
+  columns,
+  rows,
+  truncated,
+}: {
+  title: string
+  summary?: string | null
+  columns: string[]
+  rows: Array<Record<string, string | number | null>>
+  truncated: boolean
+}) {
+  // Tri par defaut : 2e colonne desc (la 1ere = dimension/source, 2eme =
+  // metric principale). L'user peut cliquer un header pour changer.
+  const defaultCol = columns[1] || columns[0]
+  const [sortCol, setSortCol] = useStateLocal<string>(defaultCol)
+  const [sortDir, setSortDir] = useStateLocal<'asc' | 'desc'>('desc')
+
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortCol]
+    const bv = b[sortCol]
+    const an = typeof av === 'number' ? av : Number.isFinite(Number(av)) ? Number(av) : null
+    const bn = typeof bv === 'number' ? bv : Number.isFinite(Number(bv)) ? Number(bv) : null
+    if (an !== null && bn !== null) return sortDir === 'desc' ? bn - an : an - bn
+    const as = String(av ?? '')
+    const bs = String(bv ?? '')
+    return sortDir === 'desc' ? bs.localeCompare(as) : as.localeCompare(bs)
+  })
+
+  function toggleSort(col: string) {
+    if (col === sortCol) setSortDir(sortDir === 'desc' ? 'asc' : 'desc')
+    else {
+      setSortCol(col)
+      setSortDir('desc')
+    }
+  }
+
+  return (
+    <div className="overflow-hidden rounded-brief border border-border bg-card shadow-card">
+      <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2.5">
+        <div className="text-[13px] font-semibold text-text-1">{title}</div>
+        {summary && <div className="truncate text-[11.5px] text-text-3">{summary}</div>}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[12.5px]">
+          <thead className="sticky top-0 bg-bg-2">
+            <tr>
+              {columns.map((c) => {
+                const isSort = c === sortCol
+                return (
+                  <th
+                    key={c}
+                    onClick={() => toggleSort(c)}
+                    className={[
+                      'cursor-pointer select-none px-3 py-2 text-left font-mono text-[10.5px] uppercase tracking-wider transition-colors',
+                      isSort ? 'text-text-1' : 'text-text-3 hover:text-text-1',
+                    ].join(' ')}
+                  >
+                    {c}
+                    {isSort && (
+                      <span aria-hidden="true" className="ml-1 text-[9px]">
+                        {sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    )}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row, i) => (
+              <tr key={i} className="border-t border-border/60 hover:bg-bg-2/40">
+                {columns.map((c) => {
+                  const v = row[c]
+                  const isNum = typeof v === 'number'
+                  return (
+                    <td
+                      key={c}
+                      className={[
+                        'px-3 py-1.5 text-text-1',
+                        isNum ? 'text-right font-mono tabular-nums' : '',
+                      ].join(' ')}
+                    >
+                      {v == null ? '—' : isNum ? formatValue(v) : String(v)}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {truncated && (
+        <div className="border-t border-border bg-bg-2/60 px-3 py-1.5 text-center font-mono text-[10px] uppercase tracking-widest text-text-3">
+          Top 10 — pour le détail, exporte en Excel
+        </div>
+      )}
+    </div>
+  )
+}
+
+function useStateLocal<T>(initial: T): [T, (v: T) => void] {
+  const [v, setV] = useState<T>(initial)
+  return [v, setV]
+}
+
+// ─── Compare (Lot V2.2 — cahier 22b §3.3) ────────────────────────────────
+// Split-view 2 mini-charts cote a cote. Echelle Y partagee pour comparer
+// visuellement les deux series sans biais.
+
+function CompareHighlight({ h }: { h: Highlight }) {
+  const left = h.left
+  const right = h.right
+  if (!left?.series?.length || !right?.series?.length) return null
+  // Echelle Y commune = max des 2 series pour comparaison honnete.
+  const sharedMax = Math.max(
+    ...left.series.map((p) => p.value),
+    ...right.series.map((p) => p.value),
+    1,
+  )
+  return (
+    <div className="rounded-brief border border-border bg-card p-4 shadow-card">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <div className="text-[13px] font-semibold text-text-1">{h.title}</div>
+        {h.summary && <div className="truncate text-[11.5px] text-text-3">{h.summary}</div>}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <CompareSide
+          source={left.source}
+          total={left.total}
+          series={left.series}
+          max={sharedMax}
+          unit={h.unit}
+        />
+        <CompareSide
+          source={right.source}
+          total={right.total}
+          series={right.series}
+          max={sharedMax}
+          unit={h.unit}
+        />
+      </div>
+    </div>
+  )
+}
+
+function CompareSide({
+  source,
+  total,
+  series,
+  max,
+  unit,
+}: {
+  source: string
+  total: number
+  series: Array<{ date: string; value: number }>
+  max: number
+  unit: string | null | undefined
+}) {
+  return (
+    <div className="rounded-[10px] border border-border bg-bg-2/40 p-3">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+          {source}
+        </span>
+        <span className="font-mono text-[11px] tabular-nums text-text-1">
+          {formatValue(total)}
+          {unit || ''}
+        </span>
+      </div>
+      <div className="h-[80px]">
+        <BarChart data={series} max={max} />
+      </div>
+    </div>
+  )
 }

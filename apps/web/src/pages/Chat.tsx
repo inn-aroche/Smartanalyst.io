@@ -8,7 +8,11 @@ import ChatComposer from '@/components/chat/ChatComposer'
 import EmptyStateHero, { useRotatingPlaceholder } from '@/components/chat/EmptyStateHero'
 import HighlightStack, { type Highlight } from '@/components/chat/HighlightStack'
 import { type SourceOption } from '@/components/chat/SourceFilter'
-import ToolBadge, { useRunningTools } from '@/components/chat/ToolBadge'
+import ToolBadge, {
+  pickSkeletonKinds,
+  useRunningTools,
+  VisualSkeleton,
+} from '@/components/chat/ToolBadge'
 import { apiFetch, apiStream, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
@@ -47,6 +51,10 @@ type Message =
       // au moment du 'done'. Permet à l'UI d'afficher un curseur clignotant
       // pendant la frappe.
       streaming?: boolean
+      // Lot V2.2 — ID Supabase du message persiste. Necessaire pour appeler
+      // /chat/messages/:id/export.xlsx. null pendant le streaming, recu au
+      // 'done' depuis le backend.
+      serverMessageId?: string | null
     }
   | { id: string; role: 'assistant'; pending: true }
 
@@ -151,6 +159,10 @@ export default function ChatPage() {
               text: m.content,
               sources: m.sources,
               highlights: m.highlights,
+              // Pour les messages reloads depuis l'historique, l'ID local =
+              // l'ID Supabase (pas de generation client-side). On le branche
+              // donc directement pour permettre l'export XLSX.
+              serverMessageId: m.id,
             },
       )
       setMessages(hydrated)
@@ -333,6 +345,7 @@ export default function ChatPage() {
             const sources = payload?.sources as Source[] | undefined
             const highlights = payload?.highlights as Highlight[] | undefined
             const cid = payload?.conversationId as string | null | undefined
+            const serverMessageId = (payload?.messageId as string | null | undefined) ?? null
             if (cid && cid !== conversationId) {
               setConversationId(cid)
               if (workspaceId) {
@@ -350,6 +363,7 @@ export default function ChatPage() {
                       sources,
                       highlights,
                       streaming: false,
+                      serverMessageId,
                     }
                   : msg,
               ),
@@ -495,6 +509,7 @@ export default function ChatPage() {
                     onFeedback={(v) => recordFeedback(m.id, v)}
                     mode={mode}
                     isPro={isPro}
+                    workspaceId={workspaceId}
                     conversationId={conversationId}
                     onRerun={(newMode) => {
                       // Trouve le dernier message user juste avant la reponse
@@ -515,9 +530,17 @@ export default function ChatPage() {
                 ))}
                 {/* Badges tool en cours (cahier 22b §3.5) — sous la derniere bulle pendant streaming. */}
                 {runningTools.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 px-1">
-                    {runningTools.map((name) => (
-                      <ToolBadge key={name} toolName={name} />
+                  <div className="flex flex-col gap-2 px-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {runningTools.map((name) => (
+                        <ToolBadge key={name} toolName={name} />
+                      ))}
+                    </div>
+                    {/* Skeleton intelligent : place-holder de la FORME du bloc qui
+                        va arriver (chart / table / compare). Pulse doucement
+                        pour signaler "ca arrive". */}
+                    {pickSkeletonKinds(runningTools).map((kind) => (
+                      <VisualSkeleton key={kind} kind={kind} />
                     ))}
                   </div>
                 )}
@@ -566,6 +589,7 @@ function MessageBubble({
   onFeedback,
   mode,
   isPro,
+  workspaceId,
   conversationId,
   onRerun,
 }: {
@@ -575,6 +599,7 @@ function MessageBubble({
   // Optionnels — utilises uniquement pour les bubbles assistant non-pending.
   mode?: 'fast' | 'deep'
   isPro?: boolean
+  workspaceId?: string | null
   conversationId?: string | null
   onRerun?: (newMode: 'fast' | 'deep') => void
 }) {
@@ -634,9 +659,13 @@ function MessageBubble({
               highlights={highlights}
               mode={mode || 'fast'}
               isPro={Boolean(isPro)}
+              workspaceId={workspaceId}
               onRerun={onRerun}
               conversationId={conversationId}
               messageId={message.id}
+              serverMessageId={
+                'serverMessageId' in message ? (message.serverMessageId ?? null) : null
+              }
             />
             <FeedbackButtons feedback={feedback} onFeedback={onFeedback} />
           </>

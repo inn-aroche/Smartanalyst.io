@@ -443,6 +443,8 @@ const en = {
   'chat.tool.running.get_traffic_sources': 'Querying GA4 live…',
   'chat.tool.running.create_action_card': 'Creating action card…',
   'chat.tool.running.create_watch': 'Creating watch…',
+  'chat.tool.running.compute_table_from_metrics': 'Building comparison table…',
+  'chat.tool.running.compare_metrics': 'Comparing the two sources…',
   // ━━━ Chat V2.1 — action shelf (cahier 22b §3.4) ━━━
   'chat.shelf.excel': 'Excel',
   'chat.shelf.excel.aria': 'Export answer as Excel',
@@ -1625,6 +1627,8 @@ const fr: Record<keyof typeof en, string> = {
   'chat.tool.running.get_traffic_sources': 'GA4 en direct…',
   'chat.tool.running.create_action_card': "Création d'une action…",
   'chat.tool.running.create_watch': "Création d'une veille…",
+  'chat.tool.running.compute_table_from_metrics': 'Construction du tableau…',
+  'chat.tool.running.compare_metrics': 'Comparaison des deux sources…',
   // ━━━ Chat V2.1 — action shelf (cahier 22b §3.4) ━━━
   'chat.shelf.excel': 'Excel',
   'chat.shelf.excel.aria': 'Exporter la réponse en Excel',
