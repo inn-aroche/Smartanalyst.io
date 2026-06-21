@@ -23,12 +23,17 @@ const PLAN_FEATURES = {
     maxInsightsPerMonth: 3,
     canGenerateReports: false,
     canUseDeepChat: false,
+    // Lot V2.3 — Pin / Slide deck Pro-only (cahier 22b §5).
+    canPinToDashboard: false,
+    canGenerateSlides: false,
   },
   pro: {
     maxConnectors: Infinity,
     maxInsightsPerMonth: Infinity,
     canGenerateReports: true,
     canUseDeepChat: true,
+    canPinToDashboard: true,
+    canGenerateSlides: true,
   },
 }
 // Plans non-MVP :
@@ -99,7 +104,7 @@ async function getOrganizationPlan(organizationId) {
 
 /**
  * @param {string} plan — 'free' | 'pro'
- * @param {string} feature — 'reports' | 'deep_chat'
+ * @param {string} feature — 'reports' | 'deep_chat' | 'pin_to_dashboard' | 'generate_slides'
  * @returns {boolean}
  */
 function canUseFeature(plan, feature) {
@@ -110,6 +115,10 @@ function canUseFeature(plan, feature) {
       return features.canGenerateReports
     case 'deep_chat':
       return features.canUseDeepChat
+    case 'pin_to_dashboard':
+      return features.canPinToDashboard
+    case 'generate_slides':
+      return features.canGenerateSlides
     default:
       return false
   }
@@ -185,6 +194,8 @@ async function getEntitlementsSummary(workspaceId) {
     features: {
       canGenerateReports: PLAN_FEATURES[plan].canGenerateReports,
       canUseDeepChat: PLAN_FEATURES[plan].canUseDeepChat,
+      canPinToDashboard: PLAN_FEATURES[plan].canPinToDashboard,
+      canGenerateSlides: PLAN_FEATURES[plan].canGenerateSlides,
     },
     quotas: {
       connectors: {

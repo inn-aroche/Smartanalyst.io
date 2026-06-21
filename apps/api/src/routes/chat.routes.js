@@ -7,9 +7,12 @@ const { body, param, query } = require('express-validator')
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { runValidation } = require('../middleware/validation.middleware')
 const { UserFacingError } = require('../lib/error-handler')
+const { workspaceScope } = require('../middleware/workspace-scope.middleware')
+const { requireFeature } = require('../middleware/quota-gate.middleware')
 const chatService = require('../services/ai/chat.service')
 const chatConversations = require('../services/ai/chat-conversations.service')
 const chatExport = require('../services/ai/chat-export.service')
+const chatPptx = require('../services/ai/chat-pptx.service')
 
 const router = express.Router()
 
@@ -380,6 +383,66 @@ router.get(
           new UserFacingError(
             'Export trop volumineux. Réduis la période ou filtre par source pour réessayer.',
             { statusCode: 413, code: 'XLSX_CELL_LIMIT' },
+          ),
+        )
+      }
+      next(err)
+    }
+  },
+)
+
+// ─── Export PPTX d'une reponse chat (cahier 22b §4.4 — Pro only) ─────────
+// Meme pattern que .xlsx : stream binaire, defense en profondeur, gated Pro.
+router.get(
+  '/messages/:id/export.pptx',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('message id invalide.'),
+    query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+  ],
+  runValidation,
+  workspaceScope,
+  requireFeature('generate_slides'),
+  async (req, res, next) => {
+    try {
+      const msg = await chatConversations.getMessageWithWorkspace(req.params.id)
+      if (!msg) {
+        return next(
+          new UserFacingError('Message introuvable.', {
+            statusCode: 404,
+            code: 'MESSAGE_NOT_FOUND',
+          }),
+        )
+      }
+      if (msg.workspaceId !== req.workspaceId) {
+        return next(new UserFacingError('Accès refusé.', { statusCode: 403, code: 'WS_MISMATCH' }))
+      }
+      if (msg.role !== 'assistant') {
+        return next(
+          new UserFacingError("On n'exporte que les réponses assistant.", {
+            statusCode: 400,
+            code: 'NOT_ASSISTANT_MESSAGE',
+          }),
+        )
+      }
+      const { buffer, filename } = await chatPptx.buildPptx({
+        title: 'SmartAnalyst — Synthèse',
+        subtitle: `Généré le ${new Date().toLocaleDateString('fr-FR')}`,
+        highlights: Array.isArray(msg.highlights) ? msg.highlights : [],
+      })
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      )
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      res.setHeader('Content-Length', String(buffer.length))
+      res.send(buffer)
+    } catch (err) {
+      if (err && err.code === 'PPTX_SLIDE_LIMIT') {
+        return next(
+          new UserFacingError(
+            'Trop de visuels dans la réponse — réduis ou refais une question plus ciblée.',
+            { statusCode: 413, code: 'PPTX_SLIDE_LIMIT' },
           ),
         )
       }

@@ -42,12 +42,14 @@ function load({ metrics = [], insights = [], actions = [], health = null } = {})
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 9 tools déclarés (Lot V2.2 ajoute table + compare)', () => {
+test('DECLARATIONS : 11 tools déclarés (V2.3 ajoute funnel + dashboard)', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 9)
+  assert.equal(tools.DECLARATIONS.length, 11)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
+    'build_dashboard_preview',
     'compare_metrics',
+    'compute_funnel',
     'compute_table_from_metrics',
     'create_action_card',
     'create_watch',
@@ -265,4 +267,101 @@ test('compare_metrics : retourne 2 series cote a cote', async () => {
   assert.equal(r.right.total, 125)
   assert.equal(r.left.points.length, 2)
   assert.equal(r.right.points.length, 2)
+})
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Lot V2.3 — compute_funnel + build_dashboard_preview
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('compute_funnel : moins de 2 etapes → error', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    { name: 'compute_funnel', args: { steps: ['sessions_all'] } },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.error, 'funnel_needs_2_to_6_steps')
+})
+
+test('compute_funnel : 3 etapes → retention %', async () => {
+  const metrics = [
+    { source: 'ga4', metric_key: 'sessions_all', metric_value: 1000, date: '2026-06-01' },
+    { source: 'ga4', metric_key: 'add_to_cart', metric_value: 250, date: '2026-06-01' },
+    { source: 'ga4', metric_key: 'orders_count', metric_value: 50, date: '2026-06-01' },
+  ]
+  const tools = load({ metrics })
+  const r = await tools.execute(
+    {
+      name: 'compute_funnel',
+      args: { steps: ['sessions_all', 'add_to_cart', 'orders_count'], days: 7 },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.kind, 'funnel')
+  assert.equal(r.steps.length, 3)
+  assert.equal(r.steps[0].value, 1000)
+  assert.equal(r.steps[0].retentionPct, null) // 1ere etape
+  assert.equal(r.steps[1].value, 250)
+  assert.equal(r.steps[1].retentionPct, 25) // 250/1000
+  assert.equal(r.steps[2].retentionPct, 20) // 50/250
+})
+
+test('compute_funnel : cap a 6 etapes', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    {
+      name: 'compute_funnel',
+      args: { steps: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.steps.length, 6)
+})
+
+test('build_dashboard_preview : sans metric_keys → error', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    { name: 'build_dashboard_preview', args: {} },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.error, 'metric_keys_required')
+})
+
+test('build_dashboard_preview : 4 KPIs avec delta vs N-1', async () => {
+  // Mock canonical query qui renvoie selon la fenetre date.
+  const today = new Date()
+  const d = (offset) => new Date(today.getTime() - offset * 86400_000).toISOString().slice(0, 10)
+  const allMetrics = [
+    // Periode courante (0-30j)
+    { source: 'ga4', metric_key: 'sessions_all', metric_value: 200, date: d(5) },
+    { source: 'ga4', metric_key: 'revenue_ecommerce', metric_value: 1000, date: d(5) },
+    // Periode precedente (31-60j)
+    { source: 'ga4', metric_key: 'sessions_all', metric_value: 100, date: d(40) },
+    { source: 'ga4', metric_key: 'revenue_ecommerce', metric_value: 800, date: d(40) },
+  ]
+  require.cache[CANONICAL_PATH] = {
+    id: CANONICAL_PATH,
+    filename: CANONICAL_PATH,
+    loaded: true,
+    exports: {
+      query: async ({ startDate, endDate }) => {
+        // Filtre cote mock par date.
+        return allMetrics.filter((m) => m.date >= startDate && m.date <= endDate)
+      },
+    },
+  }
+  delete require.cache[TOOLS_PATH]
+  const tools = require(TOOLS_PATH)
+  const r = await tools.execute(
+    {
+      name: 'build_dashboard_preview',
+      args: { metric_keys: ['sessions_all', 'revenue_ecommerce'], days: 30 },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.kind, 'dashboard')
+  assert.equal(r.cards.length, 2)
+  const sess = r.cards.find((c) => c.metricKey === 'sessions_all')
+  assert.equal(sess.value, 200)
+  assert.equal(sess.previousValue, 100)
+  assert.equal(sess.deltaPct, 100) // +100%
 })

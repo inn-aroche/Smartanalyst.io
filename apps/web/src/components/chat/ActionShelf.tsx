@@ -112,15 +112,9 @@ export default function ActionShelf({
     onRerun?.(newMode)
   }
 
-  function pinDashboard() {
-    // V2.1 : on pose juste un toast soft. Le vrai pin (widget cree dans
-    // Audit/BriefHome) arrive en V2.3 (cahier 22b roadmap).
-    track('chat_action_taken', { kind: 'pin', deferred: true })
-    if (typeof window !== 'undefined') {
-      // alert temporaire — sera remplace par un Toast quand on aura le canvas.
-      window.alert(t('chat.shelf.pin.soon'))
-    }
-  }
+  // Note : le bouton "📌 Épingler" V2.1 a été déplacé sur chaque highlight
+  // individuel (HighlightStack.PinButton). C'est plus précis : l'user choisit
+  // quel chart/KPI il veut épingler, pas "toute la réponse".
 
   function openReport() {
     // Navigation vers /rapports avec un flag pour declencher ReportGenModal
@@ -128,6 +122,32 @@ export default function ActionShelf({
     track('chat_action_taken', { kind: 'report' })
     if (typeof window !== 'undefined') {
       window.location.href = '/rapports?gen=1&aiNote=1'
+    }
+  }
+
+  async function downloadSlides() {
+    if (!serverMessageId || !workspaceId) return
+    setExportError(null)
+    setExporting(true)
+    try {
+      await apiDownload(
+        `/api/v1/chat/messages/${serverMessageId}/export.pptx?workspaceId=${workspaceId}`,
+        `smartanalyst-deck.pptx`,
+      )
+      track('chat_export_generated', { format: 'pptx' })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError && err.code === 'PPTX_SLIDE_LIMIT'
+          ? 'Trop de visuels dans la réponse — refais une question plus ciblée.'
+          : err instanceof ApiError && err.status === 402
+            ? t('chat.shelf.proOnly')
+            : err instanceof Error
+              ? err.message
+              : 'Export failed'
+      setExportError(msg)
+      track('chat_export_generated', { format: 'pptx-failed' })
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -172,10 +192,12 @@ export default function ActionShelf({
         />
       )}
       <ShelfButton
-        icon="📌"
-        label={t('chat.shelf.pin')}
-        ariaLabel={t('chat.shelf.pin.aria')}
-        onClick={pinDashboard}
+        icon="🎴"
+        label={t('chat.shelf.slides')}
+        ariaLabel={t('chat.shelf.slides.aria')}
+        onClick={() => {
+          void downloadSlides()
+        }}
         locked={!isPro}
         lockedReason={t('chat.shelf.proOnly')}
       />

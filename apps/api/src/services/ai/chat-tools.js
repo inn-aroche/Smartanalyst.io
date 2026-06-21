@@ -211,6 +211,51 @@ const DECLARATIONS = [
       required: ['metric_key', 'source_a', 'source_b'],
     },
   },
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Lot V2.3 — blocs funnel + dashboard preview (cahier 22b §3.3 + §4.1)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  {
+    name: 'compute_funnel',
+    description:
+      "Calcule un FUNNEL de conversion : chaque etape = somme d'une metrique sur la fenetre, retention % vs etape precedente. À utiliser pour 'funnel e-commerce', 'sessions → ajout panier → commande', etc. Entre 2 et 6 etapes.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        steps: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description:
+            "Liste ordonnée de metric_keys, du sommet du funnel vers le bas. Ex: ['sessions_all','add_to_cart','orders_count'].",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 30.',
+        },
+      },
+      required: ['steps'],
+    },
+  },
+  {
+    name: 'build_dashboard_preview',
+    description:
+      "Renvoie un APERCU DASHBOARD de 4 a 6 KPIs (carte chiffre + delta vs N-1) cote a cote. À utiliser pour 'sante globale', 'vue d'ensemble', 'tableau de bord'. L'user peut ensuite epingler chaque carte au vrai dashboard.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        metric_keys: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description:
+            "4 a 6 metric_keys representatives. Ex: ['revenue_ecommerce','sessions_all','orders_count','conversions_total'].",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 30.',
+        },
+      },
+      required: ['metric_keys'],
+    },
+  },
 ]
 
 // Exécution. Reçoit { name, args } + workspaceId fixe. Retourne un objet JSON
@@ -459,6 +504,105 @@ async function execute({ name, args }, { workspaceId, userId }) {
         days,
         left,
         right,
+      }
+    }
+
+    if (name === 'compute_funnel') {
+      const steps = Array.isArray(args?.steps)
+        ? args.steps
+            .map((s) => String(s).trim())
+            .filter(Boolean)
+            .slice(0, 6)
+        : []
+      if (steps.length < 2) return { error: 'funnel_needs_2_to_6_steps' }
+      const days = Math.min(Math.max(Number(args?.days) || 30, 1), 90)
+      const end = new Date()
+      const start = new Date(end.getTime() - days * 86400_000)
+      const fmt = (d) => d.toISOString().slice(0, 10)
+      const rows = await canonicalMetrics.query({
+        workspaceId,
+        metricKey: steps,
+        startDate: fmt(start),
+        endDate: fmt(end),
+        limit: 5000,
+      })
+      // Somme par metric_key sur la fenetre. Pas de breakdown par source ici :
+      // le funnel cross-source est plus utile que par-canal en general.
+      const totals = new Map()
+      for (const r of rows) {
+        totals.set(r.metric_key, (totals.get(r.metric_key) || 0) + Number(r.metric_value))
+      }
+      const funnelSteps = steps.map((mk, i) => {
+        const value = Math.round((totals.get(mk) || 0) * 100) / 100
+        const prevValue = i === 0 ? null : Math.round((totals.get(steps[i - 1]) || 0) * 100) / 100
+        const retentionPct =
+          i === 0 || prevValue == null || prevValue === 0
+            ? null
+            : Math.round((value / prevValue) * 1000) / 10
+        return { label: mk, value, retentionPct }
+      })
+      return {
+        kind: 'funnel',
+        days,
+        steps: funnelSteps,
+      }
+    }
+
+    if (name === 'build_dashboard_preview') {
+      const metricKeys = Array.isArray(args?.metric_keys)
+        ? args.metric_keys
+            .map((s) => String(s).trim())
+            .filter(Boolean)
+            .slice(0, 6)
+        : []
+      if (metricKeys.length === 0) return { error: 'metric_keys_required' }
+      const days = Math.min(Math.max(Number(args?.days) || 30, 1), 90)
+      const end = new Date()
+      const start = new Date(end.getTime() - days * 86400_000)
+      const prevEnd = new Date(start.getTime() - 1)
+      const prevStart = new Date(prevEnd.getTime() - days * 86400_000)
+      const fmt = (d) => d.toISOString().slice(0, 10)
+      // 2 fenetres pour calculer le delta vs periode precedente.
+      const [curRows, prevRows] = await Promise.all([
+        canonicalMetrics.query({
+          workspaceId,
+          metricKey: metricKeys,
+          startDate: fmt(start),
+          endDate: fmt(end),
+          limit: 5000,
+        }),
+        canonicalMetrics.query({
+          workspaceId,
+          metricKey: metricKeys,
+          startDate: fmt(prevStart),
+          endDate: fmt(prevEnd),
+          limit: 5000,
+        }),
+      ])
+      const sum = (arr) => {
+        const acc = new Map()
+        for (const r of arr) {
+          acc.set(r.metric_key, (acc.get(r.metric_key) || 0) + Number(r.metric_value))
+        }
+        return acc
+      }
+      const cur = sum(curRows)
+      const prev = sum(prevRows)
+      const cards = metricKeys.map((mk) => {
+        const value = Math.round((cur.get(mk) || 0) * 100) / 100
+        const pv = prev.get(mk) || 0
+        const deltaPct = pv === 0 ? null : Math.round(((value - pv) / Math.abs(pv)) * 1000) / 10
+        return {
+          metricKey: mk,
+          value,
+          previousValue: Math.round(pv * 100) / 100,
+          deltaPct,
+        }
+      })
+      return {
+        kind: 'dashboard',
+        days,
+        cards,
       }
     }
 

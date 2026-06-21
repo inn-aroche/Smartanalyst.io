@@ -22,6 +22,8 @@ function labelKey(toolName: string): StringKey | null {
     create_watch: 'chat.tool.running.create_watch',
     compute_table_from_metrics: 'chat.tool.running.compute_table_from_metrics',
     compare_metrics: 'chat.tool.running.compare_metrics',
+    compute_funnel: 'chat.tool.running.compute_funnel',
+    build_dashboard_preview: 'chat.tool.running.build_dashboard_preview',
   }
   return map[toolName] || null
 }
@@ -91,12 +93,22 @@ export function useRunningTools(
  * placeholder de la bonne FORME pendant le tool call pour rassurer l'user
  * (qu'il sait qu'un chart va arriver).
  */
-const VISUAL_TOOLS = new Set(['get_metric_series', 'compute_table_from_metrics', 'compare_metrics'])
+const VISUAL_TOOLS = new Set([
+  'get_metric_series',
+  'compute_table_from_metrics',
+  'compare_metrics',
+  'compute_funnel',
+  'build_dashboard_preview',
+])
 
-export function visualKindFor(toolName: string): 'chart' | 'table' | 'compare' | null {
+export type SkeletonKind = 'chart' | 'table' | 'compare' | 'funnel' | 'dashboard'
+
+export function visualKindFor(toolName: string): SkeletonKind | null {
   if (toolName === 'get_metric_series') return 'chart'
   if (toolName === 'compute_table_from_metrics') return 'table'
   if (toolName === 'compare_metrics') return 'compare'
+  if (toolName === 'compute_funnel') return 'funnel'
+  if (toolName === 'build_dashboard_preview') return 'dashboard'
   return null
 }
 
@@ -104,7 +116,7 @@ export function visualKindFor(toolName: string): 'chart' | 'table' | 'compare' |
  * Skeleton place-holder de la forme du bloc qui va arriver. Pulsation lente
  * (ne distrait pas), couleur cohérente avec le bloc final.
  */
-export function VisualSkeleton({ kind }: { kind: 'chart' | 'table' | 'compare' }) {
+export function VisualSkeleton({ kind }: { kind: SkeletonKind }) {
   if (kind === 'chart') {
     return (
       <div
@@ -144,6 +156,39 @@ export function VisualSkeleton({ kind }: { kind: 'chart' | 'table' | 'compare' }
       </div>
     )
   }
+  if (kind === 'funnel') {
+    // Decreasing bars stack.
+    return (
+      <div className="w-full animate-pulse rounded-brief border border-border bg-bg-2/40 p-4">
+        <div className="mb-3 h-3 w-1/4 rounded bg-bg-3" />
+        <div className="flex flex-col gap-2">
+          {[100, 60, 30, 10].map((w, i) => (
+            <div key={i} className="flex flex-col gap-1">
+              <div className="h-2 w-1/3 rounded bg-bg-3" />
+              <div className="h-2 rounded-full bg-bg-3" style={{ width: `${w}%` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (kind === 'dashboard') {
+    // 4 cards grid.
+    return (
+      <div className="w-full animate-pulse rounded-brief border border-border bg-bg-2/40 p-4">
+        <div className="mb-3 h-3 w-1/3 rounded bg-bg-3" />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-[10px] border border-border/60 bg-card p-3">
+              <div className="h-2 w-1/2 rounded bg-bg-3" />
+              <div className="mt-1.5 h-5 w-3/4 rounded bg-bg-3" />
+              <div className="mt-1 h-2 w-1/3 rounded bg-bg-3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
   // table
   return (
     <div className="w-full animate-pulse overflow-hidden rounded-brief border border-border bg-bg-2/40">
@@ -159,10 +204,8 @@ export function VisualSkeleton({ kind }: { kind: 'chart' | 'table' | 'compare' }
   )
 }
 
-export function pickSkeletonKinds(
-  runningToolNames: string[],
-): Array<'chart' | 'table' | 'compare'> {
-  const kinds: Array<'chart' | 'table' | 'compare'> = []
+export function pickSkeletonKinds(runningToolNames: string[]): SkeletonKind[] {
+  const kinds: SkeletonKind[] = []
   for (const name of runningToolNames) {
     if (!VISUAL_TOOLS.has(name)) continue
     const k = visualKindFor(name)

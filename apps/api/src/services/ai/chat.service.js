@@ -104,6 +104,12 @@ OUTPUTS GENERATIFS (cahier 22b §3.3) — Tu disposes aussi de :
   inutile d'en remettre une en texte/bullets, contente-toi du commentaire.
 - compare_metrics : utilise-le pour "compare GA4 vs Meta", "sessions
   organic vs paid" — pour rendre 2 mini-charts côte à côte sous ta réponse.
+- compute_funnel : utilise-le pour les conversions multi-étapes
+  ("funnel e-commerce", "sessions → ajout panier → commande"). 2-6
+  étapes ordonnées du haut vers le bas du funnel.
+- build_dashboard_preview : utilise-le pour les questions très larges
+  ("santé globale", "vue d'ensemble", "tableau de bord rapide"). 4-6 KPI
+  cards avec delta vs N-1, que l'user peut épingler sur son dashboard.
 Préfère ces tools à des listes a puces de chiffres : c'est PLUS LISIBLE.
 
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
@@ -159,6 +165,11 @@ GENERATIVE OUTPUTS (cahier 22b §3.3) — You also have:
   to repeat it as bullets, just provide commentary.
 - compare_metrics: use it for "compare GA4 vs Meta", "organic vs paid
   sessions" — to render 2 mini-charts side-by-side under your answer.
+- compute_funnel: use it for multi-step conversions ("e-commerce funnel",
+  "sessions → add-to-cart → orders"). 2-6 steps ordered top-of-funnel down.
+- build_dashboard_preview: use it for very broad questions ("overall
+  health", "quick overview", "dashboard"). 4-6 KPI cards with delta
+  vs previous period, that the user can pin to their dashboard.
 Prefer these tools over bullet lists of numbers: it's MORE READABLE.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
@@ -871,6 +882,9 @@ async function askStream({
   // (compare_metrics) pour auto-injection en highlight `table` / `compare`.
   const toolTables = []
   const toolCompares = []
+  // Lot V2.3 — funnels (compute_funnel) et dashboards (build_dashboard_preview).
+  const toolFunnels = []
+  const toolDashboards = []
   let finalText = ''
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
@@ -971,6 +985,24 @@ async function askStream({
             right: res.right,
           })
         }
+        // Auto-capture funnel (Lot V2.3). Au moins 2 etapes avec value > 0
+        // sinon c'est une bar plate sans valeur visuelle.
+        if (
+          call.name === 'compute_funnel' &&
+          Array.isArray(res?.steps) &&
+          res.steps.length >= 2 &&
+          res.steps.some((s) => s.value > 0)
+        ) {
+          toolFunnels.push({ days: res.days || 30, steps: res.steps })
+        }
+        // Auto-capture dashboard preview (Lot V2.3).
+        if (
+          call.name === 'build_dashboard_preview' &&
+          Array.isArray(res?.cards) &&
+          res.cards.length > 0
+        ) {
+          toolDashboards.push({ days: res.days || 30, cards: res.cards })
+        }
         return { functionResponse: { name: call.name, response: { result: res } } }
       }),
     )
@@ -1037,11 +1069,15 @@ async function askStream({
 
   // Auto-injection des highlights à partir des résultats de tools.
   // Posés AVANT les highlights extraits par la 2e passe Gemini pour être
-  // visuellement prioritaires (charts/tables = nouveaux outputs V2.2).
+  // visuellement prioritaires (charts/tables/funnel = nouveaux outputs).
   const chartHighlights = toolSeries.map((s) => buildChartHighlight(s, locale))
   const tableHighlights = toolTables.map((t) => buildTableHighlight(t, locale))
   const compareHighlights = toolCompares.map((c) => buildCompareHighlight(c, locale))
+  const funnelHighlights = toolFunnels.map((f) => buildFunnelHighlight(f, locale))
+  const dashboardHighlights = toolDashboards.map((d) => buildDashboardHighlight(d, locale))
   const highlights = [
+    ...dashboardHighlights,
+    ...funnelHighlights,
     ...compareHighlights,
     ...tableHighlights,
     ...chartHighlights,
@@ -1150,6 +1186,36 @@ function buildCompareHighlight(cmp, locale) {
     unit: label?.unit || null,
     left: { source: cmp.left.source, total: cmp.left.total, series: cmp.left.points },
     right: { source: cmp.right.source, total: cmp.right.total, series: cmp.right.points },
+  }
+}
+
+/**
+ * Lot V2.3 — bloc `funnel` (cahier 22b §3.3). Barres decroissantes avec %
+ * retention entre etapes. L'humanisation des labels (metric_key →
+ * "Chiffre d'affaires") est faite cote frontend pour eviter de fixer ici
+ * une convention de naming.
+ */
+function buildFunnelHighlight(f, locale) {
+  return {
+    type: 'funnel',
+    title: locale === 'en' ? `Funnel — ${f.days}d` : `Funnel — ${f.days}j`,
+    summary: null,
+    tone: 'info',
+    steps: f.steps,
+  }
+}
+
+/**
+ * Lot V2.3 — bloc `dashboard` preview (cahier 22b §3.3). Grille 4-6 KPI
+ * cards. Chaque card est epinglable au dashboard reel via l'action shelf.
+ */
+function buildDashboardHighlight(d, locale) {
+  return {
+    type: 'dashboard',
+    title: locale === 'en' ? `Dashboard preview — ${d.days}d` : `Aperçu dashboard — ${d.days}j`,
+    summary: null,
+    tone: 'info',
+    cards: d.cards,
   }
 }
 

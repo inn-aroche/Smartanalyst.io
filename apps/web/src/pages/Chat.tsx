@@ -122,6 +122,10 @@ export default function ChatPage() {
     [],
   )
   const runningTools = useRunningTools(toolEvents)
+  // Feedback transient ("Épinglé !", "Erreur…") affiche en haut de la
+  // colonne chat 2.5s puis disparait. Pas de toast provider pour eviter
+  // de refactor ChatPage en sub-component dans AppLayout.
+  const [pinFeedback, setPinFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   // Toggle Rapide/Approfondi (cahier ADR-04). Persiste dans localStorage
   // pour qu'un user qui préfère "Approfondi" ne reswitche pas à chaque
   // ouverture. Jamais "Gemini"/"Claude" exposés en UI (terminologie CLAUDE.md).
@@ -405,6 +409,40 @@ export default function ChatPage() {
     }
   }
 
+  // Lot V2.3 — Pin highlight to dashboard. POST vers /pinned-widgets puis
+  // affiche un feedback transient. Si plan Free → 402 → message specifique.
+  async function handlePin(args: {
+    kind: 'kpi' | 'chart'
+    spec: Record<string, unknown>
+    sourceMessageId: string | null
+  }) {
+    if (!workspaceId) return
+    try {
+      await apiFetch('/api/v1/pinned-widgets', {
+        method: 'POST',
+        body: {
+          workspaceId,
+          kind: args.kind,
+          spec: args.spec,
+          sourceMessageId: args.sourceMessageId,
+        },
+      })
+      setPinFeedback({ kind: 'ok', text: t('chat.pin.success') })
+      track('chat_action_taken', { kind: 'pin', widget_kind: args.kind })
+    } catch (err) {
+      const msg =
+        err instanceof ApiError && err.status === 402
+          ? t('chat.shelf.proOnly')
+          : err instanceof ApiError && err.code === 'MAX_WIDGETS'
+            ? t('chat.pin.max')
+            : err instanceof Error
+              ? err.message
+              : t('chat.pin.error')
+      setPinFeedback({ kind: 'err', text: msg })
+    }
+    setTimeout(() => setPinFeedback(null), 2500)
+  }
+
   function stopGeneration() {
     abortRef.current?.abort()
   }
@@ -480,6 +518,22 @@ export default function ChatPage() {
             </div>
           )}
 
+          {/* Feedback transient pin (Lot V2.3). */}
+          {pinFeedback && (
+            <div
+              className={[
+                'mb-3 flex-shrink-0 rounded-lg border px-3 py-2 text-sm',
+                pinFeedback.kind === 'ok'
+                  ? 'border-brand-green/30 bg-brand-green/10 text-brand-green'
+                  : 'border-brand-red/30 bg-brand-red/10 text-brand-red',
+              ].join(' ')}
+              role="status"
+            >
+              {pinFeedback.kind === 'ok' ? '📌 ' : '⚠ '}
+              {pinFeedback.text}
+            </div>
+          )}
+
           <div
             ref={scrollRef}
             className={[
@@ -526,6 +580,7 @@ export default function ChatPage() {
                         void send(prevUser.text)
                       }
                     }}
+                    onPin={(args) => void handlePin(args)}
                   />
                 ))}
                 {/* Badges tool en cours (cahier 22b §3.5) — sous la derniere bulle pendant streaming. */}
@@ -592,6 +647,7 @@ function MessageBubble({
   workspaceId,
   conversationId,
   onRerun,
+  onPin,
 }: {
   message: Message
   feedback?: 'up' | 'down'
@@ -602,6 +658,12 @@ function MessageBubble({
   workspaceId?: string | null
   conversationId?: string | null
   onRerun?: (newMode: 'fast' | 'deep') => void
+  /** Lot V2.3 — appel quand l'user clique 📌 sur un highlight (kpi/chart). */
+  onPin?: (args: {
+    kind: 'kpi' | 'chart'
+    spec: Record<string, unknown>
+    sourceMessageId: string | null
+  }) => void
 }) {
   const t = useT()
   if (message.role === 'user') {
@@ -648,8 +710,22 @@ function MessageBubble({
           {renderMarkdown(text, (id, key) => renderCitation(id, key, byId))}
           {streaming && <StreamCursor />}
         </div>
-        {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini. */}
-        <HighlightStack highlights={highlights} />
+        {/* Highlights : KPI cards + callouts — extraits par la 2e passe Gemini.
+            Lot V2.3 : onPin pour epingler un highlight au dashboard. */}
+        <HighlightStack
+          highlights={highlights}
+          canPin={Boolean(isPro)}
+          onPin={
+            onPin
+              ? (args) =>
+                  onPin({
+                    ...args,
+                    sourceMessageId:
+                      'serverMessageId' in message ? (message.serverMessageId ?? null) : null,
+                  })
+              : undefined
+          }
+        />
         {/* Action shelf (cahier 22b §3.4) : Excel / CSV / Copier / Rejouer /
             Pin (Pro) / Rapport (Pro). Non affichee pendant le streaming. */}
         {!streaming && text && (

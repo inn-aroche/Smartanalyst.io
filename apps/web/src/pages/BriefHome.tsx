@@ -18,6 +18,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AppLayout, { Topbar } from '@/components/AppLayout'
 import DataFreshnessChip from '@/components/DataFreshnessChip'
 import KpiCard, { type Kpi } from '@/components/charts/KpiCard'
+import PinnedWidgets from '@/components/dashboard/PinnedWidgets'
 import ScoreRing from '@/components/charts/ScoreRing'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
@@ -184,6 +185,9 @@ export default function BriefHomePage() {
                 loading={kpisQ.isLoading}
                 locale={locale}
               />
+
+              {/* ─── Mes épingles depuis le chat (cahier 22b §3.4 — Lot V2.3) ─── */}
+              {wsId && <PinnedWidgets workspaceId={wsId} />}
             </>
           )}
 

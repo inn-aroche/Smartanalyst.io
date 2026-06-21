@@ -195,6 +195,8 @@ function createApp() {
   app.use('/api/v1/workspaces', require('./routes/workspaces.routes'))
   // Clés API par workspace (cahier §3 Lot 4)
   app.use('/api/v1/api-keys', require('./routes/api-keys.routes'))
+  // Widgets épinglés (cahier 22b §3.4 — Lot V2.3)
+  app.use('/api/v1/pinned-widgets', require('./routes/pinned-widgets.routes'))
   // Team management — invitations + membres (cahier §3 Lot 4)
   app.use('/api/v1/team', require('./routes/team.routes'))
   // Alertes custom utilisateur (brief V2 §3.3 — WatchModal)
