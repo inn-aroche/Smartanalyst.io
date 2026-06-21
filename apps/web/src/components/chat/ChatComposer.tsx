@@ -126,14 +126,15 @@ export default function ChatComposer({
           disabled={busy}
         />
 
-        {/* Toolbar */}
-        <div className="flex items-center gap-1.5 border-t border-border/60 px-2 py-1.5">
+        {/* Toolbar — flex-wrap pour eviter le debordement sur narrow (iPhone SE
+            320px). Send/Stop garde une place fixe a droite via order + ml-auto. */}
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-border/60 px-2 py-1.5">
           <button
             type="button"
             onClick={onPickFile}
             aria-label={t('chat.toolbar.attach')}
             title={t('chat.toolbar.attach')}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-text-3 hover:bg-bg-3 hover:text-text-1"
+            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-text-3 hover:bg-bg-3 hover:text-text-1"
           >
             📎
           </button>
@@ -147,12 +148,14 @@ export default function ChatComposer({
           <ModeToggle mode={mode} onChange={onModeChange} disabled={busy} />
 
           {modeHint && (
-            <span className="hidden font-mono text-[10px] uppercase tracking-widest text-text-3 sm:block">
+            <span className="hidden font-mono text-[10px] uppercase tracking-widest text-text-3 sm:inline">
               {modeHint}
             </span>
           )}
 
-          <div className="flex-1" />
+          <div className="ml-auto" />
+          {/* Le bouton envoi/stop est en order:last + flex-shrink-0 :
+              sur narrow il reste collé à droite meme si la toolbar wrap. */}
 
           {busy ? (
             <button
@@ -160,7 +163,7 @@ export default function ChatComposer({
               onClick={onStop}
               aria-label={t('chat.stop.aria')}
               title={t('chat.stop')}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-red/15 text-brand-red hover:bg-brand-red/25"
+              className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-red/15 text-brand-red hover:bg-brand-red/25"
             >
               <SquareIcon />
             </button>
@@ -170,7 +173,7 @@ export default function ChatComposer({
               disabled={!value.trim()}
               aria-label={t('chat.toolbar.send.aria')}
               title={t('chat.send')}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-blue-deep text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-bg-3 disabled:text-text-3"
+              className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-blue-deep text-white shadow-sm transition disabled:cursor-not-allowed disabled:bg-bg-3 disabled:text-text-3"
             >
               <UpIcon />
             </button>
