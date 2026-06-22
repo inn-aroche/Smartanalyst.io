@@ -26,6 +26,7 @@ import Signup from './pages/Signup'
 const Audit = lazy(() => import('./pages/Audit'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Connectors = lazy(() => import('./pages/Connectors'))
+const Help = lazy(() => import('./pages/Help'))
 const Live = lazy(() => import('./pages/Live'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -170,6 +171,16 @@ export default function App() {
           <ProtectedRoute>
             <RouteSuspense>
               <TrackingInstall />
+            </RouteSuspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/help"
+        element={
+          <ProtectedRoute>
+            <RouteSuspense>
+              <Help />
             </RouteSuspense>
           </ProtectedRoute>
         }

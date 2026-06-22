@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
 import type { ActionCard, ActionStatus } from '@/lib/insights-types'
 import { track } from '@/lib/tracking'
+import { useEscapeKey } from '@/lib/use-escape-key'
 
 // Page Tâches dédiée (brief V2 §3.4). Trois colonnes : Inbox (proposed),
 // Aujourd'hui (todo), Faites (done). Drag-and-drop pas implémenté en V1 —
@@ -267,6 +268,7 @@ function EmailBriefModal({
   onClose: () => void
 }) {
   const t = useT()
+  useEscapeKey(onClose)
   const [recipient, setRecipient] = useState('')
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
@@ -294,6 +296,7 @@ function EmailBriefModal({
     <div
       role="dialog"
       aria-modal="true"
+      aria-label={t('tasks.emailModal.title')}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
     >
