@@ -5,9 +5,12 @@
 // besoin d'historique riche plus tard, on dédiera une table.
 
 const { sendEmail } = require('../email/resend.service')
+const emailTemplate = require('../email/email-template.service')
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { UserFacingError } = require('../../lib/error-handler')
+
+const escapeHtml = emailTemplate.escapeHtml
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -26,47 +29,37 @@ function composeBrief(task, { senderName, note } = {}) {
   const safeTitle = trim(task.title, 200)
   const subject = `Brief : ${safeTitle}`
   const greetingName = (senderName || '').trim()
-  const signature = greetingName ? `— ${greetingName} (via SmartAnalyst)` : '— via SmartAnalyst'
+  const senderTag = greetingName ? `${greetingName} (via SmartAnalyst)` : 'via SmartAnalyst'
 
-  const html = `<!doctype html>
-<html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#1f1f1f;background:#fff">
-  <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;margin:0 0 8px">SmartAnalyst — Brief</p>
-  ${note ? `<p style="font-size:14px;line-height:1.6;background:#f8fafc;border-left:3px solid #5C8FFF;padding:12px 14px;margin:0 0 18px;color:#374151">${escapeHtml(trim(note, 600))}</p>` : ''}
-  <h1 style="font-size:20px;font-weight:700;margin:0 0 12px;line-height:1.35">${escapeHtml(safeTitle)}</h1>
-  ${task.description ? `<p style="font-size:14px;line-height:1.65;color:#374151;margin:0 0 18px">${escapeHtml(trim(task.description, 2000))}</p>` : ''}
-  <table style="font-size:13px;color:#374151;border-collapse:collapse;margin:0 0 22px">
-    <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Priorité</td><td style="padding:4px 0"><strong>${task.priority}</strong></td></tr>
-    <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Impact</td><td style="padding:4px 0">${task.impact}</td></tr>
-    <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Effort</td><td style="padding:4px 0">${task.effort}</td></tr>
-    <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Confiance</td><td style="padding:4px 0">${task.confidence}</td></tr>
-  </table>
-  <p style="font-size:12px;color:#9ca3af;line-height:1.6;margin:0">${signature}</p>
-</body></html>`
+  // Body = note perso optionnelle (en encadre brand) + description tache +
+  // table (Priorite/Impact/Effort/Confiance).
+  const noteBlock = note
+    ? `<div style="margin:0 0 18px 0;padding:12px 14px;background:#F0F4FF;border-left:3px solid #5C8FFF;border-radius:0 6px 6px 0;font-size:14px;line-height:1.55;color:#5C5C78">${escapeHtml(trim(note, 600))}</div>`
+    : ''
+  const descBlock = task.description
+    ? `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.65;color:#14142A">${escapeHtml(trim(task.description, 2000))}</p>`
+    : ''
+  const metaTable = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="font-size:13px;color:#5C5C78;border-collapse:collapse;margin:0">
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Priorité</td><td style="padding:3px 0;color:#14142A"><strong>${escapeHtml(String(task.priority || '—'))}</strong></td></tr>
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Impact</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.impact || '—'))}</td></tr>
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Effort</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.effort || '—'))}</td></tr>
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Confiance</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.confidence || '—'))}</td></tr>
+  </table>`
 
-  const text = [
-    'SmartAnalyst — Brief',
-    '',
-    ...(note ? [trim(note, 600), ''] : []),
-    safeTitle,
-    '',
-    ...(task.description ? [trim(task.description, 2000), ''] : []),
-    `Priorité : ${task.priority}`,
-    `Impact   : ${task.impact}`,
-    `Effort   : ${task.effort}`,
-    `Confiance: ${task.confidence}`,
-    '',
-    signature,
-  ].join('\n')
+  const body = `${noteBlock}${descBlock}${metaTable}`
 
-  return { subject, html, text }
-}
+  const { html, text } = emailTemplate.renderEmail({
+    preview: safeTitle,
+    title: safeTitle,
+    body,
+    footer: `Brief envoyé ${greetingName ? `par ${greetingName} ` : ''}depuis SmartAnalyst.`,
+  })
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+  // text/plain : on ajoute les meta task explicitement (le strip HTML ne
+  // rend pas bien la table).
+  const textWithMeta = `${text}\n\n— ${senderTag}\nPriorité : ${task.priority || '—'} · Impact : ${task.impact || '—'} · Effort : ${task.effort || '—'} · Confiance : ${task.confidence || '—'}`
+
+  return { subject, html, text: textWithMeta }
 }
 
 /**
