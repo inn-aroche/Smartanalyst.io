@@ -14,6 +14,7 @@ const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { UserFacingError } = require('../../lib/error-handler')
 const { sendEmail } = require('../email/resend.service')
+const emailTemplate = require('../email/email-template.service')
 
 /**
  * Inscrit un email à la waitlist. Idempotent : si l'email existe déjà,
@@ -82,7 +83,11 @@ async function addSignup({ email, name, company, useCase, source }) {
     const confirmation = await sendConfirmationEmail({ to: normalizedEmail, name })
     if (!confirmation.ok) {
       logger.warn(
-        { event: 'waitlist_confirm_email_failed', email: normalizedEmail, error: confirmation.error },
+        {
+          event: 'waitlist_confirm_email_failed',
+          email: normalizedEmail,
+          error: confirmation.error,
+        },
         'Confirmation email failed (non-fatal)',
       )
     }
@@ -96,48 +101,19 @@ async function addSignup({ email, name, company, useCase, source }) {
  * Exporté pour pouvoir tester en isolation.
  */
 async function sendConfirmationEmail({ to, name }) {
-  const greeting = name ? `Salut ${name}` : 'Salut'
-  const subject = 'Tu es sur la waitlist SmartAnalyst 🎉'
+  const greeting = name ? `Salut ${name} 🎉` : 'Salut 🎉'
+  const subject = 'Tu es sur la waitlist SmartAnalyst'
 
-  const html = `<!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:8px;padding:32px 24px;color:#1a1a1a;">
-    <h1 style="font-size:22px;margin:0 0 16px;color:#0f172a;">${greeting},</h1>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
-      Merci d'avoir rejoint la waitlist <strong>SmartAnalyst</strong> 🚀
-    </p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
-      On finalise l'app et on te recontacte avec un accès dès qu'on accueille
-      les premiers utilisateurs. Tu auras un coup d'avance sur tes KPIs marketing
-      (Google Ads, Meta Ads, Stripe, GA4, Search Console…).
-    </p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">
-      En attendant, si tu as des questions ou un cas d'usage spécifique,
-      réponds simplement à cet email — on lit tout.
-    </p>
-    <p style="font-size:13px;color:#64748b;margin:24px 0 0;border-top:1px solid #e2e8f0;padding-top:16px;">
-      — L'équipe SmartAnalyst<br />
-      <a href="https://smartanalyst.io" style="color:#2563eb;text-decoration:none;">smartanalyst.io</a>
-    </p>
-  </div>
-</body>
-</html>`
+  const body = `<p style="margin:0;font-size:14.5px;line-height:1.6;color:#5C5C78">On finalise l'app et on te recontacte avec un accès dès qu'on accueille les premiers utilisateurs. Tu auras un coup d'avance sur tes KPIs marketing (Google Ads, Meta Ads, Stripe, GA4, Search Console…).</p>`
 
-  const text = [
-    `${greeting},`,
-    '',
-    'Merci d\'avoir rejoint la waitlist SmartAnalyst.',
-    '',
-    'On finalise l\'app et on te recontacte avec un accès dès qu\'on est prêt',
-    'à accueillir les premiers utilisateurs.',
-    '',
-    'En attendant, si tu as des questions ou un cas d\'usage spécifique,',
-    'réponds simplement à cet email.',
-    '',
-    '— L\'équipe SmartAnalyst',
-    'https://smartanalyst.io',
-  ].join('\n')
+  const { html, text } = emailTemplate.renderEmail({
+    preview: 'Merci d’avoir rejoint la waitlist.',
+    title: greeting,
+    intro: "Merci d'avoir rejoint la waitlist SmartAnalyst.",
+    body,
+    footer:
+      "En attendant, si tu as des questions ou un cas d'usage spécifique, réponds simplement à cet email — on lit tout.",
+  })
 
   return sendEmail({ to, subject, html, text })
 }
@@ -152,42 +128,28 @@ async function sendConfirmationEmail({ to, name }) {
  */
 async function sendBetaWelcomeEmail(to, { name } = {}) {
   const appUrl = (process.env.APP_URL || 'https://app.smartanalyst.io').replace(/\/$/, '')
-  const subject = "Bienvenue dans la beta SmartAnalyst"
+  const subject = 'Bienvenue dans la beta SmartAnalyst'
   const firstName = (name || '').trim().split(' ')[0]
-  const hi = firstName ? `Salut ${firstName},` : 'Salut,'
+  const hi = firstName ? `Salut ${firstName} 👋` : 'Salut 👋'
 
-  const html = `<!doctype html>
-<html lang="fr"><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#1f1f1f;background:#fff">
-  <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;margin:0 0 8px">SmartAnalyst</p>
-  <h1 style="font-size:22px;font-weight:700;margin:0 0 16px;line-height:1.3">${hi}</h1>
-  <p style="font-size:15px;line-height:1.6;margin:0 0 16px">Bonne nouvelle : tu peux entrer dans la beta privée de SmartAnalyst dès maintenant.</p>
-  <p style="font-size:15px;line-height:1.6;margin:0 0 24px">Connecte tes sources (Stripe, GA4, Meta Ads, Shopify…) en 2 clics. On commence à synchroniser les 30 derniers jours, et SmartAnalyst remonte ce qui mérite ton attention — sans dashboard à configurer.</p>
-  <p style="margin:0 0 28px"><a href="${appUrl}/login" style="display:inline-block;background:#1f1f1f;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:14px;font-weight:600">Ouvrir SmartAnalyst →</a></p>
-  <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0 0 8px">Pour t'aider à démarrer :</p>
-  <ul style="font-size:13px;color:#374151;line-height:1.7;margin:0 0 24px;padding-left:18px">
-    <li>Connecter une première source : <a href="${appUrl}/connectors" style="color:#2563eb">page Connecteurs</a></li>
-    <li>Poser une première question à Smart Analyst : <a href="${appUrl}/chat" style="color:#2563eb">page Chat</a></li>
-    <li>Installer le SmartTag : <a href="${appUrl}/tracking/install" style="color:#2563eb">page Tag</a></li>
+  const body = `<p style="margin:0 0 16px 0;font-size:14.5px;line-height:1.6;color:#5C5C78">Connecte tes sources (GA4, Meta Ads, Google Ads, Stripe, Search Console…) en 2 clics. On synchronise les 30 derniers jours, et SmartAnalyst remonte ce qui mérite ton attention — sans dashboard à configurer.</p>
+<div style="margin-top:24px;border-top:1px solid #E5E5EA;padding-top:18px">
+  <p style="margin:0 0 10px 0;font-size:13px;color:#5C5C78;font-weight:600">Pour démarrer :</p>
+  <ul style="margin:0;padding-left:18px;font-size:13.5px;color:#14142A;line-height:1.7">
+    <li><a href="${appUrl}/connectors" style="color:#5C8FFF;text-decoration:none">Connecter une 1<sup>ère</sup> source</a></li>
+    <li><a href="${appUrl}/chat" style="color:#5C8FFF;text-decoration:none">Poser ta 1<sup>ère</sup> question au chat</a></li>
+    <li><a href="${appUrl}/tracking/install" style="color:#5C8FFF;text-decoration:none">Installer le SmartTag (1<sup>st</sup>-party tracking)</a></li>
   </ul>
-  <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0">Une question, un blocage, du feedback ? Réponds directement à ce mail, je te lis.</p>
-</body></html>`
+</div>`
 
-  const text = [
-    hi,
-    '',
-    'Bonne nouvelle : tu peux entrer dans la beta privée de SmartAnalyst dès maintenant.',
-    '',
-    'Connecte tes sources (Stripe, GA4, Meta Ads, Shopify…) en 2 clics. On synchronise les 30 derniers jours, et SmartAnalyst remonte ce qui mérite ton attention.',
-    '',
-    `→ ${appUrl}/login`,
-    '',
-    'Pour démarrer :',
-    `- Connecteurs : ${appUrl}/connectors`,
-    `- Chat : ${appUrl}/chat`,
-    `- SmartTag : ${appUrl}/tracking/install`,
-    '',
-    'Une question ? Réponds à ce mail, je te lis.',
-  ].join('\n')
+  const { html, text } = emailTemplate.renderEmail({
+    preview: 'Tu peux entrer dans la beta dès maintenant.',
+    title: hi,
+    intro: 'Bonne nouvelle : tu peux entrer dans la beta privée de SmartAnalyst dès maintenant.',
+    body,
+    cta: { label: 'Ouvrir SmartAnalyst', href: `${appUrl}/login` },
+    footer: 'Une question, un blocage, du feedback ? Réponds directement à ce mail, je te lis.',
+  })
 
   return sendEmail({ to, subject, html, text })
 }
@@ -214,7 +176,13 @@ async function inviteSignup(id) {
     throw err
   }
   if (row.status === 'invited' || row.status === 'converted') {
-    return { id: row.id, email: row.email, status: row.status, sent: false, error: 'already_invited' }
+    return {
+      id: row.id,
+      email: row.email,
+      status: row.status,
+      sent: false,
+      error: 'already_invited',
+    }
   }
 
   const send = await sendBetaWelcomeEmail(row.email, { name: row.name })

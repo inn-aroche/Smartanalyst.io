@@ -134,21 +134,17 @@ async function sendCriticalAlert(workspaceId, insight) {
  */
 function composeReportReady(report, { orgName } = {}) {
   const hello = orgName ? `Bonjour ${orgName},` : 'Bonjour,'
-  const url = `${appUrl()}/reports`
-  const subject = `Ton rapport — ${escapeHtml(report.title)}`
-  const text = `${hello}
-
-Le rapport "${report.title}" est prêt.
-
-Tu peux le consulter (et l'imprimer en PDF si besoin) ici :
-${url}
-
-— SmartAnalyst`
-  const html = `<p>${hello}</p>
-<p>Le rapport <strong>${escapeHtml(report.title)}</strong> est prêt.</p>
-<p>Tu peux le consulter (et l'imprimer en PDF si besoin) en suivant ce lien :</p>
-<p><a href="${url}" style="background:#3D6BE0;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">Voir mon rapport →</a></p>
-<p style="color:#9C9CB4;font-size:12px">— SmartAnalyst</p>`
+  const url = `${appUrl()}/rapports`
+  const subject = `Ton rapport — ${report.title}`
+  const body = `<p style="margin:0;font-size:14.5px;line-height:1.6;color:#5C5C78">Le rapport <strong style="color:#14142A">${escapeHtml(report.title)}</strong> est prêt. Tu peux le consulter en ligne ou l'imprimer en PDF en un clic.</p>`
+  const { html, text } = emailTemplate.renderEmail({
+    preview: `Le rapport "${report.title}" est prêt.`,
+    title: hello,
+    body,
+    cta: { label: 'Voir mon rapport', href: url },
+    footer:
+      'Tu reçois ce mail car la génération automatique de rapports est active sur ton workspace.',
+  })
   return { subject, html, text }
 }
 
