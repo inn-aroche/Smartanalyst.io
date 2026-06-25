@@ -93,6 +93,29 @@ export type JourneyStep = {
   status: Status
 }
 
+export type BenchmarkSpectrum = {
+  /** Label court de la metric comparee, ex: "ROAS", "Taux de conversion". */
+  metricLabel: string
+  /** Valeur de l'user (formatee), ex: "3.2x", "2.4%". */
+  userValueLabel: string
+  /** Valeur numerique de l'user. */
+  userValue: number
+  /** P25 / mediane / P75 du benchmark (numeriques pour le positionnement). */
+  p25: number
+  p50: number
+  p75: number
+  /** Versions formatees pour les ticks (ex: "2.0x", "3.1x", "4.5x"). */
+  p25Label: string
+  p50Label: string
+  p75Label: string
+  /** Position de l'user sur 0-100 (0 = au niveau p25, 100 = au niveau p75). */
+  positionPct: number
+  /** Statut deduit de la position. */
+  status: Status
+  /** Sens : 'higher_better' (ROAS) ou 'lower_better' (CPL, churn). */
+  direction: 'higher_better' | 'lower_better'
+}
+
 export type VerdictSpec = {
   /** Quel pattern visuel utiliser (cf. cahier 22c §6). */
   pattern: 'campaigns' | 'creatives' | 'products' | 'journey' | 'benchmark' | 'unavailable'
@@ -104,6 +127,8 @@ export type VerdictSpec = {
   actions: Action[]
   /** Pour pattern='journey' : etapes du funnel. */
   journey?: { steps: JourneyStep[] } | null
+  /** Pour pattern='benchmark' : positionnement vs reference externe. */
+  benchmark?: BenchmarkSpectrum | null
   /** Sources externes (obligatoire pour pattern='benchmark'). */
   sources?: Source[] | null
 }

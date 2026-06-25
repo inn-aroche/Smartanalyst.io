@@ -42,11 +42,12 @@ function load({ metrics = [], insights = [], actions = [], health = null } = {})
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 13 tools déclarés (22c ajoute analyze_performance + analyze_journey)', () => {
+test('DECLARATIONS : 14 tools déclarés (22c ajoute analyze_{performance,journey,benchmark})', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 13)
+  assert.equal(tools.DECLARATIONS.length, 14)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
+    'analyze_benchmark',
     'analyze_journey',
     'analyze_performance',
     'build_dashboard_preview',
@@ -571,4 +572,137 @@ test('statusForRetention : seuils 60 / 35 / 15', () => {
   assert.equal(tools.statusForRetention(20), 'MOYEN')
   assert.equal(tools.statusForRetention(10), 'FAIBLE')
   assert.equal(tools.statusForRetention(0), 'FAIBLE')
+})
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Cahier 22c — analyze_benchmark (verdict pattern=benchmark)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('analyze_benchmark : args manquants → error', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    { name: 'analyze_benchmark', args: { metric_key: 'roas' } },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.error, 'benchmark_args_required')
+})
+
+test('analyze_benchmark : 0 rows user → pattern=unavailable', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    {
+      name: 'analyze_benchmark',
+      args: {
+        metric_key: 'return_on_investment_paid',
+        sector: 'E-commerce',
+        benchmark_p25: 2,
+        benchmark_p50: 3,
+        benchmark_p75: 5,
+        source_name: 'WordStream 2024',
+      },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.pattern, 'unavailable')
+})
+
+test('analyze_benchmark : higher_better, user en haut du quartile → TOP', async () => {
+  // ROAS = ratio → moyenne sur la fenetre.
+  const metrics = [
+    {
+      source: 'meta_ads',
+      metric_key: 'return_on_investment_paid',
+      metric_value: 6.0,
+      date: '2026-06-01',
+    },
+  ]
+  const tools = load({ metrics })
+  const r = await tools.execute(
+    {
+      name: 'analyze_benchmark',
+      args: {
+        metric_key: 'return_on_investment_paid',
+        sector: 'E-commerce mode',
+        benchmark_p25: 2,
+        benchmark_p50: 3,
+        benchmark_p75: 5,
+        direction: 'higher_better',
+        source_name: 'WordStream Benchmark 2024',
+        source_url: 'https://example.com',
+      },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.pattern, 'benchmark')
+  assert.equal(r.benchmark.status, 'TOP')
+  // userValue=6, p25=2, p75=5 → (6-2)/(5-2)=133% → clampé à 100
+  assert.equal(r.benchmark.positionPct, 100)
+  assert.equal(r.benchmark.direction, 'higher_better')
+  assert.match(r.verdict, /top quartile/i)
+  assert.equal(r.sources[0].name, 'WordStream Benchmark 2024')
+  assert.equal(r.sources[0].url, 'https://example.com')
+  // 2 actions auto-générées
+  assert.ok(r.actions.length >= 2)
+})
+
+test('analyze_benchmark : lower_better inverse l\'axe (user bas = TOP)', async () => {
+  // CPL = lower_better : valeur basse = mieux. Ici user CPL "spend / clicks"
+  // pas dispo en canonical, on simule avec une metric custom.
+  const metrics = [
+    { source: 'meta_ads', metric_key: 'spend_paid_social', metric_value: 100, date: '2026-06-01' },
+  ]
+  const tools = load({ metrics })
+  const r = await tools.execute(
+    {
+      name: 'analyze_benchmark',
+      args: {
+        metric_key: 'spend_paid_social',
+        sector: 'SaaS B2B',
+        benchmark_p25: 50,
+        benchmark_p50: 200,
+        benchmark_p75: 500,
+        direction: 'lower_better',
+        source_name: 'HubSpot 2024',
+      },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  // userValue=100, p25=50, p75=500 → (100-50)/450=11% → inversé = 89% (TOP)
+  assert.equal(r.benchmark.direction, 'lower_better')
+  assert.equal(r.benchmark.positionPct, 88.9)
+  assert.equal(r.benchmark.status, 'TOP')
+})
+
+test('spectrumPosition : clamp 0..100 + invert lower_better', () => {
+  const tools = load()
+  // higher_better au milieu
+  assert.equal(
+    tools.spectrumPosition({ userValue: 3, p25: 2, p75: 5, direction: 'higher_better' }),
+    33.3,
+  )
+  // higher_better au-dessus du P75 → 100
+  assert.equal(
+    tools.spectrumPosition({ userValue: 10, p25: 2, p75: 5, direction: 'higher_better' }),
+    100,
+  )
+  // higher_better sous P25 → 0
+  assert.equal(
+    tools.spectrumPosition({ userValue: 0, p25: 2, p75: 5, direction: 'higher_better' }),
+    0,
+  )
+  // lower_better : meme valeur, axe inversé
+  assert.equal(
+    tools.spectrumPosition({ userValue: 3, p25: 2, p75: 5, direction: 'lower_better' }),
+    66.7,
+  )
+})
+
+test('statusForBenchmarkPosition : seuils 75 / 50 / 25', () => {
+  const tools = load()
+  assert.equal(tools.statusForBenchmarkPosition(100), 'TOP')
+  assert.equal(tools.statusForBenchmarkPosition(75), 'TOP')
+  assert.equal(tools.statusForBenchmarkPosition(60), 'BON')
+  assert.equal(tools.statusForBenchmarkPosition(50), 'BON')
+  assert.equal(tools.statusForBenchmarkPosition(30), 'MOYEN')
+  assert.equal(tools.statusForBenchmarkPosition(10), 'FAIBLE')
 })

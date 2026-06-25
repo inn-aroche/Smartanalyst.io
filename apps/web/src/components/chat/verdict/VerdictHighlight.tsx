@@ -11,7 +11,10 @@
 
 import ActionBlock from './ActionBlock'
 import FunnelBar from './FunnelBar'
+import MiniMap from './MiniMap'
 import ProportionalTable from './ProportionalTable'
+import SourcesBlock from './SourcesBlock'
+import SpectrumBar from './SpectrumBar'
 import WinnerCard from './WinnerCard'
 import type { VerdictSpec } from './types'
 
@@ -35,28 +38,29 @@ export default function VerdictHighlight({ spec }: { spec: VerdictSpec }) {
     )
   }
 
-  // Pattern journey : FunnelBar reel avec drop-off et actions.
+  // Pattern journey : MiniMap (silhouette) + FunnelBar (chiffres) + actions.
   if (spec.pattern === 'journey') {
     return (
       <div className="space-y-3">
         <Header spec={spec} />
-        {spec.journey?.steps?.length ? <FunnelBar steps={spec.journey.steps} /> : null}
+        {spec.journey?.steps?.length ? (
+          <>
+            <MiniMap steps={spec.journey.steps} />
+            <FunnelBar steps={spec.journey.steps} />
+          </>
+        ) : null}
         <ActionBlock actions={spec.actions} />
       </div>
     )
   }
 
-  // Benchmark — Phase 3b backlog, placeholder pour ne pas casser le rendu.
+  // Pattern benchmark : SpectrumBar + Sources + actions.
   if (spec.pattern === 'benchmark') {
     return (
       <div className="space-y-3">
         <Header spec={spec} />
-        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-center">
-          <p className="text-xs font-mono uppercase tracking-widest text-gray-400">
-            Visualisation benchmark — Phase 3b
-          </p>
-          <p className="mt-2 text-sm text-gray-600">{spec.verdict}</p>
-        </div>
+        {spec.benchmark && <SpectrumBar benchmark={spec.benchmark} />}
+        {spec.sources && spec.sources.length > 0 && <SourcesBlock sources={spec.sources} />}
         <ActionBlock actions={spec.actions} />
       </div>
     )

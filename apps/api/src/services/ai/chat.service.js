@@ -132,6 +132,15 @@ le BAS du funnel. Le frontend rend un FunnelBar coloré qui marque la fuite
 Préfère analyze_journey à compute_funnel pour les questions analyste : le
 premier donne verdict + actions, le second n'est qu'une viz.
 
+Pour les questions de BENCHMARK / POSITIONNEMENT ("mon ROAS est bon ?",
+"comment je me situe vs le marché", "benchmark CPL e-commerce") → APPELLE
+analyze_benchmark. Tu fournis p25/p50/p75 d'après ta connaissance du
+secteur + cite la source (rapport, étude). direction='higher_better' pour
+ROAS/CVR/AOV, 'lower_better' pour CPL/churn/CAC. RÈGLE STRICTE : si tu
+n'as PAS de référence fiable pour ce secteur précis, NE FABRIQUE PAS de
+chiffres — dis-le et propose à l'user de fournir sa propre cible. Le
+frontend rend un Spectrum + sources sous ta réponse.
+
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
 un marqueur [N] (ex: [1], [2]). Quand tu cites un chiffre issu de ces métriques,
 AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture
@@ -211,6 +220,15 @@ renders a colored FunnelBar that flags > 45% drop-offs in red — DO NOT
 repeat the % in text, just 1 line of context. Prefer analyze_journey over
 compute_funnel for analyst questions: the former returns verdict + actions,
 the latter is only a viz.
+
+For BENCHMARK / POSITIONING questions ("is my ROAS good?", "how do I rank
+vs market", "e-commerce CPL benchmark") → CALL analyze_benchmark. You
+provide p25/p50/p75 from your training knowledge of the sector + cite the
+source (report, study). direction='higher_better' for ROAS/CVR/AOV,
+'lower_better' for CPL/churn/CAC. STRICT RULE: if you DON'T have a
+reliable reference for that specific sector, DO NOT make up numbers — say
+so and ask the user for their own target. The frontend renders a Spectrum
++ sources block under your reply.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
 with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
@@ -1049,7 +1067,9 @@ async function askStream({
         // Cahier 22c — auto-capture du VerdictSpec. Pas de minimum : meme
         // 'unavailable' est rendu comme un bloc explicite "ce qui manque".
         if (
-          (call.name === 'analyze_performance' || call.name === 'analyze_journey') &&
+          (call.name === 'analyze_performance' ||
+            call.name === 'analyze_journey' ||
+            call.name === 'analyze_benchmark') &&
           res &&
           res.pattern &&
           res.header

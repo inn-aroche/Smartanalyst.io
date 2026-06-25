@@ -309,6 +309,60 @@ const DECLARATIONS = [
       required: ['steps'],
     },
   },
+  {
+    name: 'analyze_benchmark',
+    description:
+      "Positionne UNE valeur user vs un benchmark externe (P25/médiane/P75 du secteur). À utiliser pour 'mon ROAS est bon ?', 'comment je me situe vs le marché', 'benchmark CPL e-commerce'. Tu fournis les bornes p25/p50/p75 d'après ta connaissance du secteur + cite la source (étude, rapport). Le frontend rend un Spectrum + Sources sous ta réponse — n'écris PAS les chiffres du benchmark en texte. IMPORTANT : marque clairement la source ; si tu n'as pas de référence fiable pour ce secteur/métrique, dis-le plutôt que d'inventer.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        metric_key: {
+          type: 'STRING',
+          description: "Clé canonique de la metric user. Ex: 'return_on_investment_paid'.",
+        },
+        sector: {
+          type: 'STRING',
+          description:
+            "Secteur de comparaison court (ex: 'E-commerce mode', 'SaaS B2B', 'Lead gen'). Affiché dans le header.",
+        },
+        benchmark_p25: {
+          type: 'NUMBER',
+          description: '25e percentile du benchmark (mauvais quartile).',
+        },
+        benchmark_p50: { type: 'NUMBER', description: 'Médiane du benchmark.' },
+        benchmark_p75: {
+          type: 'NUMBER',
+          description: '75e percentile du benchmark (top quartile).',
+        },
+        direction: {
+          type: 'STRING',
+          description:
+            "'higher_better' (ROAS, CVR…) ou 'lower_better' (CPL, churn, CAC). Défaut 'higher_better'.",
+        },
+        source_name: {
+          type: 'STRING',
+          description:
+            "Nom court de la source benchmark, ex: 'WordStream Benchmark 2024', 'Klaviyo Benchmark e-commerce'.",
+        },
+        source_url: {
+          type: 'STRING',
+          description: 'URL externe de la source (optionnel).',
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre user en jours (1 à 90, défaut 30). Sert à agréger la metric user.',
+        },
+      },
+      required: [
+        'metric_key',
+        'sector',
+        'benchmark_p25',
+        'benchmark_p50',
+        'benchmark_p75',
+        'source_name',
+      ],
+    },
+  },
 ]
 
 // Exécution. Reçoit { name, args } + workspaceId fixe. Retourne un objet JSON
@@ -694,6 +748,62 @@ async function execute({ name, args }, { workspaceId, userId }) {
       return spec
     }
 
+    if (name === 'analyze_benchmark') {
+      const metricKey = String(args?.metric_key || '').trim()
+      const sector = String(args?.sector || '').trim()
+      const sourceName = String(args?.source_name || '').trim()
+      const p25 = Number(args?.benchmark_p25)
+      const p50 = Number(args?.benchmark_p50)
+      const p75 = Number(args?.benchmark_p75)
+      if (
+        !metricKey ||
+        !sector ||
+        !sourceName ||
+        !Number.isFinite(p25) ||
+        !Number.isFinite(p50) ||
+        !Number.isFinite(p75)
+      ) {
+        return { error: 'benchmark_args_required' }
+      }
+      const direction = args?.direction === 'lower_better' ? 'lower_better' : 'higher_better'
+      const days = Math.min(Math.max(Number(args?.days) || 30, 1), 90)
+      const end = new Date()
+      const start = new Date(end.getTime() - days * 86400_000)
+      const fmt = (d) => d.toISOString().slice(0, 10)
+      const rows = await canonicalMetrics.query({
+        workspaceId,
+        metricKey,
+        startDate: fmt(start),
+        endDate: fmt(end),
+        limit: 1000,
+      })
+      if (rows.length === 0) {
+        return buildUnavailableVerdict('benchmark', [metricKey], days)
+      }
+      // Aggregation : moyenne pour metriques "ratio" (ROAS, CVR), somme sinon.
+      const unit = METRIC_UNIT[metricKey] || 'count'
+      const numbers = rows.map((r) => Number(r.metric_value)).filter((n) => Number.isFinite(n))
+      let userValue
+      if (unit === 'ratio') {
+        userValue = numbers.reduce((s, v) => s + v, 0) / Math.max(numbers.length, 1)
+      } else {
+        userValue = numbers.reduce((s, v) => s + v, 0)
+      }
+      userValue = Math.round(userValue * 100) / 100
+      return buildAnalyzeBenchmarkVerdict({
+        metricKey,
+        sector,
+        userValue,
+        p25,
+        p50,
+        p75,
+        direction,
+        sourceName,
+        sourceUrl: args?.source_url ? String(args.source_url).trim() : null,
+        days,
+      })
+    }
+
     if (name === 'analyze_journey') {
       const steps = Array.isArray(args?.steps)
         ? args.steps
@@ -820,6 +930,7 @@ const PATTERN_LABELS = {
   creatives: { context: 'Créatives', titleFR: 'Performance par créative', noun: 'créative' },
   products: { context: 'Produits', titleFR: 'Performance par produit', noun: 'produit' },
   journey: { context: 'Funnel', titleFR: 'Parcours utilisateur', noun: 'étape' },
+  benchmark: { context: 'Benchmark', titleFR: 'Positionnement vs marché', noun: 'metric' },
 }
 
 function buildUnavailableVerdict(pattern, metricKeys, days) {
@@ -1061,13 +1172,124 @@ function buildAnalyzeJourneyVerdict({ steps, days, totals }) {
   }
 }
 
+// Place une valeur user sur l'axe p25-p75 (0..100). En lower_better, l'axe
+// est inverse : une valeur basse arrive a 100, une valeur haute a 0.
+function spectrumPosition({ userValue, p25, p75, direction }) {
+  if (!Number.isFinite(p25) || !Number.isFinite(p75) || p25 === p75) return 50
+  const span = p75 - p25
+  let pct = ((userValue - p25) / span) * 100
+  if (direction === 'lower_better') pct = 100 - pct
+  return Math.max(0, Math.min(100, Math.round(pct * 10) / 10))
+}
+
+// Statut benchmark : positionPct >= 75 → TOP, >= 50 → BON, >= 25 → MOYEN, sinon FAIBLE.
+function statusForBenchmarkPosition(positionPct) {
+  if (positionPct >= 75) return 'TOP'
+  if (positionPct >= 50) return 'BON'
+  if (positionPct >= 25) return 'MOYEN'
+  return 'FAIBLE'
+}
+
+// Construit un VerdictSpec pattern='benchmark' a partir de la valeur user et
+// du triplet de reference. Exporte pour tests.
+function buildAnalyzeBenchmarkVerdict({
+  metricKey,
+  sector,
+  userValue,
+  p25,
+  p50,
+  p75,
+  direction,
+  sourceName,
+  sourceUrl,
+  days,
+}) {
+  const unit = METRIC_UNIT[metricKey] || 'count'
+  const positionPct = spectrumPosition({ userValue, p25, p75, direction })
+  const status = statusForBenchmarkPosition(positionPct)
+  const metricLabel = labelForMetric(metricKey)
+  const userValueLabel = formatMetricValue(userValue, unit)
+  const fmt = (n) => formatMetricValue(n, unit)
+
+  // Verdict 1-ligne contextualisé selon le quartile occupé.
+  let verdict
+  if (direction === 'higher_better') {
+    if (userValue >= p75) {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — top quartile du secteur ${sector} (médiane à ${fmt(p50)}).`
+    } else if (userValue >= p50) {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — au-dessus de la médiane ${sector} (${fmt(p50)}), il reste de la marge vers ${fmt(p75)}.`
+    } else if (userValue >= p25) {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — sous la médiane ${sector} (${fmt(p50)}), il y a du potentiel à débloquer.`
+    } else {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — dans le quartile bas du secteur ${sector} (P25 à ${fmt(p25)}), priorité d'amélioration.`
+    }
+  } else {
+    if (userValue <= p25) {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — top quartile du secteur ${sector} (médiane à ${fmt(p50)}, plus c'est bas mieux c'est).`
+    } else if (userValue <= p50) {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — sous la médiane ${sector} (${fmt(p50)}), bon positionnement.`
+    } else if (userValue <= p75) {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — au-dessus de la médiane ${sector} (${fmt(p50)}), il y a du gras à raboter.`
+    } else {
+      verdict = `${metricLabel} à ${userValueLabel} sur ${days}j — dans le quartile haut du secteur ${sector} (P75 à ${fmt(p75)}), priorité d'optimisation.`
+    }
+  }
+
+  // Actions auto-generees selon le quartile.
+  const actions = []
+  if (status === 'FAIBLE' || status === 'MOYEN') {
+    actions.push({
+      text: `Identifier les 2-3 leviers les plus prometteurs sur ${metricLabel.toLowerCase()} et les tester sur les 30 prochains jours`,
+    })
+  } else if (status === 'BON') {
+    actions.push({
+      text: `Documenter ce qui fait que ${metricLabel.toLowerCase()} est au-dessus de la médiane — c'est ce qu'il faut protéger`,
+    })
+  } else {
+    actions.push({
+      text: `Maintenir l'écart : audit trimestriel sur ${metricLabel.toLowerCase()} pour ne pas glisser`,
+    })
+  }
+  actions.push({
+    text: `Recouper avec ${sourceName} avant d'arbitrer une décision majeure (benchmarks indicatifs)`,
+  })
+
+  return {
+    pattern: 'benchmark',
+    header: {
+      context: `Benchmark · ${sector} · ${days}j`,
+      title: 'Positionnement vs marché',
+    },
+    verdict,
+    benchmark: {
+      metricLabel,
+      userValueLabel,
+      userValue,
+      p25,
+      p50,
+      p75,
+      p25Label: fmt(p25),
+      p50Label: fmt(p50),
+      p75Label: fmt(p75),
+      positionPct,
+      status,
+      direction,
+    },
+    actions,
+    sources: [{ name: sourceName, url: sourceUrl || null }],
+  }
+}
+
 module.exports = {
   DECLARATIONS,
   execute,
   // Exposed for tests (Phase 2 cahier 22c).
   buildAnalyzePerformanceVerdict,
   buildAnalyzeJourneyVerdict,
+  buildAnalyzeBenchmarkVerdict,
   buildUnavailableVerdict,
   statusForRank,
   statusForRetention,
+  statusForBenchmarkPosition,
+  spectrumPosition,
 }
