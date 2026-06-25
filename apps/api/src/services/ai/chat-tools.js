@@ -288,6 +288,27 @@ const DECLARATIONS = [
       required: ['metric_keys'],
     },
   },
+  {
+    name: 'analyze_journey',
+    description:
+      "Produit une REPONSE ANALYSTE FUNNEL (étapes + % rétention + verdict + actions sur le drop-off le plus fort) pour les questions de parcours utilisateur : 'mon funnel e-commerce', 'taux de conversion sessions → commande', 'où je perds mes users'. Le frontend rend un FunnelBar coloré (drop-off rouge > 45%) sous ta réponse — ne réécris PAS les % en texte, contente-toi d'un commentaire court.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        steps: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description:
+            "2 à 6 metric_keys ordonnés du HAUT vers le BAS du funnel. Ex: ['sessions_all','add_to_cart','orders_count'].",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 30.',
+        },
+      },
+      required: ['steps'],
+    },
+  },
 ]
 
 // Exécution. Reçoit { name, args } + workspaceId fixe. Retourne un objet JSON
@@ -673,6 +694,35 @@ async function execute({ name, args }, { workspaceId, userId }) {
       return spec
     }
 
+    if (name === 'analyze_journey') {
+      const steps = Array.isArray(args?.steps)
+        ? args.steps
+            .map((s) => String(s).trim())
+            .filter(Boolean)
+            .slice(0, 6)
+        : []
+      if (steps.length < 2) return { error: 'journey_needs_2_to_6_steps' }
+      const days = Math.min(Math.max(Number(args?.days) || 30, 1), 90)
+      const end = new Date()
+      const start = new Date(end.getTime() - days * 86400_000)
+      const fmt = (d) => d.toISOString().slice(0, 10)
+      const rows = await canonicalMetrics.query({
+        workspaceId,
+        metricKey: steps,
+        startDate: fmt(start),
+        endDate: fmt(end),
+        limit: 5000,
+      })
+      const totals = new Map()
+      for (const r of rows) {
+        totals.set(r.metric_key, (totals.get(r.metric_key) || 0) + Number(r.metric_value))
+      }
+      if (steps.every((s) => !(totals.get(s) > 0))) {
+        return buildUnavailableVerdict('journey', steps, days)
+      }
+      return buildAnalyzeJourneyVerdict({ steps, days, totals })
+    }
+
     return { error: `unknown_tool:${name}` }
   } catch (err) {
     logger.warn(
@@ -769,18 +819,23 @@ const PATTERN_LABELS = {
   campaigns: { context: 'Canaux', titleFR: 'Performance par canal', noun: 'canal' },
   creatives: { context: 'Créatives', titleFR: 'Performance par créative', noun: 'créative' },
   products: { context: 'Produits', titleFR: 'Performance par produit', noun: 'produit' },
+  journey: { context: 'Funnel', titleFR: 'Parcours utilisateur', noun: 'étape' },
 }
 
 function buildUnavailableVerdict(pattern, metricKeys, days) {
   const ctx = PATTERN_LABELS[pattern] || PATTERN_LABELS.campaigns
   const mainLabel = labelForMetric(metricKeys[0])
+  const verdict =
+    pattern === 'journey'
+      ? `Pas assez de données pour reconstituer le funnel sur les ${days} derniers jours. Vérifie que les ${metricKeys.length} étapes sont bien trackées (event GA4, conversion, etc.).`
+      : `Pas de données ${mainLabel.toLowerCase()} sur les ${days} derniers jours. Connecte une source ou élargis la fenêtre pour obtenir un classement par ${ctx.noun}.`
   return {
     pattern: 'unavailable',
     header: {
       context: `${ctx.context} · ${days}j`,
       title: 'Données insuffisantes',
     },
-    verdict: `Pas de données ${mainLabel.toLowerCase()} sur les ${days} derniers jours. Connecte une source ou élargis la fenêtre pour obtenir un classement par ${ctx.noun}.`,
+    verdict,
     actions: [{ text: 'Vérifier les connecteurs actifs depuis Sources' }],
     winner: null,
     rows: null,
@@ -914,11 +969,105 @@ function buildAnalyzePerformanceVerdict({ pattern, metricKeys, days, rows }) {
   }
 }
 
+// Statut d'une etape funnel pilote par sa retention vs etape precedente.
+// 1ere etape = TOP par defaut (rien a comparer).
+function statusForRetention(retentionPct) {
+  if (retentionPct == null) return 'TOP'
+  if (retentionPct >= 60) return 'TOP'
+  if (retentionPct >= 35) return 'BON'
+  if (retentionPct >= 15) return 'MOYEN'
+  return 'FAIBLE'
+}
+
+// Construit un VerdictSpec pattern='journey' a partir des totaux par metric_key.
+// Exporte pour tester sans toucher Supabase.
+function buildAnalyzeJourneyVerdict({ steps, days, totals }) {
+  const stepsOut = steps.map((mk, i) => {
+    const value = Math.round((totals.get(mk) || 0) * 100) / 100
+    const prev = i === 0 ? null : Math.round((totals.get(steps[i - 1]) || 0) * 100) / 100
+    const retentionPct =
+      i === 0 || prev == null || prev === 0 ? null : Math.round((value / prev) * 1000) / 10
+    return {
+      label: labelForMetric(mk),
+      value,
+      valueLabel: formatMetricValue(value, METRIC_UNIT[mk] || 'count'),
+      retentionPct,
+      status: statusForRetention(retentionPct),
+    }
+  })
+
+  // Drop-off = max(1 - retention). On cible l'etape avec la plus grosse fuite
+  // (la pire transition) pour l'action prioritaire.
+  let worstIdx = -1
+  let worstLoss = -1
+  for (let i = 1; i < stepsOut.length; i++) {
+    const r = stepsOut[i].retentionPct
+    if (r == null) continue
+    const loss = 100 - r
+    if (loss > worstLoss) {
+      worstLoss = loss
+      worstIdx = i
+    }
+  }
+
+  const first = stepsOut[0]
+  const last = stepsOut[stepsOut.length - 1]
+  const globalConv = first.value > 0 ? Math.round((last.value / first.value) * 1000) / 10 : null
+
+  let verdict
+  if (globalConv == null) {
+    verdict = `Pas assez de signal en haut de funnel sur les ${days} derniers jours pour mesurer la conversion globale.`
+  } else if (worstIdx > 0) {
+    const w = stepsOut[worstIdx]
+    const prev = stepsOut[worstIdx - 1]
+    verdict = `${globalConv.toString().replace('.', ',')}% de conversion globale sur ${days}j — la fuite la plus forte est entre ${prev.label.toLowerCase()} et ${w.label.toLowerCase()} (${Math.round(worstLoss)}% perdus).`
+  } else {
+    verdict = `${globalConv.toString().replace('.', ',')}% de conversion globale sur les ${days} derniers jours.`
+  }
+
+  const actions = []
+  if (worstIdx > 0 && worstLoss >= 45) {
+    const w = stepsOut[worstIdx]
+    const prev = stepsOut[worstIdx - 1]
+    actions.push({
+      text: `Auditer la transition ${prev.label.toLowerCase()} → ${w.label.toLowerCase()} (${Math.round(worstLoss)}% de perte)`,
+    })
+  } else if (worstIdx > 0) {
+    const w = stepsOut[worstIdx]
+    actions.push({
+      text: `Tester une amélioration sur l'étape ${w.label.toLowerCase()} pour grappiller du taux de conversion`,
+    })
+  }
+  if (globalConv != null && globalConv < 1) {
+    actions.push({
+      text: `Vérifier la qualité du trafic en entrée — la conversion globale est sous 1%`,
+    })
+  }
+  if (actions.length === 0) {
+    actions.push({
+      text: `Élargir la fenêtre au-delà de ${days}j pour confirmer la tendance`,
+    })
+  }
+
+  return {
+    pattern: 'journey',
+    header: {
+      context: `Funnel · ${days}j`,
+      title: 'Parcours utilisateur',
+    },
+    verdict,
+    journey: { steps: stepsOut },
+    actions,
+  }
+}
+
 module.exports = {
   DECLARATIONS,
   execute,
   // Exposed for tests (Phase 2 cahier 22c).
   buildAnalyzePerformanceVerdict,
+  buildAnalyzeJourneyVerdict,
   buildUnavailableVerdict,
   statusForRank,
+  statusForRetention,
 }

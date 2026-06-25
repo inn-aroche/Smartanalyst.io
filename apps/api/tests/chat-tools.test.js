@@ -42,11 +42,12 @@ function load({ metrics = [], insights = [], actions = [], health = null } = {})
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 12 tools déclarés (22c ajoute analyze_performance)', () => {
+test('DECLARATIONS : 13 tools déclarés (22c ajoute analyze_performance + analyze_journey)', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 12)
+  assert.equal(tools.DECLARATIONS.length, 13)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
+    'analyze_journey',
     'analyze_performance',
     'build_dashboard_preview',
     'compare_metrics',
@@ -493,4 +494,81 @@ test('analyze_performance : verdict mentionne le gap entre 1er et 2e', async () 
   assert.match(r.verdict, /Meta Ads/)
   assert.match(r.verdict, /×2/)
   assert.match(r.verdict, /GA4/)
+})
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Cahier 22c — analyze_journey (verdict pattern=journey)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('analyze_journey : moins de 2 étapes → error', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    { name: 'analyze_journey', args: { steps: ['sessions_all'] } },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.error, 'journey_needs_2_to_6_steps')
+})
+
+test('analyze_journey : aucune valeur → pattern=unavailable', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    {
+      name: 'analyze_journey',
+      args: { steps: ['sessions_all', 'orders_count'], days: 30 },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.pattern, 'unavailable')
+  assert.equal(r.journey, undefined) // pas de journey sur unavailable
+  assert.match(r.verdict, /funnel/i)
+})
+
+test('analyze_journey : retention par étape + status par seuils', async () => {
+  const metrics = [
+    // sessions = 1000 (TOP, 1ere étape)
+    { source: 'ga4', metric_key: 'sessions_all', metric_value: 1000, date: '2026-06-01' },
+    // add_to_cart = 700 (rétention 70% → TOP)
+    { source: 'ga4', metric_key: 'add_to_cart', metric_value: 700, date: '2026-06-01' },
+    // orders_count = 50 (rétention 7.1% → FAIBLE)
+    { source: 'ga4', metric_key: 'orders_count', metric_value: 50, date: '2026-06-01' },
+  ]
+  const tools = load({ metrics })
+  const r = await tools.execute(
+    {
+      name: 'analyze_journey',
+      args: { steps: ['sessions_all', 'add_to_cart', 'orders_count'], days: 30 },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.pattern, 'journey')
+  assert.equal(r.header.title, 'Parcours utilisateur')
+  assert.equal(r.journey.steps.length, 3)
+  // Étape 0 : 1ere, retentionPct=null, status=TOP
+  assert.equal(r.journey.steps[0].retentionPct, null)
+  assert.equal(r.journey.steps[0].status, 'TOP')
+  assert.equal(r.journey.steps[0].value, 1000)
+  // Étape 1 : 70% → TOP
+  assert.equal(r.journey.steps[1].retentionPct, 70)
+  assert.equal(r.journey.steps[1].status, 'TOP')
+  // Étape 2 : 50/700 = 7.1% → FAIBLE
+  assert.equal(r.journey.steps[2].retentionPct, 7.1)
+  assert.equal(r.journey.steps[2].status, 'FAIBLE')
+  // Verdict cite la pire transition (add_to_cart → orders_count) avec ~93% perdus
+  assert.match(r.verdict, /add/i)
+  assert.match(r.verdict, /commande/i)
+  // Action prioritaire = audit du drop-off > 45%
+  assert.ok(r.actions.length >= 1)
+  assert.match(r.actions[0].text, /Auditer/)
+})
+
+test('statusForRetention : seuils 60 / 35 / 15', () => {
+  const tools = load()
+  assert.equal(tools.statusForRetention(null), 'TOP') // 1ere étape
+  assert.equal(tools.statusForRetention(75), 'TOP')
+  assert.equal(tools.statusForRetention(60), 'TOP')
+  assert.equal(tools.statusForRetention(50), 'BON')
+  assert.equal(tools.statusForRetention(35), 'BON')
+  assert.equal(tools.statusForRetention(20), 'MOYEN')
+  assert.equal(tools.statusForRetention(10), 'FAIBLE')
+  assert.equal(tools.statusForRetention(0), 'FAIBLE')
 })

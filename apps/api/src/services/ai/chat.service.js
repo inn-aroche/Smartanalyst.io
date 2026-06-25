@@ -124,6 +124,14 @@ automatiquement le bloc "gagnant + tableau proportionnel + actions" — NE
 DUPLIQUE PAS ce contenu dans ta prose, contente-toi d'1 phrase de contexte
 en intro. Ce tool remplace le format 3-sections pour ces questions.
 
+Pour les questions de PARCOURS / FUNNEL ("mon funnel e-commerce", "où je
+perds mes users", "taux de conversion sessions → commande", "drop-off
+panier") → APPELLE analyze_journey avec 2-6 étapes ordonnées du HAUT vers
+le BAS du funnel. Le frontend rend un FunnelBar coloré qui marque la fuite
+> 45% en rouge — NE répète PAS les % en texte, juste 1 phrase de contexte.
+Préfère analyze_journey à compute_funnel pour les questions analyste : le
+premier donne verdict + actions, le second n'est qu'une viz.
+
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
 un marqueur [N] (ex: [1], [2]). Quand tu cites un chiffre issu de ces métriques,
 AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture
@@ -195,6 +203,14 @@ metric_keys = the main metric first (e.g. 'revenue_ecommerce',
 render the "winner + proportional table + actions" block automatically — DO
 NOT duplicate this content in your prose, just give 1 line of context as
 intro. This tool replaces the 3-section format for these questions.
+
+For JOURNEY / FUNNEL questions ("my e-commerce funnel", "where do I lose
+users", "sessions → order conversion", "cart drop-off") → CALL
+analyze_journey with 2-6 steps ordered TOP-of-funnel DOWN. The frontend
+renders a colored FunnelBar that flags > 45% drop-offs in red — DO NOT
+repeat the % in text, just 1 line of context. Prefer analyze_journey over
+compute_funnel for analyst questions: the former returns verdict + actions,
+the latter is only a viz.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
 with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
@@ -1032,7 +1048,12 @@ async function askStream({
         }
         // Cahier 22c — auto-capture du VerdictSpec. Pas de minimum : meme
         // 'unavailable' est rendu comme un bloc explicite "ce qui manque".
-        if (call.name === 'analyze_performance' && res && res.pattern && res.header) {
+        if (
+          (call.name === 'analyze_performance' || call.name === 'analyze_journey') &&
+          res &&
+          res.pattern &&
+          res.header
+        ) {
           toolVerdicts.push(res)
         }
         return { functionResponse: { name: call.name, response: { result: res } } }

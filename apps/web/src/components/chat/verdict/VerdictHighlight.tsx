@@ -1,15 +1,16 @@
 // VerdictHighlight — dispatcher principal. Cahier 22c.
 //
 // Rend une reponse "analyste" complete : Header → Verdict 1-ligne →
-// WinnerCard → ProportionalTable → ActionBlock (toujours en bas).
+// (WinnerCard | FunnelBar) → (Table | …) → ActionBlock (toujours en bas).
 //
 // La structure est dictee par `pattern` :
 //   - campaigns / creatives / products → WinnerCard + Table + Actions
-//   - journey                          → Phase 3 (MiniMap + Funnel)
-//   - benchmark                        → Phase 3 (Spectrum + Sources)
+//   - journey                          → FunnelBar + Actions
+//   - benchmark                        → Phase 3b (Spectrum + Sources)
 //   - unavailable                      → message court "ce qui manque"
 
 import ActionBlock from './ActionBlock'
+import FunnelBar from './FunnelBar'
 import ProportionalTable from './ProportionalTable'
 import WinnerCard from './WinnerCard'
 import type { VerdictSpec } from './types'
@@ -34,15 +35,25 @@ export default function VerdictHighlight({ spec }: { spec: VerdictSpec }) {
     )
   }
 
-  // Patterns journey + benchmark — Phase 3, on rend en placeholder pour
-  // valider la structure de donnees sans bloquer la livraison.
-  if (spec.pattern === 'journey' || spec.pattern === 'benchmark') {
+  // Pattern journey : FunnelBar reel avec drop-off et actions.
+  if (spec.pattern === 'journey') {
+    return (
+      <div className="space-y-3">
+        <Header spec={spec} />
+        {spec.journey?.steps?.length ? <FunnelBar steps={spec.journey.steps} /> : null}
+        <ActionBlock actions={spec.actions} />
+      </div>
+    )
+  }
+
+  // Benchmark — Phase 3b backlog, placeholder pour ne pas casser le rendu.
+  if (spec.pattern === 'benchmark') {
     return (
       <div className="space-y-3">
         <Header spec={spec} />
         <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-center">
           <p className="text-xs font-mono uppercase tracking-widest text-gray-400">
-            Visualisation {spec.pattern} — Phase 3
+            Visualisation benchmark — Phase 3b
           </p>
           <p className="mt-2 text-sm text-gray-600">{spec.verdict}</p>
         </div>

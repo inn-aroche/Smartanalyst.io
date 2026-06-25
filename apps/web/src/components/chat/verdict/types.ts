@@ -80,6 +80,19 @@ export type Source = {
   url?: string | null
 }
 
+export type JourneyStep = {
+  /** Label court de l'etape, ex: "Sessions", "Ajout panier", "Commande". */
+  label: string
+  /** Valeur brute de l'etape sur la fenetre. */
+  value: number
+  /** Idem formatte pour affichage, ex: "12 540". */
+  valueLabel: string
+  /** % retention vs etape precedente. null pour la 1ere etape. */
+  retentionPct: number | null
+  /** Statut pilote par la retention (TOP >= 60%, BON >= 35%, ...). */
+  status: Status
+}
+
 export type VerdictSpec = {
   /** Quel pattern visuel utiliser (cf. cahier 22c §6). */
   pattern: 'campaigns' | 'creatives' | 'products' | 'journey' | 'benchmark' | 'unavailable'
@@ -89,6 +102,8 @@ export type VerdictSpec = {
   winner?: Winner | null
   rows?: Row[] | null
   actions: Action[]
+  /** Pour pattern='journey' : etapes du funnel. */
+  journey?: { steps: JourneyStep[] } | null
   /** Sources externes (obligatoire pour pattern='benchmark'). */
   sources?: Source[] | null
 }
