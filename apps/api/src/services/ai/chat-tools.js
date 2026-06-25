@@ -256,6 +256,38 @@ const DECLARATIONS = [
       required: ['metric_keys'],
     },
   },
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Cahier 22c — verdict response format. Tool unique pour les questions
+  // "qui performe le mieux / le moins" sur campagnes/créas/produits. Produit
+  // une réponse structurée (winner + tableau proportionnel + actions) qui
+  // sera rendue sous forme de VerdictHighlight côté UI.
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  {
+    name: 'analyze_performance',
+    description:
+      "Produit une REPONSE ANALYSTE COMPLETE (gagnant + tableau proportionnel + actions) pour les questions de performance par source : 'quel canal performe le mieux', 'top campagnes', 'meilleurs produits', 'créa qui marche le mieux'. Groupé par source (ga4, meta_ads, google_ads, stripe…). Le frontend rend automatiquement un bloc visuel structuré — n'écris PAS un tableau en texte par-dessus, contente-toi d'un commentaire court.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        pattern: {
+          type: 'STRING',
+          description:
+            "Type de question : 'campaigns' (canaux/campagnes payantes), 'creatives' (créatives/ads), 'products' (produits/SKU). Défaut 'campaigns'.",
+        },
+        metric_keys: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description:
+            "1 à 3 métriques canoniques. La 1ère est la métrique principale (utilisée pour le ranking + barre proportionnelle). Ex: ['revenue_ecommerce','sessions_all','conversions_total'].",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 30.',
+        },
+      },
+      required: ['metric_keys'],
+    },
+  },
 ]
 
 // Exécution. Reçoit { name, args } + workspaceId fixe. Retourne un objet JSON
@@ -606,6 +638,41 @@ async function execute({ name, args }, { workspaceId, userId }) {
       }
     }
 
+    if (name === 'analyze_performance') {
+      const metricKeys = Array.isArray(args?.metric_keys)
+        ? args.metric_keys
+            .map((s) => String(s).trim())
+            .filter(Boolean)
+            .slice(0, 3)
+        : []
+      if (metricKeys.length === 0) return { error: 'metric_keys_required' }
+      const days = Math.min(Math.max(Number(args?.days) || 30, 1), 90)
+      const pattern = ['campaigns', 'creatives', 'products'].includes(args?.pattern)
+        ? args.pattern
+        : 'campaigns'
+      const end = new Date()
+      const start = new Date(end.getTime() - days * 86400_000)
+      const fmt = (d) => d.toISOString().slice(0, 10)
+      const rows = await canonicalMetrics.query({
+        workspaceId,
+        metricKey: metricKeys,
+        startDate: fmt(start),
+        endDate: fmt(end),
+        limit: 5000,
+      })
+      if (rows.length === 0) {
+        // Pas de data sur la fenetre : on signale unavailable au frontend.
+        return buildUnavailableVerdict(pattern, metricKeys, days)
+      }
+      const spec = buildAnalyzePerformanceVerdict({
+        pattern,
+        metricKeys,
+        days,
+        rows,
+      })
+      return spec
+    }
+
     return { error: `unknown_tool:${name}` }
   } catch (err) {
     logger.warn(
@@ -616,4 +683,242 @@ async function execute({ name, args }, { workspaceId, userId }) {
   }
 }
 
-module.exports = { DECLARATIONS, execute }
+// ─── Helpers cahier 22c — analyze_performance ─────────────────────────────
+// Labels FR par metric_key (court, lisible dans le badge "Vue d'ensemble").
+// Inconnu = on rend la metric_key brute, c'est mieux qu'un fallback générique.
+const METRIC_LABEL_FR = {
+  revenue_ecommerce: 'CA',
+  revenue_recurring_monthly: 'MRR',
+  revenue_annual_recurring: 'ARR',
+  sessions_all: 'Sessions',
+  users_active: 'Utilisateurs actifs',
+  users_new: 'Nouveaux utilisateurs',
+  conversions_total: 'Conversions',
+  orders_count: 'Commandes',
+  bounce_rate_all: 'Taux de rebond',
+  spend_paid_social: 'Dépense paid social',
+  spend_paid_search: 'Dépense paid search',
+  clicks_paid_social: 'Clics paid social',
+  clicks_paid_search: 'Clics paid search',
+  return_on_investment_paid: 'ROAS',
+  click_through_rate_paid: 'CTR',
+  customers_active: 'Clients actifs',
+  customers_new: 'Nouveaux clients',
+}
+
+// Unite par metric_key pour formater value/secondary correctement.
+const METRIC_UNIT = {
+  revenue_ecommerce: 'eur',
+  revenue_recurring_monthly: 'eur',
+  revenue_annual_recurring: 'eur',
+  spend_paid_social: 'eur',
+  spend_paid_search: 'eur',
+  bounce_rate_all: 'ratio',
+  return_on_investment_paid: 'ratio',
+  click_through_rate_paid: 'ratio',
+}
+
+// Labels FR par source (sinon on rend tel quel).
+const SOURCE_LABEL_FR = {
+  ga4: 'GA4',
+  meta_ads: 'Meta Ads',
+  google_ads: 'Google Ads',
+  stripe: 'Stripe',
+  search_console: 'Search Console',
+}
+
+function labelForMetric(key) {
+  return METRIC_LABEL_FR[key] || key
+}
+
+function labelForSource(src) {
+  return SOURCE_LABEL_FR[src] || src
+}
+
+function formatMetricValue(value, unit) {
+  if (!Number.isFinite(value)) return String(value)
+  if (unit === 'eur') {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+  if (unit === 'ratio') {
+    const pct = value <= 1 ? value * 100 : value
+    return `${pct.toFixed(1)}%`
+  }
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value)
+}
+
+// Statuts par quartiles. Pour N <= 3, on simplifie : 1er = TOP, dernier = FAIBLE
+// (sauf si N=1 → TOP), milieu = BON. Pour N >= 4, quartile classique.
+// idx = position dans le tri DESC (0 = meilleur).
+function statusForRank(idx, total) {
+  if (total <= 1) return 'TOP'
+  if (total === 2) return idx === 0 ? 'TOP' : 'BON'
+  if (total === 3) return idx === 0 ? 'TOP' : idx === 1 ? 'BON' : 'MOYEN'
+  const ratio = (idx + 1) / total
+  if (ratio <= 0.25) return 'TOP'
+  if (ratio <= 0.5) return 'BON'
+  if (ratio <= 0.75) return 'MOYEN'
+  return 'FAIBLE'
+}
+
+const PATTERN_LABELS = {
+  campaigns: { context: 'Canaux', titleFR: 'Performance par canal', noun: 'canal' },
+  creatives: { context: 'Créatives', titleFR: 'Performance par créative', noun: 'créative' },
+  products: { context: 'Produits', titleFR: 'Performance par produit', noun: 'produit' },
+}
+
+function buildUnavailableVerdict(pattern, metricKeys, days) {
+  const ctx = PATTERN_LABELS[pattern] || PATTERN_LABELS.campaigns
+  const mainLabel = labelForMetric(metricKeys[0])
+  return {
+    pattern: 'unavailable',
+    header: {
+      context: `${ctx.context} · ${days}j`,
+      title: 'Données insuffisantes',
+    },
+    verdict: `Pas de données ${mainLabel.toLowerCase()} sur les ${days} derniers jours. Connecte une source ou élargis la fenêtre pour obtenir un classement par ${ctx.noun}.`,
+    actions: [{ text: 'Vérifier les connecteurs actifs depuis Sources' }],
+    winner: null,
+    rows: null,
+  }
+}
+
+// Agrege les rows canoniques par source → { source: { metricKey: somme } }.
+function aggregateBySource(rows) {
+  const agg = new Map()
+  for (const r of rows) {
+    const src = r.source || 'unknown'
+    if (!agg.has(src)) agg.set(src, new Map())
+    const inner = agg.get(src)
+    inner.set(r.metric_key, (inner.get(r.metric_key) || 0) + Number(r.metric_value))
+  }
+  return agg
+}
+
+// Construit l'integralite du VerdictSpec a partir des rows canoniques.
+// Exporte pour permettre de tester la logique sans toucher Supabase.
+function buildAnalyzePerformanceVerdict({ pattern, metricKeys, days, rows }) {
+  const ctx = PATTERN_LABELS[pattern] || PATTERN_LABELS.campaigns
+  const mainKey = metricKeys[0]
+  const mainUnit = METRIC_UNIT[mainKey] || 'count'
+  const mainLabel = labelForMetric(mainKey)
+
+  const agg = aggregateBySource(rows)
+  // Construit la liste source → totaux par metric. Tri desc sur la metric principale.
+  const sourceRows = Array.from(agg.entries()).map(([source, inner]) => {
+    const totals = {}
+    for (const mk of metricKeys) {
+      totals[mk] = Math.round((inner.get(mk) || 0) * 100) / 100
+    }
+    return { source, totals }
+  })
+  sourceRows.sort((a, b) => (b.totals[mainKey] || 0) - (a.totals[mainKey] || 0))
+  const capped = sourceRows.slice(0, 7)
+  const totalMain = sourceRows.reduce((s, r) => s + (r.totals[mainKey] || 0), 0)
+
+  // Statut par quartile sur l'ordre du tri.
+  const withStatus = capped.map((r, i) => ({
+    ...r,
+    status: statusForRank(i, capped.length),
+  }))
+
+  // Winner = 1er. Si totalMain = 0 → pas de gagnant signifiant.
+  const top = withStatus[0]
+  let winner = null
+  if (top && top.totals[mainKey] > 0) {
+    const sharePct = totalMain > 0 ? Math.round((top.totals[mainKey] / totalMain) * 1000) / 10 : 0
+    const winnerMetrics = metricKeys.map((mk, idx) => ({
+      label: labelForMetric(mk),
+      value: formatMetricValue(top.totals[mk] || 0, METRIC_UNIT[mk] || 'count'),
+      sub: idx === 0 && sharePct > 0 ? `${sharePct.toString().replace('.', ',')}% du total` : null,
+      highlight: idx === 0,
+    }))
+    winner = {
+      name: labelForSource(top.source),
+      status: 'TOP',
+      metrics: winnerMetrics,
+      insight: `${labelForSource(top.source)} concentre ${sharePct.toString().replace('.', ',')}% du ${mainLabel.toLowerCase()} sur la fenêtre — c'est le ${ctx.noun} le plus rentable à pousser en priorité.`,
+    }
+  }
+
+  // Rows pour la table proportionnelle (max 7).
+  const rowsOut = withStatus.map((r) => {
+    const secondaryKey = metricKeys[1]
+    const secondary =
+      secondaryKey && r.totals[secondaryKey] > 0
+        ? `${labelForMetric(secondaryKey)} : ${formatMetricValue(r.totals[secondaryKey], METRIC_UNIT[secondaryKey] || 'count')}`
+        : null
+    return {
+      id: r.source,
+      name: labelForSource(r.source),
+      status: r.status,
+      value: r.totals[mainKey] || 0,
+      valueLabel: formatMetricValue(r.totals[mainKey] || 0, mainUnit),
+      secondary,
+      metrics: metricKeys.map((mk) => ({
+        label: labelForMetric(mk),
+        value: formatMetricValue(r.totals[mk] || 0, METRIC_UNIT[mk] || 'count'),
+      })),
+    }
+  })
+
+  // Actions auto-générées : 1 sur le gagnant, 1 sur les faibles si présents.
+  const actions = []
+  if (winner) {
+    actions.push({
+      text: `Allouer plus de budget à ${winner.name} (${winner.metrics[0].value} sur ${days}j)`,
+    })
+  }
+  const weak = withStatus.filter((r) => r.status === 'FAIBLE' || r.status === 'MOYEN')
+  if (weak.length > 0) {
+    const names = weak
+      .map((r) => labelForSource(r.source))
+      .slice(0, 2)
+      .join(' et ')
+    actions.push({
+      text: `Auditer ${names} avant d'arbitrer une baisse de budget`,
+    })
+  }
+  if (actions.length === 0) {
+    actions.push({ text: `Élargir la fenêtre au-delà de ${days}j pour confirmer la tendance` })
+  }
+
+  // Verdict 1-ligne factuel.
+  let verdict
+  if (winner) {
+    const second = withStatus[1]
+    if (second && second.totals[mainKey] > 0) {
+      const gap = Math.round((top.totals[mainKey] / Math.max(second.totals[mainKey], 1)) * 10) / 10
+      verdict = `${winner.name} domine sur ${mainLabel.toLowerCase()} (×${gap.toString().replace('.', ',')} vs ${labelForSource(second.source)}) sur les ${days} derniers jours.`
+    } else {
+      verdict = `${winner.name} est la seule source ayant généré du ${mainLabel.toLowerCase()} sur les ${days} derniers jours.`
+    }
+  } else {
+    verdict = `Aucune source n'a généré de ${mainLabel.toLowerCase()} significatif sur les ${days} derniers jours.`
+  }
+
+  return {
+    pattern,
+    header: {
+      context: `${ctx.context} · ${days}j`,
+      title: ctx.titleFR,
+    },
+    verdict,
+    winner,
+    rows: rowsOut,
+    actions,
+  }
+}
+
+module.exports = {
+  DECLARATIONS,
+  execute,
+  // Exposed for tests (Phase 2 cahier 22c).
+  buildAnalyzePerformanceVerdict,
+  buildUnavailableVerdict,
+  statusForRank,
+}

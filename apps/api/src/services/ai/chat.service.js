@@ -112,6 +112,18 @@ OUTPUTS GENERATIFS (cahier 22b §3.3) — Tu disposes aussi de :
   cards avec delta vs N-1, que l'user peut épingler sur son dashboard.
 Préfère ces tools à des listes a puces de chiffres : c'est PLUS LISIBLE.
 
+REPONSE ANALYSTE STRUCTUREE (cahier 22c) — Pour les questions de PERFORMANCE
+qui demandent "qui gagne / qui perd" :
+- "quel canal performe le mieux", "top campagnes", "meilleure source" → APPELLE
+  analyze_performance avec pattern='campaigns'.
+- "quelle créa marche", "meilleure publicité", "top ads" → pattern='creatives'.
+- "meilleurs produits", "top SKU", "qui vend le plus" → pattern='products'.
+metric_keys = la métrique principale en 1er (ex: 'revenue_ecommerce',
+'conversions_total', 'spend_paid_social'), 1 à 3 max. Le frontend rendra
+automatiquement le bloc "gagnant + tableau proportionnel + actions" — NE
+DUPLIQUE PAS ce contenu dans ta prose, contente-toi d'1 phrase de contexte
+en intro. Ce tool remplace le format 3-sections pour ces questions.
+
 CITATIONS — Chaque ligne de la section "Métriques du workspace" est préfixée par
 un marqueur [N] (ex: [1], [2]). Quand tu cites un chiffre issu de ces métriques,
 AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouverture
@@ -171,6 +183,18 @@ GENERATIVE OUTPUTS (cahier 22b §3.3) — You also have:
   health", "quick overview", "dashboard"). 4-6 KPI cards with delta
   vs previous period, that the user can pin to their dashboard.
 Prefer these tools over bullet lists of numbers: it's MORE READABLE.
+
+STRUCTURED ANALYST RESPONSE (cahier 22c) — For PERFORMANCE questions
+that ask "who wins / who loses":
+- "which channel performs best", "top campaigns", "best source" → CALL
+  analyze_performance with pattern='campaigns'.
+- "best creative", "top ads", "which ad works" → pattern='creatives'.
+- "best products", "top SKUs", "what sells most" → pattern='products'.
+metric_keys = the main metric first (e.g. 'revenue_ecommerce',
+'conversions_total', 'spend_paid_social'), 1 to 3 max. The frontend will
+render the "winner + proportional table + actions" block automatically — DO
+NOT duplicate this content in your prose, just give 1 line of context as
+intro. This tool replaces the 3-section format for these questions.
 
 CITATIONS — Each line of the "User's workspace metrics" section is prefixed
 with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
@@ -885,6 +909,9 @@ async function askStream({
   // Lot V2.3 — funnels (compute_funnel) et dashboards (build_dashboard_preview).
   const toolFunnels = []
   const toolDashboards = []
+  // Cahier 22c — réponses analystes structurées (analyze_performance).
+  // Place toujours le verdict en TÊTE des highlights pour qu'il soit lu en premier.
+  const toolVerdicts = []
   let finalText = ''
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
@@ -1003,6 +1030,11 @@ async function askStream({
         ) {
           toolDashboards.push({ days: res.days || 30, cards: res.cards })
         }
+        // Cahier 22c — auto-capture du VerdictSpec. Pas de minimum : meme
+        // 'unavailable' est rendu comme un bloc explicite "ce qui manque".
+        if (call.name === 'analyze_performance' && res && res.pattern && res.header) {
+          toolVerdicts.push(res)
+        }
         return { functionResponse: { name: call.name, response: { result: res } } }
       }),
     )
@@ -1075,7 +1107,11 @@ async function askStream({
   const compareHighlights = toolCompares.map((c) => buildCompareHighlight(c, locale))
   const funnelHighlights = toolFunnels.map((f) => buildFunnelHighlight(f, locale))
   const dashboardHighlights = toolDashboards.map((d) => buildDashboardHighlight(d, locale))
+  // Cahier 22c — VerdictHighlights TOUJOURS en tête : c'est la réponse
+  // analyste structurée, elle doit être vue avant les charts/tables.
+  const verdictHighlights = toolVerdicts.map((spec) => buildVerdictHighlight(spec))
   const highlights = [
+    ...verdictHighlights,
     ...dashboardHighlights,
     ...funnelHighlights,
     ...compareHighlights,
@@ -1216,6 +1252,22 @@ function buildDashboardHighlight(d, locale) {
     summary: null,
     tone: 'info',
     cards: d.cards,
+  }
+}
+
+/**
+ * Cahier 22c — bloc `verdict`. Le tool analyze_performance retourne déjà un
+ * VerdictSpec complet (header / verdict / winner / rows / actions) ; le
+ * highlight l'embarque tel quel sous `spec`. Le composant VerdictHighlight
+ * côté frontend route vers le bon rendu selon `spec.pattern`.
+ */
+function buildVerdictHighlight(spec) {
+  return {
+    type: 'verdict',
+    title: spec.header?.title || 'Analyse',
+    summary: null,
+    tone: 'info',
+    spec,
   }
 }
 

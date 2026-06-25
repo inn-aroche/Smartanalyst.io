@@ -42,11 +42,12 @@ function load({ metrics = [], insights = [], actions = [], health = null } = {})
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 11 tools déclarés (V2.3 ajoute funnel + dashboard)', () => {
+test('DECLARATIONS : 12 tools déclarés (22c ajoute analyze_performance)', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 11)
+  assert.equal(tools.DECLARATIONS.length, 12)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
+    'analyze_performance',
     'build_dashboard_preview',
     'compare_metrics',
     'compute_funnel',
@@ -364,4 +365,132 @@ test('build_dashboard_preview : 4 KPIs avec delta vs N-1', async () => {
   assert.equal(sess.value, 200)
   assert.equal(sess.previousValue, 100)
   assert.equal(sess.deltaPct, 100) // +100%
+})
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Cahier 22c — analyze_performance (verdict response format)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('analyze_performance : sans metric_keys → error', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    { name: 'analyze_performance', args: {} },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.error, 'metric_keys_required')
+})
+
+test('analyze_performance : 0 rows → pattern=unavailable', async () => {
+  const tools = load({ metrics: [] })
+  const r = await tools.execute(
+    {
+      name: 'analyze_performance',
+      args: { metric_keys: ['revenue_ecommerce'], pattern: 'campaigns', days: 30 },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.pattern, 'unavailable')
+  assert.equal(r.winner, null)
+  assert.equal(r.rows, null)
+  assert.ok(Array.isArray(r.actions) && r.actions.length > 0)
+})
+
+test('analyze_performance : groupe par source + tri desc + statut quartiles', async () => {
+  const metrics = [
+    // meta_ads = 5000 (TOP)
+    { source: 'meta_ads', metric_key: 'revenue_ecommerce', metric_value: 3000, date: '2026-06-01' },
+    { source: 'meta_ads', metric_key: 'revenue_ecommerce', metric_value: 2000, date: '2026-06-02' },
+    // google_ads = 3000 (BON)
+    { source: 'google_ads', metric_key: 'revenue_ecommerce', metric_value: 3000, date: '2026-06-01' },
+    // ga4 = 1000 (MOYEN)
+    { source: 'ga4', metric_key: 'revenue_ecommerce', metric_value: 1000, date: '2026-06-01' },
+    // stripe = 500 (FAIBLE) → 4 sources, quartile classique
+    { source: 'stripe', metric_key: 'revenue_ecommerce', metric_value: 500, date: '2026-06-01' },
+  ]
+  const tools = load({ metrics })
+  const r = await tools.execute(
+    {
+      name: 'analyze_performance',
+      args: { metric_keys: ['revenue_ecommerce'], pattern: 'campaigns', days: 30 },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.pattern, 'campaigns')
+  assert.equal(r.header.title, 'Performance par canal')
+  assert.match(r.header.context, /Canaux/)
+  assert.match(r.header.context, /30j/)
+  // Winner = meta_ads (label localisé).
+  assert.equal(r.winner.name, 'Meta Ads')
+  assert.equal(r.winner.status, 'TOP')
+  assert.ok(r.winner.metrics[0].highlight)
+  // Rows : 4 sources, triées desc sur la métrique principale.
+  assert.equal(r.rows.length, 4)
+  assert.equal(r.rows[0].id, 'meta_ads')
+  assert.equal(r.rows[0].status, 'TOP')
+  assert.equal(r.rows[1].id, 'google_ads')
+  assert.equal(r.rows[1].status, 'BON')
+  assert.equal(r.rows[2].id, 'ga4')
+  assert.equal(r.rows[2].status, 'MOYEN')
+  assert.equal(r.rows[3].id, 'stripe')
+  assert.equal(r.rows[3].status, 'FAIBLE')
+  // value (chiffre brut) = somme par source, valueLabel formaté €.
+  assert.equal(r.rows[0].value, 5000)
+  assert.match(r.rows[0].valueLabel, /5\s?000/)
+  // Actions auto-générées : au moins 1 sur le gagnant + 1 sur les faibles.
+  assert.ok(r.actions.length >= 2)
+  assert.match(r.actions[0].text, /Meta Ads/)
+})
+
+test('analyze_performance : pattern par défaut = campaigns, metric_keys cappe à 3', async () => {
+  const metrics = [
+    { source: 'ga4', metric_key: 'a', metric_value: 10, date: '2026-06-01' },
+  ]
+  const tools = load({ metrics })
+  const r = await tools.execute(
+    {
+      name: 'analyze_performance',
+      args: { metric_keys: ['a', 'b', 'c', 'd', 'e'] }, // 5 → doit être limité à 3
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.pattern, 'campaigns')
+  // Winner.metrics = 3 (1 par metric_key conservée).
+  assert.equal(r.winner.metrics.length, 3)
+})
+
+test('statusForRank : règles quartiles + cas N<=3', () => {
+  const tools = load()
+  // N=1 → toujours TOP
+  assert.equal(tools.statusForRank(0, 1), 'TOP')
+  // N=2 → TOP, BON
+  assert.equal(tools.statusForRank(0, 2), 'TOP')
+  assert.equal(tools.statusForRank(1, 2), 'BON')
+  // N=3 → TOP, BON, MOYEN
+  assert.equal(tools.statusForRank(2, 3), 'MOYEN')
+  // N=4 → quartile : 0=TOP, 1=BON, 2=MOYEN, 3=FAIBLE
+  assert.equal(tools.statusForRank(0, 4), 'TOP')
+  assert.equal(tools.statusForRank(3, 4), 'FAIBLE')
+  // N=8 → 0-1=TOP, 2-3=BON, 4-5=MOYEN, 6-7=FAIBLE
+  assert.equal(tools.statusForRank(0, 8), 'TOP')
+  assert.equal(tools.statusForRank(1, 8), 'TOP')
+  assert.equal(tools.statusForRank(7, 8), 'FAIBLE')
+})
+
+test('analyze_performance : verdict mentionne le gap entre 1er et 2e', async () => {
+  const metrics = [
+    { source: 'meta_ads', metric_key: 'conversions_total', metric_value: 200, date: '2026-06-01' },
+    { source: 'ga4', metric_key: 'conversions_total', metric_value: 100, date: '2026-06-01' },
+  ]
+  const tools = load({ metrics })
+  const r = await tools.execute(
+    {
+      name: 'analyze_performance',
+      args: { metric_keys: ['conversions_total'], days: 30 },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  // Gap ×2.0 → "x2" ou "×2,0" (FR)
+  assert.match(r.verdict, /Meta Ads/)
+  assert.match(r.verdict, /×2/)
+  assert.match(r.verdict, /GA4/)
 })
