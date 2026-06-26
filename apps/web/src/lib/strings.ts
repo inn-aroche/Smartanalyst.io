@@ -3,6 +3,109 @@
 // Keep keys grouped by prefix (login., dashboard., …) for readability.
 
 const en = {
+  // ━━━ Help page (next-steps D) ━━━
+  'help.topbar.title': 'Help',
+  'help.topbar.subtitle': 'Everything you need to use SmartAnalyst',
+  'help.eyebrow': 'Documentation',
+  'help.title': 'Welcome to SmartAnalyst',
+  'help.intro':
+    "Concrete guides for everything you can do here: connect a source, ask a question, generate a report, pin a widget. Nothing more, nothing less — if you don't find an answer here, write to support.",
+  'help.toc.title': 'In this page',
+  'help.toc.aria': 'Table of contents',
+  // Getting started
+  'help.gs.title': 'Getting started in 3 steps',
+  'help.gs.body1':
+    'After signup, the fastest path to value is to connect one source and ask one question. Less than 5 minutes.',
+  'help.gs.step1': 'Connect a source',
+  'help.gs.step1.sub': 'GA4 is the most common starting point (OAuth, 30 seconds).',
+  'help.gs.step2': 'Wait for the first brief',
+  'help.gs.step2.sub': 'We sync 30 days of history. The home page lights up automatically.',
+  'help.gs.step3': 'Ask your first question',
+  'help.gs.step3.sub': 'Use the quick-cards on the chat to get a feel of what is possible.',
+  // Sources
+  'help.sources.title': 'Connected sources',
+  'help.sources.body':
+    'SmartAnalyst connects to your marketing tools via OAuth (or API token). All connectors are read-only — we never modify your data on the source side.',
+  'help.sources.ga4': 'Web analytics (sessions, conversions, channels)',
+  'help.sources.meta_ads': 'Facebook + Instagram Ads (spend, ROAS, campaigns)',
+  'help.sources.google_ads': 'Search + Display Ads',
+  'help.sources.stripe': 'Subscriptions, MRR, churn, revenue',
+  'help.sources.search_console': 'Organic search (queries, CTR, position)',
+  'help.sources.smarttag': '1st-party tracking installed via JS snippet',
+  'help.sources.callout':
+    'A connector failing? The "Sources" page shows the health of each connector with a one-click reauth.',
+  // Chat
+  'help.chat.title': 'The AI chat copilot',
+  'help.chat.body':
+    'The chat is not just text — it generates structured outputs (charts, tables, funnels) and lets you act on them (export, pin, slide deck).',
+  'help.chat.outputs.title': 'Generative outputs',
+  'help.chat.out.kpi': 'KPI card',
+  'help.chat.out.kpi.desc': 'A figure + delta vs previous period, with a mini sparkline.',
+  'help.chat.out.chart': 'Chart',
+  'help.chat.out.chart.desc': 'Daily / weekly time series, bar or line.',
+  'help.chat.out.table': 'Comparison table',
+  'help.chat.out.table.desc': 'N items ranked by a metric (top campaigns, top channels…).',
+  'help.chat.out.compare': 'Compare',
+  'help.chat.out.compare.desc': 'Two sources side-by-side (e.g. GA4 vs Meta) with shared Y axis.',
+  'help.chat.out.funnel': 'Funnel',
+  'help.chat.out.funnel.desc': 'Multi-step conversion with retention % between each step.',
+  'help.chat.out.dashboard': 'Dashboard preview',
+  'help.chat.out.dashboard.desc': '4-6 pinnable KPI cards with delta vs previous period.',
+  'help.chat.actions.title': 'Actions on each answer',
+  'help.chat.actions.excel': 'Excel / CSV',
+  'help.chat.actions.excel.desc': 'Real .xlsx download (one sheet per data block).',
+  'help.chat.actions.pin': 'Pin',
+  'help.chat.actions.pin.desc': 'Saves the widget on your home dashboard (Pro plan).',
+  'help.chat.actions.slides': 'Slides',
+  'help.chat.actions.slides.desc': '.pptx deck, one slide per insight (Pro plan).',
+  'help.chat.actions.rerun': 'Rerun',
+  'help.chat.actions.rerun.desc':
+    'Re-asks the same question with the opposite mode (Quick ↔ Deep).',
+  // Reports
+  'help.reports.title': 'Reports',
+  'help.reports.body':
+    'Generate a monthly / quarterly / custom-range report in HTML, with optional white-label, AI-written analyst note, and split by source. Print to PDF directly from the browser.',
+  'help.reports.callout':
+    'Auto-send on the 1st of the month is configurable in Settings → Notifications.',
+  // Watches
+  'help.watches.title': 'Watches (custom alerts)',
+  'help.watches.body':
+    'Set rules to be notified when a metric crosses a threshold. The Watch Evaluator runs every hour and notifies via in-app or email if the rule fires.',
+  'help.watches.op.drops_below': '"Drops below X" — fires when value < threshold.',
+  'help.watches.op.rises_above': '"Rises above X" — fires when value > threshold.',
+  'help.watches.op.changes_by_pct': '"Changes by ±N%" — fires on big day-over-day variation.',
+  'help.watches.op.any_change': '"Any change" — useful for sentinel metrics like connector status.',
+  // Pinned
+  'help.pinned.title': 'Pinned widgets',
+  'help.pinned.body':
+    'From any chat KPI or chart, click the 📌 icon to pin it on your home dashboard. Up to 12 pins per workspace. Pro plan only.',
+  // Plans
+  'help.plans.title': 'Plans & quotas',
+  'help.plans.col.feature': 'Feature',
+  'help.plans.row.price': 'Monthly price',
+  'help.plans.row.connectors': 'Active connectors',
+  'help.plans.row.insights': 'Insights / month',
+  'help.plans.row.reports': 'Reports generation',
+  'help.plans.row.deep': 'Deep chat mode',
+  'help.plans.row.pin': 'Pin to dashboard',
+  'help.plans.row.slides': 'Slide deck export',
+  'help.plans.foot': 'Manage your plan in',
+  // Shortcuts
+  'help.shortcuts.title': 'Keyboard shortcuts',
+  'help.shortcuts.search': 'Open global search / command palette',
+  'help.shortcuts.send': 'Send the current chat message',
+  'help.shortcuts.close': 'Close any open modal',
+  // Contact
+  'help.contact.title': "Couldn't find what you needed?",
+  'help.contact.body': 'Write to us — we read everything and reply within 24h on business days:',
+  // ━━━ /Help page end ━━━
+  // ━━━ Activation progress bar (next-steps F) ━━━
+  'activation.aria': 'Onboarding progress',
+  'activation.label': 'Get started',
+  'activation.step.connect': 'Connect a source',
+  'activation.step.ask': 'Ask your first question',
+  'activation.step.pin': 'Pin your first insight',
+  'activation.dismiss': 'Dismiss',
   // ━━━ Common ━━━
   'common.signOut': 'Sign out',
   'common.email': 'Email',
@@ -165,9 +268,14 @@ const en = {
   'veille.actions.addToTasks': 'Add to tasks',
   'veille.actions.askAssistant': 'Ask the assistant',
   'veille.actions.ignore': 'Ignore',
+  'veille.actions.snooze': 'Snooze',
+  'veille.snooze.oneHour': 'For 1 hour',
+  'veille.snooze.oneDay': 'Until tomorrow',
+  'veille.snooze.oneWeek': 'For 1 week',
   'veille.askPrefix': 'Tell me more',
   'veille.toast.addedToTasks': 'Added to your tasks',
   'veille.toast.ignored': 'Insight ignored',
+  'veille.toast.snoozed': 'Snoozed — I will bring it back later',
   'veille.recap.title': 'Weekly recap',
   'veille.recap.allGood': 'Nothing critical this week. Keep going, I keep watching.',
   'veille.recap.criticalCount': '{{n}} alert(s) to handle',
@@ -485,6 +593,7 @@ const en = {
   'nav.reports': 'Reports',
   'nav.files': 'Files',
   'nav.settings': 'Settings',
+  'nav.help': 'Help',
   'nav.soon': 'soon',
 
   // ━━━ Locale switcher ━━━
@@ -1209,6 +1318,112 @@ const en = {
 } as const
 
 const fr: Record<keyof typeof en, string> = {
+  // ━━━ Page d'aide (next-steps D) ━━━
+  'help.topbar.title': 'Aide',
+  'help.topbar.subtitle': "Tout ce qu'il faut pour utiliser SmartAnalyst",
+  'help.eyebrow': 'Documentation',
+  'help.title': 'Bienvenue dans SmartAnalyst',
+  'help.intro':
+    'Des guides concrets pour tout ce que tu peux faire ici : connecter une source, poser une question, générer un rapport, épingler un widget. Rien de plus, rien de moins — si tu ne trouves pas la réponse ici, écris au support.',
+  'help.toc.title': 'Dans cette page',
+  'help.toc.aria': 'Sommaire',
+  // Premiers pas
+  'help.gs.title': 'Démarrer en 3 étapes',
+  'help.gs.body1':
+    "Après l'inscription, le chemin le plus rapide vers la valeur c'est : connecte une source, pose une question. Moins de 5 minutes.",
+  'help.gs.step1': 'Connecte une source',
+  'help.gs.step1.sub': 'GA4 est le point de départ le plus courant (OAuth, 30 secondes).',
+  'help.gs.step2': 'Attends le 1er brief',
+  'help.gs.step2.sub':
+    "On synchronise 30 jours d'historique. La page d'accueil se remplit automatiquement.",
+  'help.gs.step3': 'Pose ta 1ère question',
+  'help.gs.step3.sub': 'Utilise les quick-cards du chat pour découvrir ce qui est possible.',
+  // Sources
+  'help.sources.title': 'Sources connectées',
+  'help.sources.body':
+    'SmartAnalyst se branche à tes outils marketing via OAuth (ou token API). Tous les connecteurs sont en lecture seule — on ne modifie jamais tes données côté source.',
+  'help.sources.ga4': 'Web analytics (sessions, conversions, canaux)',
+  'help.sources.meta_ads': 'Publicités Facebook + Instagram (spend, ROAS, campagnes)',
+  'help.sources.google_ads': 'Search + Display Ads',
+  'help.sources.stripe': 'Abonnements, MRR, churn, revenus',
+  'help.sources.search_console': 'Recherche organique (requêtes, CTR, position)',
+  'help.sources.smarttag': 'Tracking first-party installé via snippet JS',
+  'help.sources.callout':
+    'Un connecteur en erreur ? La page "Sources" montre la santé de chaque connecteur avec un re-auth en 1 clic.',
+  // Chat
+  'help.chat.title': 'Le chat copilote IA',
+  'help.chat.body':
+    "Le chat ne fait pas que du texte — il génère des outputs structurés (charts, tables, funnels) et te permet d'agir dessus (export, épingle, slide deck).",
+  'help.chat.outputs.title': 'Les outputs génératifs',
+  'help.chat.out.kpi': 'Carte KPI',
+  'help.chat.out.kpi.desc': 'Un chiffre + delta vs période précédente, avec mini sparkline.',
+  'help.chat.out.chart': 'Graphique',
+  'help.chat.out.chart.desc': 'Série temporelle journalière / hebdomadaire, en barres ou ligne.',
+  'help.chat.out.table': 'Table de comparaison',
+  'help.chat.out.table.desc': 'N items classés par une métrique (top campagnes, top canaux…).',
+  'help.chat.out.compare': 'Comparaison',
+  'help.chat.out.compare.desc':
+    'Deux sources côte à côte (ex. GA4 vs Meta) avec échelle Y partagée.',
+  'help.chat.out.funnel': 'Funnel',
+  'help.chat.out.funnel.desc': 'Conversion multi-étapes avec rétention % entre chaque étape.',
+  'help.chat.out.dashboard': 'Aperçu dashboard',
+  'help.chat.out.dashboard.desc': '4-6 cartes KPI épinglables avec delta vs N-1.',
+  'help.chat.actions.title': 'Les actions sur chaque réponse',
+  'help.chat.actions.excel': 'Excel / CSV',
+  'help.chat.actions.excel.desc': 'Téléchargement .xlsx réel (1 feuille par bloc de données).',
+  'help.chat.actions.pin': 'Épingler',
+  'help.chat.actions.pin.desc': "Sauvegarde le widget sur ton dashboard d'accueil (plan Pro).",
+  'help.chat.actions.slides': 'Slides',
+  'help.chat.actions.slides.desc': 'Deck .pptx, une slide par insight (plan Pro).',
+  'help.chat.actions.rerun': 'Rejouer',
+  'help.chat.actions.rerun.desc':
+    'Re-pose la même question avec le mode opposé (Rapide ↔ Approfondi).',
+  // Rapports
+  'help.reports.title': 'Rapports',
+  'help.reports.body':
+    "Génère un rapport mensuel / trimestriel / sur période libre en HTML, avec white-label optionnel, mot de l'analyste écrit par l'IA, et split par source. Imprime en PDF directement depuis le navigateur.",
+  'help.reports.callout': "L'envoi auto le 1er du mois se configure dans Réglages → Notifications.",
+  // Veilles
+  'help.watches.title': 'Veilles (alertes custom)',
+  'help.watches.body':
+    'Pose des règles pour être prévenu quand une métrique franchit un seuil. Le Watch Evaluator tourne toutes les heures et notifie en in-app ou email si la règle se déclenche.',
+  'help.watches.op.drops_below': '« Tombe sous X » — se déclenche quand valeur < seuil.',
+  'help.watches.op.rises_above': '« Dépasse X » — se déclenche quand valeur > seuil.',
+  'help.watches.op.changes_by_pct':
+    '« Varie de ±N % » — se déclenche sur grosse variation jour-à-jour.',
+  'help.watches.op.any_change':
+    '« Tout changement » — utile pour les métriques sentinelles type statut connecteur.',
+  // Pinned
+  'help.pinned.title': 'Widgets épinglés',
+  'help.pinned.body':
+    "Depuis n'importe quel KPI ou chart du chat, clique sur 📌 pour l'épingler sur ton dashboard d'accueil. Jusqu'à 12 épingles par workspace. Plan Pro uniquement.",
+  // Plans
+  'help.plans.title': 'Plans et quotas',
+  'help.plans.col.feature': 'Fonctionnalité',
+  'help.plans.row.price': 'Prix mensuel',
+  'help.plans.row.connectors': 'Connecteurs actifs',
+  'help.plans.row.insights': 'Insights / mois',
+  'help.plans.row.reports': 'Génération de rapports',
+  'help.plans.row.deep': 'Mode Approfondi (chat)',
+  'help.plans.row.pin': 'Épingler au dashboard',
+  'help.plans.row.slides': 'Export deck de slides',
+  'help.plans.foot': 'Gère ton plan dans',
+  // Raccourcis
+  'help.shortcuts.title': 'Raccourcis clavier',
+  'help.shortcuts.search': 'Ouvrir la recherche globale / palette de commandes',
+  'help.shortcuts.send': 'Envoyer le message chat en cours',
+  'help.shortcuts.close': "Fermer n'importe quel modal ouvert",
+  // Contact
+  'help.contact.title': "Tu n'as pas trouvé ce que tu cherchais ?",
+  'help.contact.body': 'Écris-nous — on lit tout et on répond sous 24h en jours ouvrés :',
+  // ━━━ /Help page fin ━━━
+  // ━━━ Bar de progression activation (next-steps F) ━━━
+  'activation.aria': 'Progression onboarding',
+  'activation.label': 'Pour démarrer',
+  'activation.step.connect': 'Connecter une source',
+  'activation.step.ask': 'Poser la 1ère question',
+  'activation.step.pin': 'Épingler le 1er insight',
+  'activation.dismiss': 'Masquer',
   // ━━━ Common ━━━
   'common.signOut': 'Se déconnecter',
   'common.email': 'Email',
@@ -1374,9 +1589,14 @@ const fr: Record<keyof typeof en, string> = {
   'veille.actions.addToTasks': 'Ajouter aux tâches',
   'veille.actions.askAssistant': "Demander à l'assistant",
   'veille.actions.ignore': 'Ignorer',
+  'veille.actions.snooze': 'Reporter',
+  'veille.snooze.oneHour': 'Pendant 1h',
+  'veille.snooze.oneDay': "Jusqu'à demain",
+  'veille.snooze.oneWeek': 'Pendant 1 semaine',
   'veille.askPrefix': "Dis-m'en plus",
   'veille.toast.addedToTasks': 'Ajouté à tes tâches',
   'veille.toast.ignored': 'Insight ignoré',
+  'veille.toast.snoozed': 'Reporté — je le ramènerai plus tard',
   'veille.recap.title': 'Résumé hebdomadaire',
   'veille.recap.allGood': 'Rien de critique cette semaine. Continue, je veille.',
   'veille.recap.criticalCount': '{{n}} alerte(s) à traiter',
@@ -1697,6 +1917,7 @@ const fr: Record<keyof typeof en, string> = {
   'nav.reports': 'Rapports',
   'nav.files': 'Fichiers',
   'nav.settings': 'Paramètres',
+  'nav.help': 'Aide',
   'nav.soon': 'bientôt',
 
   // ━━━ Locale switcher ━━━

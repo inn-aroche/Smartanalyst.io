@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/AppLayout'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useT } from '@/lib/i18n'
+import { useEscapeKey } from '@/lib/use-escape-key'
 
 type Operator = 'drops_below' | 'rises_above' | 'changes_by_pct' | 'any_change'
 
@@ -35,6 +36,7 @@ const METRICS: Array<{ key: string; label: string; unit: string }> = [
 
 export default function WatchModal({ onClose }: { onClose: () => void }) {
   const t = useT()
+  useEscapeKey(onClose)
   const queryClient = useQueryClient()
   const toast = useToast()
   const [step, setStep] = useState<1 | 2 | 3>(1)

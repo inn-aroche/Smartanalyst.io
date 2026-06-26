@@ -14,6 +14,7 @@ import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useEntitlements } from '@/lib/use-entitlements'
+import { useEscapeKey } from '@/lib/use-escape-key'
 import { useLocale, useT } from '@/lib/i18n'
 
 type ReportRow = {
@@ -312,6 +313,7 @@ function ReportGenModal({
   onCreated: (id: string) => void
 }) {
   const t = useT()
+  useEscapeKey(onClose)
   const queryClient = useQueryClient()
   const toast = useToast()
   const now = useMemo(() => new Date(), [])
@@ -386,6 +388,7 @@ function ReportGenModal({
       className="fixed inset-0 z-[2500] flex items-center justify-center bg-text-1/40 p-4"
       role="dialog"
       aria-modal="true"
+      aria-label={t('reports.gen.title')}
     >
       <div className="w-full max-w-[460px] rounded-brief border border-border bg-card shadow-float">
         <header className="flex items-center justify-between border-b border-border px-5 py-3.5">

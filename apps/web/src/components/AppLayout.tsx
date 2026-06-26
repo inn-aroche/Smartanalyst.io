@@ -4,6 +4,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import ChatWidget from './ChatWidget'
 import LocaleSwitcher from './LocaleSwitcher'
 import QuotaChip from '@/components/billing/QuotaChip'
+import ActivationProgress from '@/components/onboarding/ActivationProgress'
 import { useAuth } from '@/lib/auth'
 import { openGlobalSearch } from '@/components/GlobalSearch'
 import NotificationBell from '@/components/notifications/NotificationBell'
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/rapports', labelKey: 'nav.reports', icon: '▤' },
   { to: '/sources', labelKey: 'nav.sources', icon: '◈' },
   { to: '/settings', labelKey: 'nav.settings', icon: '⚙' },
+  { to: '/help', labelKey: 'nav.help', icon: '?' },
 ]
 
 // ─── Toast context ────────────────────────────────────────────────────────
@@ -146,6 +148,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <LocaleSwitcher />
             </div>
           </header>
+          {/* Bar d'activation (next-steps F) — sticky sous le header.
+              Hide auto quand les 3 etapes sont faites OU dismiss user. */}
+          <ActivationProgress />
           <div className="flex-1 overflow-y-auto">{children}</div>
         </main>
 

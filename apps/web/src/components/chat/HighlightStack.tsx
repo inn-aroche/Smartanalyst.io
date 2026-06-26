@@ -8,10 +8,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import Sparkline from '@/components/charts/Sparkline'
+import VerdictHighlight from './verdict/VerdictHighlight'
+import type { VerdictSpec } from './verdict/types'
 
 export type Highlight = {
-  // Lot V2.3 — ajout des types `funnel` et `dashboard` (cahier 22b §3.3).
-  type: 'kpi' | 'callout' | 'chart' | 'table' | 'compare' | 'funnel' | 'dashboard'
+  // Lot V2.3 — types funnel / dashboard ; Cahier 22c — type `verdict`.
+  type: 'kpi' | 'callout' | 'chart' | 'table' | 'compare' | 'funnel' | 'dashboard' | 'verdict'
   title: string
   value?: string | null
   delta?: string | null
@@ -47,6 +49,10 @@ export type Highlight = {
     previousValue?: number | null
     deltaPct?: number | null
   }> | null
+  // Pour type='verdict' (Cahier 22c) — verdict analyste structure.
+  // Le shape complet est defini dans ./verdict/types.ts. On accepte unknown
+  // ici pour eviter une dependance circulaire dans le type Highlight.
+  spec?: unknown
 }
 
 export default function HighlightStack({
@@ -64,6 +70,11 @@ export default function HighlightStack({
   return (
     <div className="mt-3 flex flex-col gap-2.5">
       {highlights.map((h, i) => {
+        // Cahier 22c — verdict est le top du stack (place EN PREMIER quand
+        // present). Ici on respecte juste l'ordre du backend.
+        if (h.type === 'verdict' && h.spec) {
+          return <VerdictHighlight key={i} spec={h.spec as VerdictSpec} />
+        }
         if (h.type === 'dashboard')
           return <DashboardHighlight key={i} h={h} onPin={onPin} canPin={canPin} />
         if (h.type === 'funnel') return <FunnelHighlight key={i} h={h} />
