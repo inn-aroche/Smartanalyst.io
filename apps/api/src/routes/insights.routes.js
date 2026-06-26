@@ -125,12 +125,14 @@ router.get(
 )
 
 // ━━━ PATCH /insights/:id — change le statut d'un insight ━━━
+// Pour status=snoozed, le client doit fournir snoozed_until (ISO 8601, futur).
 router.patch(
   '/:id',
   [
     param('id').isUUID().withMessage('id UUID requis.'),
     body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
     body('status').isIn(['open', 'snoozed', 'resolved', 'dismissed']),
+    body('snoozed_until').optional().isISO8601().withMessage('snoozed_until doit être ISO 8601.'),
   ],
   runValidation,
   workspaceScope,
@@ -140,6 +142,7 @@ router.patch(
         req.workspaceId,
         req.params.id,
         req.body.status,
+        { snoozedUntil: req.body.snoozed_until || null },
       )
       res.json(updated)
     } catch (err) {

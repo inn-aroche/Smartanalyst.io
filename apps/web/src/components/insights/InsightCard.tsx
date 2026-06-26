@@ -107,6 +107,30 @@ export default function InsightCard({
     },
   })
 
+  // Cahier 23 — snooze granulaire (1h / 1j / 1sem). Le backend ré-ouvre
+  // automatiquement l'insight au prochain listInsights après expiration.
+  const snoozeMutation = useMutation({
+    mutationFn: async (deadline: Date) =>
+      apiFetch(`/api/v1/insights/${insight.id}`, {
+        method: 'PATCH',
+        body: {
+          workspaceId,
+          status: 'snoozed' as InsightStatus,
+          snoozed_until: deadline.toISOString(),
+        },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['insights'] })
+      toast.push(t('veille.toast.snoozed'))
+    },
+  })
+
+  const [snoozeOpen, setSnoozeOpen] = useState(false)
+  function snoozeFor(hours: number) {
+    snoozeMutation.mutate(new Date(Date.now() + hours * 3600 * 1000))
+    setSnoozeOpen(false)
+  }
+
   const promoteAction = useMutation({
     mutationFn: async (actionId: string) =>
       apiFetch(`/api/v1/insights/actions/${actionId}`, {
@@ -208,11 +232,56 @@ export default function InsightCard({
         <button type="button" onClick={askAssistant} className="sa-btn !text-[12.5px]">
           {t('veille.actions.askAssistant')}
         </button>
+        {/* Snooze menu — cahier 23. Le bouton ouvre un mini-popover avec
+            3 durées prédéfinies. Garde l'UX simple : pas de date picker. */}
+        <div className="relative ml-auto">
+          <button
+            type="button"
+            onClick={() => setSnoozeOpen((v) => !v)}
+            disabled={snoozeMutation.isPending}
+            className="sa-btn !px-3 !py-2 !text-[12.5px] text-text-3 disabled:opacity-60"
+            aria-haspopup="menu"
+            aria-expanded={snoozeOpen}
+          >
+            {t('veille.actions.snooze')}
+          </button>
+          {snoozeOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 z-10 mt-1 min-w-[10rem] rounded-[10px] border border-border bg-card p-1 shadow-card"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => snoozeFor(1)}
+                className="block w-full rounded-md px-3 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-bg-2"
+              >
+                {t('veille.snooze.oneHour')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => snoozeFor(24)}
+                className="block w-full rounded-md px-3 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-bg-2"
+              >
+                {t('veille.snooze.oneDay')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => snoozeFor(24 * 7)}
+                className="block w-full rounded-md px-3 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-bg-2"
+              >
+                {t('veille.snooze.oneWeek')}
+              </button>
+            </div>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => dismissMutation.mutate()}
           disabled={dismissMutation.isPending}
-          className="sa-btn ml-auto !px-3 !py-2 !text-[12.5px] text-text-3 disabled:opacity-60"
+          className="sa-btn !px-3 !py-2 !text-[12.5px] text-text-3 disabled:opacity-60"
         >
           {t('veille.actions.ignore')}
         </button>

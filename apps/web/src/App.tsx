@@ -35,6 +35,12 @@ const Tasks = lazy(() => import('./pages/Tasks'))
 const TrackingInstall = lazy(() => import('./pages/TrackingInstall'))
 const Veille = lazy(() => import('./pages/Veille'))
 
+// DEV-only : page playground pour valider visuellement le rendu des verdicts
+// (cahier 22c). Gate sur import.meta.env.DEV → tree-shakee en build prod.
+const VerdictPlayground = import.meta.env.DEV
+  ? lazy(() => import('./pages/_VerdictPlayground'))
+  : null
+
 /**
  * Fallback affiche pendant le chargement d'un chunk page. Pas de spinner :
  * sur reseau correct (cable / 4G+) les chunks arrivent en <500ms — un
@@ -185,6 +191,16 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {VerdictPlayground && (
+        <Route
+          path="/dev/verdict-playground"
+          element={
+            <RouteSuspense>
+              <VerdictPlayground />
+            </RouteSuspense>
+          }
+        />
+      )}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -13,9 +13,36 @@ const INSIGHT_STATUSES = new Set(['open', 'snoozed', 'resolved', 'dismissed'])
 const ACTION_STATUSES = new Set(['proposed', 'todo', 'in_progress', 'done', 'archived'])
 
 /**
+ * Ré-ouvre les insights snoozés dont la deadline est passée (cahier 23).
+ * Best-effort : une erreur ici ne doit pas bloquer le listing.
+ */
+async function reopenExpiredSnoozes(workspaceId) {
+  const supabase = getServiceRoleClient()
+  const { error } = await supabase
+    .from('insights')
+    .update({
+      status: 'open',
+      snoozed_until: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'snoozed')
+    .lte('snoozed_until', new Date().toISOString())
+  if (error) {
+    // On log mais on continue : le user verra son insight au prochain refresh.
+    return { ok: false, reason: error.message }
+  }
+  return { ok: true }
+}
+
+/**
  * Liste les insights d'un workspace (open par défaut) + leurs action_cards.
+ * Effet de bord : re-ouvre d'abord les snoozes expirés pour ne pas masquer
+ * d'insights critiques que l'user avait juste mis en pause temporairement.
  */
 async function listInsights(workspaceId, { status = 'open', limit = 20 } = {}) {
+  // Auto-reopen des snoozes expirés avant le listing.
+  await reopenExpiredSnoozes(workspaceId)
   const supabase = getServiceRoleClient()
   let q = supabase
     .from('insights')
@@ -160,20 +187,42 @@ async function getActionById(workspaceId, actionId) {
   return data
 }
 
-async function updateInsightStatus(workspaceId, insightId, status) {
+async function updateInsightStatus(workspaceId, insightId, status, { snoozedUntil = null } = {}) {
   if (!INSIGHT_STATUSES.has(status)) {
     throw new UserFacingError(`Statut insight invalide : ${status}`, {
       statusCode: 400,
       code: 'INVALID_STATUS',
     })
   }
+  // Cohérence : snoozed_until n'a de sens que pour status='snoozed'. Sur
+  // tout autre statut on remet le champ à null pour ne pas trainer une
+  // deadline obsolète qui re-ouvrirait un insight resolved/dismissed.
+  const update = { status, updated_at: new Date().toISOString() }
+  if (status === 'snoozed') {
+    if (!snoozedUntil) {
+      throw new UserFacingError('snoozed_until requis pour status=snoozed', {
+        statusCode: 400,
+        code: 'SNOOZE_DEADLINE_REQUIRED',
+      })
+    }
+    const deadline = new Date(snoozedUntil)
+    if (Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
+      throw new UserFacingError('snoozed_until doit être une date future valide', {
+        statusCode: 400,
+        code: 'SNOOZE_DEADLINE_INVALID',
+      })
+    }
+    update.snoozed_until = deadline.toISOString()
+  } else {
+    update.snoozed_until = null
+  }
   const supabase = getServiceRoleClient()
   const { data, error } = await supabase
     .from('insights')
-    .update({ status, updated_at: new Date().toISOString() })
+    .update(update)
     .eq('workspace_id', workspaceId)
     .eq('id', insightId)
-    .select('id, status')
+    .select('id, status, snoozed_until')
     .maybeSingle()
   if (error) throw error
   if (!data) throw new NotFoundError('Insight introuvable.')
@@ -245,6 +294,7 @@ module.exports = {
   createAction,
   updateInsightStatus,
   updateActionStatus,
+  reopenExpiredSnoozes,
   INSIGHT_STATUSES,
   ACTION_STATUSES,
 }
