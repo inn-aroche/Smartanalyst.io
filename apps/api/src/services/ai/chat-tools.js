@@ -18,7 +18,11 @@ const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const insightsService = require('../insights/insights.service')
 const healthScore = require('../health/health-score.service')
 const watchesService = require('../watches/watches.service')
-const ga4Live = require('../ga4/ga4-live.service')
+const ga4Live = require('../live/ga4-live.service')
+const metaAdsLive = require('../live/meta-ads-live.service')
+const stripeLive = require('../live/stripe-live.service')
+const shopifyLive = require('../live/shopify-live.service')
+const searchConsoleLive = require('../live/search-console-live.service')
 const { logger } = require('../../lib/logger')
 
 // Format Gemini function declarations (FunctionDeclaration[]).
@@ -361,6 +365,195 @@ const DECLARATIONS = [
         'benchmark_p75',
         'source_name',
       ],
+    },
+  },
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Live query tools — requêtes ad-hoc aux APIs sources avec métriques et
+  // dimensions arbitraires. Cache Redis 5min + throttle 20/min/workspace.
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  {
+    name: 'query_ga4',
+    description:
+      "Requête GA4 live avec métriques et dimensions au choix. À utiliser pour toute question nécessitant un BREAKDOWN dimensionnel : 'top pages', 'trafic par source', 'sessions par device', 'landing pages qui convertissent', 'trafic par pays', etc. Métriques : sessions, activeUsers, newUsers, totalUsers, conversions, totalRevenue, bounceRate, averageSessionDuration, screenPageViews, engagedSessions, eventCount, ecommercePurchases, addToCarts, checkouts, engagementRate. Dimensions : sessionSource, sessionMedium, sessionDefaultChannelGroup, sessionCampaignName, pagePath, pageTitle, landingPage, deviceCategory, country, city, browser, operatingSystem, newVsReturning, date. Max 6 métriques, 6 dimensions, 25 lignes.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        metrics: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: "Métriques GA4. Ex: ['sessions','activeUsers','conversions'].",
+        },
+        dimensions: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: "Dimensions GA4. Ex: ['sessionSource','sessionMedium'].",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 7.',
+        },
+        dimension_filter: {
+          type: 'OBJECT',
+          properties: {
+            dimension: {
+              type: 'STRING',
+              description: "Nom de la dimension à filtrer. Ex: 'pagePath'.",
+            },
+            value: { type: 'STRING', description: "Valeur du filtre. Ex: '/pricing'." },
+            matchType: {
+              type: 'STRING',
+              description: "'EXACT', 'CONTAINS', 'BEGINS_WITH'. Défaut 'CONTAINS'.",
+            },
+          },
+          description: 'Filtre optionnel sur une dimension.',
+        },
+        limit: {
+          type: 'INTEGER',
+          description: 'Nombre max de lignes (1 à 25). Défaut 10.',
+        },
+      },
+      required: ['metrics'],
+    },
+  },
+  {
+    name: 'query_meta_ads',
+    description:
+      "Requête Meta Ads live (Facebook + Instagram). À utiliser pour : 'quelle campagne dépense le plus', 'CPC par tranche d'âge', 'performance FB vs Instagram', 'top adsets', etc. Métriques : spend, impressions, clicks, cpc, cpm, reach, frequency, actions, action_values, unique_clicks. Breakdowns : age, gender, publisher_platform, device_platform, country, region. Levels : account, campaign, adset, ad.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        metrics: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: "Champs Meta. Ex: ['spend','impressions','clicks','cpc'].",
+        },
+        breakdowns: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: "Breakdowns. Ex: ['publisher_platform'] pour FB vs Instagram.",
+        },
+        level: {
+          type: 'STRING',
+          description: "'account' (défaut), 'campaign', 'adset', 'ad'.",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 7.',
+        },
+        limit: {
+          type: 'INTEGER',
+          description: 'Nombre max de lignes (1 à 25). Défaut 10.',
+        },
+      },
+      required: ['metrics'],
+    },
+  },
+  {
+    name: 'query_stripe',
+    description:
+      "Requête Stripe live. À utiliser pour : 'derniers paiements échoués', 'abonnements actifs', 'nouveaux clients cette semaine', 'dernières factures', 'refunds récents'. Entités : subscriptions, customers, charges, invoices, refunds, balance_transactions.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        entity: {
+          type: 'STRING',
+          description:
+            "'subscriptions', 'customers', 'charges', 'invoices', 'refunds', 'balance_transactions'.",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 30.',
+        },
+        filters: {
+          type: 'OBJECT',
+          properties: {
+            status: {
+              type: 'STRING',
+              description: "Filtre status. Ex: 'active', 'failed', 'past_due'.",
+            },
+          },
+          description: 'Filtres optionnels.',
+        },
+        limit: {
+          type: 'INTEGER',
+          description: 'Nombre max de résultats (1 à 25). Défaut 10.',
+        },
+      },
+      required: ['entity'],
+    },
+  },
+  {
+    name: 'query_shopify',
+    description:
+      "Requête Shopify live. À utiliser pour : 'dernières commandes', 'top produits', 'clients les plus dépensiers', 'commandes non fulfillées'. Entités : orders, customers, products.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        entity: {
+          type: 'STRING',
+          description: "'orders', 'customers', 'products'.",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 30.',
+        },
+        filters: {
+          type: 'OBJECT',
+          properties: {
+            status: {
+              type: 'STRING',
+              description: "Filtre status. Ex: 'open', 'closed', 'cancelled'.",
+            },
+            financial_status: { type: 'STRING', description: "'paid', 'pending', 'refunded'." },
+            fulfillment_status: {
+              type: 'STRING',
+              description: "'fulfilled', 'unfulfilled', 'partial'.",
+            },
+          },
+          description: 'Filtres optionnels.',
+        },
+        limit: {
+          type: 'INTEGER',
+          description: 'Nombre max de résultats (1 à 25). Défaut 10.',
+        },
+      },
+      required: ['entity'],
+    },
+  },
+  {
+    name: 'query_search_console',
+    description:
+      "Requête Google Search Console live. À utiliser pour : 'quels mots-clés amènent le plus de clics', 'position moyenne sur tel mot-clé', 'pages avec le plus d'impressions', 'CTR par device'. Dimensions : query, page, country, device, date. Retourne toujours clicks, impressions, CTR, position.",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        dimensions: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: "Dimensions. Ex: ['query'], ['page','country']. Max 4.",
+        },
+        days: {
+          type: 'INTEGER',
+          description: 'Fenêtre en jours (1 à 90). Défaut 28.',
+        },
+        dimension_filter: {
+          type: 'OBJECT',
+          properties: {
+            dimension: { type: 'STRING', description: "'query' ou 'page'." },
+            expression: { type: 'STRING', description: "Valeur du filtre. Ex: 'smartanalyst'." },
+            operator: {
+              type: 'STRING',
+              description: "'contains' (défaut), 'equals', 'notContains'.",
+            },
+          },
+          description: 'Filtre optionnel.',
+        },
+        limit: {
+          type: 'INTEGER',
+          description: 'Nombre max de lignes (1 à 25). Défaut 10.',
+        },
+      },
+      required: ['dimensions'],
     },
   },
 ]
@@ -831,6 +1024,59 @@ async function execute({ name, args }, { workspaceId, userId }) {
         return buildUnavailableVerdict('journey', steps, days)
       }
       return buildAnalyzeJourneyVerdict({ steps, days, totals })
+    }
+
+    // ─── Live query executors ──────────────────────────────────────────
+    if (name === 'query_ga4') {
+      return ga4Live.queryGA4({
+        workspaceId,
+        metrics: args?.metrics,
+        dimensions: args?.dimensions,
+        dateRange: { days: args?.days || 7 },
+        dimensionFilter: args?.dimension_filter,
+        limit: args?.limit,
+      })
+    }
+
+    if (name === 'query_meta_ads') {
+      return metaAdsLive.queryMetaAds({
+        workspaceId,
+        metrics: args?.metrics,
+        breakdowns: args?.breakdowns,
+        dateRange: { days: args?.days || 7 },
+        level: args?.level,
+        limit: args?.limit,
+      })
+    }
+
+    if (name === 'query_stripe') {
+      return stripeLive.queryStripe({
+        workspaceId,
+        entity: args?.entity,
+        dateRange: { days: args?.days || 30 },
+        filters: args?.filters,
+        limit: args?.limit,
+      })
+    }
+
+    if (name === 'query_shopify') {
+      return shopifyLive.queryShopify({
+        workspaceId,
+        entity: args?.entity,
+        dateRange: { days: args?.days || 30 },
+        filters: args?.filters,
+        limit: args?.limit,
+      })
+    }
+
+    if (name === 'query_search_console') {
+      return searchConsoleLive.querySearchConsole({
+        workspaceId,
+        dimensions: args?.dimensions,
+        dateRange: { days: args?.days || 28 },
+        dimensionFilter: args?.dimension_filter,
+        limit: args?.limit,
+      })
     }
 
     return { error: `unknown_tool:${name}` }
