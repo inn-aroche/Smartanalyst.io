@@ -172,6 +172,12 @@ const en = {
   'brief.proposed.empty': 'No proposals waiting. Check back tomorrow morning.',
   'brief.proposed.cta': 'All my tasks',
   'brief.proposed.toCurate': 'to curate',
+  'brief.breakdown.title': 'Health by dimension',
+  'brief.breakdown.paid': 'Paid',
+  'brief.breakdown.organic': 'Organic',
+  'brief.breakdown.conversion': 'Conversion',
+  'brief.breakdown.revenue': 'Revenue',
+  'brief.breakdown.tracking': 'Tracking',
   'brief.kpis.eyebrow': 'At a glance',
   'brief.kpis.empty': 'Connect a source to see your KPIs here.',
   'briefHome.pinned.title': 'Pinned from chat',
@@ -182,6 +188,7 @@ const en = {
   'brief.onboardCta.body':
     "I'll analyze your site, detect your sector and connect your first source.",
   'brief.onboardCta.cta': 'Start onboarding',
+  'brief.firstInsight.toast': 'Your first insight just landed!',
   // First-run state (workspace sans canonical_metrics)
   'brief.firstRun.eyebrow': 'WELCOME',
   'brief.firstRun.title': "Hi {{name}} — let's set the stage.",
@@ -1493,6 +1500,12 @@ const fr: Record<keyof typeof en, string> = {
   'brief.proposed.empty': 'Aucune proposition en attente. Reviens demain matin.',
   'brief.proposed.cta': 'Toutes mes tâches',
   'brief.proposed.toCurate': 'à curer',
+  'brief.breakdown.title': 'Santé par dimension',
+  'brief.breakdown.paid': 'Payant',
+  'brief.breakdown.organic': 'Organique',
+  'brief.breakdown.conversion': 'Conversion',
+  'brief.breakdown.revenue': 'Revenu',
+  'brief.breakdown.tracking': 'Tracking',
   'brief.kpis.eyebrow': "En un coup d'œil",
   'brief.kpis.empty': 'Connecte une source pour voir tes KPIs ici.',
   'briefHome.pinned.title': 'Épinglé depuis le chat',
@@ -1503,6 +1516,7 @@ const fr: Record<keyof typeof en, string> = {
   'brief.onboardCta.body':
     "J'analyse ton site, je détecte ton secteur et je branche ta première source.",
   'brief.onboardCta.cta': "Lancer l'onboarding",
+  'brief.firstInsight.toast': 'Ton premier insight vient de tomber !',
   // First-run state (workspace sans canonical_metrics)
   'brief.firstRun.eyebrow': 'BIENVENUE',
   'brief.firstRun.title': 'Salut {{name}} — on installe le terrain.',

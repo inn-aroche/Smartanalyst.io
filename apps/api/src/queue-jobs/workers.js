@@ -156,10 +156,14 @@ function start() {
     throw new Error(`Unknown job in oauth-refresh queue: ${job.name}`)
   })
 
-  // ━━━ notifications (brief V2 §3.3) — résumé hebdomadaire ━━━
+  // ━━━ notifications (brief V2 §3.3) — résumé hebdomadaire + TTL cleanup ━━━
   wireWorker(QUEUE_NAMES.NOTIFICATIONS, async (job) => {
     if (job.name === JOB_NAMES.WEEKLY_DIGEST_SCAN) {
       return digestHandler.weeklyDigestScan()
+    }
+    if (job.name === JOB_NAMES.NOTIFICATIONS_CLEANUP) {
+      const notifCenter = require('../services/notifications/notification-center.service')
+      return notifCenter.purgeOld(30)
     }
     throw new Error(`Unknown job in notifications queue: ${job.name}`)
   })

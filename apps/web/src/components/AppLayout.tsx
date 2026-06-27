@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 
 import ChatWidget from './ChatWidget'
 import LocaleSwitcher from './LocaleSwitcher'
 import QuotaChip from '@/components/billing/QuotaChip'
 import ActivationProgress from '@/components/onboarding/ActivationProgress'
+import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { openGlobalSearch } from '@/components/GlobalSearch'
 import NotificationBell from '@/components/notifications/NotificationBell'
@@ -315,10 +317,38 @@ function BrandLockup({ compact }: { compact?: boolean }) {
   )
 }
 
+function useSidebarBadges(workspaceId: string | undefined) {
+  const insightsQ = useQuery({
+    queryKey: ['insights', 'list', workspaceId, 'open'],
+    enabled: !!workspaceId,
+    queryFn: () =>
+      apiFetch<{ insights: Array<{ id: string }> }>(
+        `/api/v1/insights?workspaceId=${workspaceId}&status=open&limit=50`,
+      ),
+    staleTime: 120_000,
+    refetchInterval: 120_000,
+  })
+  const tasksQ = useQuery({
+    queryKey: ['insights', 'actions', workspaceId, 'proposed'],
+    enabled: !!workspaceId,
+    queryFn: () =>
+      apiFetch<{ actions: Array<{ id: string }> }>(
+        `/api/v1/insights/actions?workspaceId=${workspaceId}&status=proposed&limit=50`,
+      ),
+    staleTime: 120_000,
+    refetchInterval: 120_000,
+  })
+  return {
+    insights: insightsQ.data?.insights?.length ?? 0,
+    tasks: tasksQ.data?.actions?.length ?? 0,
+  }
+}
+
 function SidebarContent({ collapsed, skipHeader }: { collapsed: boolean; skipHeader?: boolean }) {
   const { state, logout } = useAuth()
   const t = useT()
   const workspace = state.workspaces[0]
+  const badges = useSidebarBadges(workspace?.id)
   const initials = (state.user?.full_name ?? state.user?.email ?? '?')
     .split(/\s+|@/)
     .map((p) => p[0])
@@ -403,6 +433,15 @@ function SidebarContent({ collapsed, skipHeader }: { collapsed: boolean; skipHea
                   {item.icon}
                 </span>
                 {!collapsed && <span className="flex-1 truncate">{t(item.labelKey)}</span>}
+                {item.badgeKey &&
+                  (badges[item.badgeKey] ?? 0) > 0 &&
+                  (collapsed ? (
+                    <span className="absolute right-1.5 top-1.5 h-[6px] w-[6px] rounded-full bg-brand-blue-deep" />
+                  ) : (
+                    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-blue-deep/15 px-1 font-mono text-[10px] font-semibold text-brand-blue-deep">
+                      {badges[item.badgeKey] > 99 ? '99+' : badges[item.badgeKey]}
+                    </span>
+                  ))}
                 {item.soon &&
                   (collapsed ? (
                     <span className="absolute right-1.5 top-1.5 h-[6px] w-[6px] rounded-full bg-text-3" />
