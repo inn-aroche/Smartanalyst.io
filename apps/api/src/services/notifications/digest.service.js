@@ -7,6 +7,7 @@ const { sendEmail } = require('../email/resend.service')
 const emailTemplate = require('../email/email-template.service')
 const { logger } = require('../../lib/logger')
 const insightsService = require('../insights/insights.service')
+const notificationCenter = require('./notification-center.service')
 const { getWorkspaceRecipient } = require('./recipient')
 const settingsService = require('./settings.service')
 
@@ -44,7 +45,7 @@ function composeWeeklyDigest(insights, { orgName } = {}) {
     title: hello,
     intro: 'Voici ce qui mérite ton attention cette semaine.',
     body,
-    cta: { label: 'Ouvrir SmartAnalyst', href: appUrl() },
+    cta: { label: 'Ouvrir SmartAnalyst', href: `${appUrl()}/veille` },
     footer:
       'Tu reçois ce mail car la veille hebdo est active. Tu peux la régler dans Réglages → Notifications.',
   })
@@ -67,7 +68,7 @@ function composeCriticalAlert(insight, { orgName } = {}) {
     preview: insight.title,
     title: hello,
     body,
-    cta: { label: 'Voir le détail', href: appUrl() },
+    cta: { label: 'Voir le détail', href: `${appUrl()}/veille` },
     footer:
       'Tu reçois ce mail car les alertes critiques sont activées. Tu peux les régler dans Réglages → Notifications.',
   })
@@ -99,6 +100,15 @@ async function sendWeeklyDigest(workspaceId) {
     return { sent: false, reason: 'email_failed' }
   }
   logger.info({ event: 'weekly_digest_sent', workspaceId }, 'Weekly digest sent')
+  // Notifie aussi dans l'app pour que le badge cloche se mette à jour.
+  await notificationCenter.createNotification({
+    workspaceId,
+    type: 'digest_ready',
+    title: composed.subject,
+    body: `${insights.length} point${insights.length > 1 ? 's' : ''} à voir cette semaine.`,
+    link: '/veille',
+    severity: 'info',
+  })
   return { sent: true }
 }
 

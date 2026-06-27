@@ -959,3 +959,100 @@ test('query_meta_ads sans connecteur → error no_connector', async () => {
   )
   assert.equal(r.error, 'no_connector')
 })
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// L1-1 — create_watch : normalisation opérateurs abrégés → watches.service
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('create_watch : gt normalisé en rises_above', async () => {
+  const WATCHES_PATH = require.resolve('../src/services/watches/watches.service')
+  let captured = null
+  require.cache[WATCHES_PATH] = {
+    id: WATCHES_PATH,
+    filename: WATCHES_PATH,
+    loaded: true,
+    exports: {
+      createWatch: async (_wsId, _userId, payload) => {
+        captured = payload
+        return { id: 'w-1', description: payload.description, ...payload }
+      },
+    },
+  }
+  const tools = load()
+  const r = await tools.execute(
+    {
+      name: 'create_watch',
+      args: {
+        description: 'MRR drops',
+        metric_key: 'revenue_recurring_monthly',
+        operator: 'gt',
+        threshold: 5000,
+      },
+    },
+    { workspaceId: 'ws-1', userId: 'u-1' },
+  )
+  assert.equal(r.ok, true)
+  assert.equal(captured.operator, 'rises_above')
+})
+
+test('create_watch : lt normalisé en drops_below', async () => {
+  const WATCHES_PATH = require.resolve('../src/services/watches/watches.service')
+  let captured = null
+  require.cache[WATCHES_PATH] = {
+    id: WATCHES_PATH,
+    filename: WATCHES_PATH,
+    loaded: true,
+    exports: {
+      createWatch: async (_wsId, _userId, payload) => {
+        captured = payload
+        return { id: 'w-2', description: payload.description, ...payload }
+      },
+    },
+  }
+  const tools = load()
+  const r = await tools.execute(
+    {
+      name: 'create_watch',
+      args: {
+        description: 'Sessions low',
+        metric_key: 'sessions_all',
+        operator: 'lt',
+        threshold: 100,
+      },
+    },
+    { workspaceId: 'ws-1', userId: 'u-1' },
+  )
+  assert.equal(r.ok, true)
+  assert.equal(captured.operator, 'drops_below')
+})
+
+test('create_watch : pct_change_gt normalisé en changes_by_pct', async () => {
+  const WATCHES_PATH = require.resolve('../src/services/watches/watches.service')
+  let captured = null
+  require.cache[WATCHES_PATH] = {
+    id: WATCHES_PATH,
+    filename: WATCHES_PATH,
+    loaded: true,
+    exports: {
+      createWatch: async (_wsId, _userId, payload) => {
+        captured = payload
+        return { id: 'w-3', description: payload.description, ...payload }
+      },
+    },
+  }
+  const tools = load()
+  const r = await tools.execute(
+    {
+      name: 'create_watch',
+      args: {
+        description: 'Big change',
+        metric_key: 'conversions_total',
+        operator: 'pct_change_gt',
+        threshold: 20,
+      },
+    },
+    { workspaceId: 'ws-1', userId: 'u-1' },
+  )
+  assert.equal(r.ok, true)
+  assert.equal(captured.operator, 'changes_by_pct')
+})

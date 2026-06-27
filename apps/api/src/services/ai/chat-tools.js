@@ -686,10 +686,14 @@ async function execute({ name, args }, { workspaceId, userId }) {
     }
 
     if (name === 'create_watch') {
+      // Normalise les opérateurs abrégés du tool schema vers le format attendu
+      // par watches.service (qui valide rises_above/drops_below/changes_by_pct).
+      const OP_MAP = { gt: 'rises_above', lt: 'drops_below', pct_change_gt: 'changes_by_pct' }
+      const rawOp = args?.operator
       const payload = {
         description: String(args?.description || '').trim(),
         metric_key: String(args?.metric_key || '').trim(),
-        operator: args?.operator,
+        operator: OP_MAP[rawOp] || rawOp,
         threshold: args?.threshold,
         source: args?.source ? String(args.source).trim() : undefined,
       }

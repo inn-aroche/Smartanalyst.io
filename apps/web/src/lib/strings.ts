@@ -177,6 +177,7 @@ const en = {
   'briefHome.pinned.title': 'Pinned from chat',
   'brief.ask.body': "A question on your numbers? Ask me, I've got everything at hand.",
   'brief.ask.cta': 'Open the assistant',
+  'brief.report.cta': 'Generate a report',
   'brief.onboardCta.title': "Let's set you up in 5 minutes.",
   'brief.onboardCta.body':
     "I'll analyze your site, detect your sector and connect your first source.",
@@ -490,6 +491,7 @@ const en = {
   'chat.error.providerDown': 'The AI is temporarily unavailable. Try again in a minute.',
   'chat.error.creditDepleted':
     'Deep mode is temporarily unavailable. Switch back to Quick mode to keep going.',
+  'chat.error.retry': 'Retry',
   'chat.you': 'You',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',
@@ -1496,6 +1498,7 @@ const fr: Record<keyof typeof en, string> = {
   'briefHome.pinned.title': 'Épinglé depuis le chat',
   'brief.ask.body': "Une question sur tes chiffres ? Demande-moi, j'ai tout sous la main.",
   'brief.ask.cta': "Ouvrir l'assistant",
+  'brief.report.cta': 'Générer un rapport',
   'brief.onboardCta.title': 'Configure ton espace en 5 minutes.',
   'brief.onboardCta.body':
     "J'analyse ton site, je détecte ton secteur et je branche ta première source.",
@@ -1814,6 +1817,7 @@ const fr: Record<keyof typeof en, string> = {
   'chat.error.providerDown': "L'IA est temporairement indisponible. Réessaie dans une minute.",
   'chat.error.creditDepleted':
     'Le mode Approfondi est temporairement indisponible. Repasse en mode Rapide pour continuer.',
+  'chat.error.retry': 'Réessayer',
   'chat.you': 'Toi',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',

@@ -68,6 +68,11 @@ export default function ChatComposer({
     ta.style.height = Math.min(max, ta.scrollHeight) + 'px'
   }, [value])
 
+  // AutoFocus au mount (L1-6).
+  useEffect(() => {
+    if (!busy) taRef.current?.focus()
+  }, [])
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!value.trim() || busy) return

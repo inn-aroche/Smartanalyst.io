@@ -22,6 +22,7 @@ import PinnedWidgets from '@/components/dashboard/PinnedWidgets'
 import ScoreRing from '@/components/charts/ScoreRing'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
+import { ErrorState } from '@/components/ui/states'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
@@ -60,6 +61,7 @@ type SummaryTile = {
   previous_value: number
   delta_pct: number | null
   has_data: boolean
+  spark?: number[]
 }
 type SummaryResponse = { tiles: SummaryTile[] }
 
@@ -139,7 +141,16 @@ export default function BriefHomePage() {
               n'a rien à dire — on remplace par un bloc d'accueil avec un vrai chemin
               à parcourir. Le loading initial reste géré par HeroBrief skeleton plus
               bas, donc on attend que scoreQ ait répondu avant de basculer. */}
-          {!scoreQ.isLoading && !scoreQ.data?.has_data ? (
+          {scoreQ.isError || insightsQ.isError || tasksQ.isError || kpisQ.isError ? (
+            <ErrorState
+              retry={() => {
+                if (scoreQ.isError) void scoreQ.refetch()
+                if (insightsQ.isError) void insightsQ.refetch()
+                if (tasksQ.isError) void tasksQ.refetch()
+                if (kpisQ.isError) void kpisQ.refetch()
+              }}
+            />
+          ) : !scoreQ.isLoading && !scoreQ.data?.has_data ? (
             <FirstRunBlock
               illustration={<FirstRunIllus />}
               eyebrow={t('brief.firstRun.eyebrow')}
@@ -185,6 +196,16 @@ export default function BriefHomePage() {
                 loading={kpisQ.isLoading}
                 locale={locale}
               />
+
+              {/* ─── CTA rapport ─── */}
+              <div className="mb-6">
+                <Link
+                  to="/rapports"
+                  className="sa-btn inline-flex items-center gap-1.5 !text-[13.5px]"
+                >
+                  📊 {t('brief.report.cta')} →
+                </Link>
+              </div>
 
               {/* ─── Mes épingles depuis le chat (cahier 22b §3.4 — Lot V2.3) ─── */}
               {wsId && <PinnedWidgets workspaceId={wsId} />}
@@ -553,6 +574,7 @@ function tileToKpi(tile: SummaryTile, locale: string): Kpi {
     value,
     delta,
     up,
+    spark: tile.spark?.length ? tile.spark : undefined,
   }
 }
 

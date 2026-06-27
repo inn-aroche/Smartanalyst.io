@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import AppLayout from '@/components/AppLayout'
@@ -105,11 +105,13 @@ export default function ChatPage() {
   const { locale } = useLocale()
   const t = useT()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const heroPlaceholder = useRotatingPlaceholder()
   const [messages, setMessages] = useState<Message[]>([])
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const lastInputRef = useRef<string>('')
   // Fichier joint à la prochaine requête. Persiste tant que l'user ne
   // l'enlève pas — l'assistant peut s'y référer dans plusieurs échanges.
   const [attachedFileId, setAttachedFileId] = useState<string | null>(null)
@@ -285,6 +287,7 @@ export default function ChatPage() {
     const trimmed = text.trim()
     if (!trimmed || pending) return
 
+    lastInputRef.current = trimmed
     setError(null)
     setInput('')
     const userMsg: Message = { id: nextId(), role: 'user', text: trimmed }
@@ -357,6 +360,8 @@ export default function ChatPage() {
                 if (key) window.localStorage.setItem(key, cid)
               }
             }
+            // Rafraîchit la liste de conversations dans la sidebar.
+            void queryClient.invalidateQueries({ queryKey: ['chat', 'conversations', workspaceId] })
             setMessages((m) =>
               m.map((msg) =>
                 msg.id === pendingMsg.id
@@ -615,8 +620,20 @@ export default function ChatPage() {
           </div>
 
           {error && (
-            <div className="mt-3 flex-shrink-0 rounded-lg border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">
-              {error}
+            <div className="mt-3 flex items-center gap-2 flex-shrink-0 rounded-lg border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">
+              <span className="flex-1">{error}</span>
+              {lastInputRef.current && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null)
+                    void send(lastInputRef.current)
+                  }}
+                  className="flex-shrink-0 rounded-md bg-brand-red/15 px-2.5 py-1 text-xs font-medium hover:bg-brand-red/25 transition"
+                >
+                  {t('chat.error.retry')}
+                </button>
+              )}
             </div>
           )}
 
