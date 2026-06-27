@@ -21,7 +21,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(18);
+SELECT plan(28);
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 1. Fixtures (role postgres — bypass RLS)
@@ -97,6 +97,56 @@ INSERT INTO audits (workspace_id, url, status) VALUES
   (:'ws_a', 'https://a.test.invalid', 'completed'),
   (:'ws_b', 'https://b.test.invalid', 'completed');
 
+-- insights (table 022) : 1 par workspace.
+INSERT INTO insights (workspace_id, title, summary, category, severity, confidence) VALUES
+  (:'ws_a', 'Insight A', 'Résumé A', 'traffic', 'high', 'high'),
+  (:'ws_b', 'Insight B', 'Résumé B', 'traffic', 'medium', 'medium');
+
+-- action_cards (table 022) : 1 par workspace.
+INSERT INTO action_cards (workspace_id, title, priority, impact, effort, confidence) VALUES
+  (:'ws_a', 'Action A', 'high', 'high', 'low', 'high'),
+  (:'ws_b', 'Action B', 'medium', 'medium', 'medium', 'medium');
+
+-- watches (table 028) : 1 par workspace.
+INSERT INTO watches (workspace_id, created_by, description, metric_key, operator, threshold) VALUES
+  (:'ws_a', :'user_a', 'Alerte A', 'sessions_all', 'drops_below', 100),
+  (:'ws_b', :'user_b', 'Alerte B', 'sessions_all', 'rises_above', 500);
+
+-- ai_usage (table 030) : 1 par workspace.
+INSERT INTO ai_usage (workspace_id, user_id, model, request_type, input_tokens, output_tokens) VALUES
+  (:'ws_a', :'user_a', 'gemini-2.5-flash', 'chat', 100, 50),
+  (:'ws_b', :'user_b', 'gemini-2.5-flash', 'chat', 200, 100);
+
+-- chat_conversations + chat_messages (table 031) : 1 conversation + 1 message par workspace.
+\set conv_a 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+\set conv_b 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+
+INSERT INTO chat_conversations (id, workspace_id, user_id, title) VALUES
+  (:'conv_a', :'ws_a', :'user_a', 'Conv A'),
+  (:'conv_b', :'ws_b', :'user_b', 'Conv B');
+
+INSERT INTO chat_messages (conversation_id, role, content) VALUES
+  (:'conv_a', 'user', 'Message A'),
+  (:'conv_b', 'user', 'Message B');
+
+-- notifications (table 032) : 1 par workspace.
+\set notif_a '11111111-aaaa-bbbb-cccc-111111111111'
+\set notif_b '22222222-aaaa-bbbb-cccc-222222222222'
+
+INSERT INTO notifications (id, workspace_id, type, severity, title) VALUES
+  (:'notif_a', :'ws_a', 'insight_created', 'info', 'Notif A'),
+  (:'notif_b', :'ws_b', 'watch_triggered', 'warning', 'Notif B');
+
+-- notification_reads (table 032) : chaque user lit sa propre notif.
+INSERT INTO notification_reads (notification_id, user_id) VALUES
+  (:'notif_a', :'user_a'),
+  (:'notif_b', :'user_b');
+
+-- pinned_widgets (table 037) : 1 par workspace.
+INSERT INTO pinned_widgets (workspace_id, created_by, kind, spec) VALUES
+  (:'ws_a', :'user_a', 'kpi', '{"title":"KPI A","value":42}'::jsonb),
+  (:'ws_b', :'user_b', 'kpi', '{"title":"KPI B","value":99}'::jsonb);
+
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 2. Helper : simuler l'identité d'un user via JWT claims.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -155,6 +205,42 @@ SELECT is(
   (SELECT count(*)::int FROM audits WHERE workspace_id = :'ws_b'),
   0, 'User A ne voit pas les audits du workspace B'
 );
+SELECT is(
+  (SELECT count(*)::int FROM insights WHERE workspace_id = :'ws_b'),
+  0, 'User A ne voit pas les insights du workspace B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM action_cards WHERE workspace_id = :'ws_b'),
+  0, 'User A ne voit pas les action_cards du workspace B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM watches WHERE workspace_id = :'ws_b'),
+  0, 'User A ne voit pas les watches du workspace B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM ai_usage WHERE workspace_id = :'ws_b'),
+  0, 'User A ne voit pas les ai_usage du workspace B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM chat_conversations WHERE workspace_id = :'ws_b'),
+  0, 'User A ne voit pas les conversations du workspace B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM chat_messages WHERE conversation_id = :'conv_b'),
+  0, 'User A ne voit pas les messages du workspace B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM notifications WHERE workspace_id = :'ws_b'),
+  0, 'User A ne voit pas les notifications du workspace B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM notification_reads WHERE user_id = :'user_b'),
+  0, 'User A ne voit pas les notification_reads de User B'
+);
+SELECT is(
+  (SELECT count(*)::int FROM pinned_widgets WHERE workspace_id = :'ws_b'),
+  0, 'User A ne voit pas les pinned_widgets du workspace B'
+);
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 4. Assertions — User A voit BIEN ses propres données (sanity).
@@ -207,6 +293,10 @@ SELECT is(
 SELECT is(
   (SELECT count(*)::int FROM organizations WHERE id = :'org_a'),
   0, 'Symétrie : User B ne voit pas l''org de A'
+);
+SELECT is(
+  (SELECT count(*)::int FROM insights WHERE workspace_id = :'ws_a'),
+  0, 'Symétrie : User B ne voit pas les insights du workspace A'
 );
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

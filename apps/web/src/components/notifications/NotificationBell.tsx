@@ -114,6 +114,7 @@ export default function NotificationBell() {
   function handleClickItem(n: Notif) {
     // Event §6 : notification_clicked. workspace_id ajouté par tracking lib.
     track('notification_clicked', { type: n.type, severity: n.severity, notif_id: n.id })
+    if (n.type === 'watch_triggered') track('watch_triggered', { notif_id: n.id })
     if (!n.read_at) markOne.mutate(n.id)
     setOpen(false)
   }

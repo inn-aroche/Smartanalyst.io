@@ -379,6 +379,11 @@ export default function ChatPage() {
             const fakeErr = Object.assign(new ApiError(message, 500, payload), { code })
             setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
             setError(mapErrorToMessage(fakeErr, t))
+            // Measurement plan §6 — qualité IA.
+            track('chat_error_shown', { code })
+            if (code === 'AI_BUDGET_EXCEEDED') {
+              track('chat_budget_blocked')
+            }
           }
         },
       })
@@ -403,6 +408,12 @@ export default function ChatPage() {
       } else if (!errored) {
         setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
         setError(mapErrorToMessage(err, t))
+        // Measurement plan §6 — qualité IA.
+        const errCode = err instanceof ApiError ? (err.code ?? String(err.status)) : 'NETWORK'
+        track('chat_error_shown', { code: errCode })
+        if (err instanceof ApiError && err.code === 'AI_BUDGET_EXCEEDED') {
+          track('chat_budget_blocked')
+        }
       }
     } finally {
       abortRef.current = null

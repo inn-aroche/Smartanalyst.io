@@ -14,6 +14,7 @@ import { useToast } from '@/components/AppLayout'
 import { apiFetch } from '@/lib/api'
 import { useT } from '@/lib/i18n'
 import type { ActionStatus, Insight, InsightStatus, Severity } from '@/lib/insights-types'
+import { track } from '@/lib/tracking'
 
 type SevMeta = { color: string; bg: string; icon: string; label: string }
 
@@ -104,6 +105,12 @@ export default function InsightCard({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['insights'] })
       toast.push(t('veille.toast.ignored'))
+      // Measurement plan §6 — engagement / boucle.
+      track('insight_resolved', {
+        insight_id: insight.id,
+        severity: insight.severity,
+        method: 'dismissed',
+      })
     },
   })
 
@@ -122,6 +129,12 @@ export default function InsightCard({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['insights'] })
       toast.push(t('veille.toast.snoozed'))
+      // Measurement plan §6 — engagement / boucle.
+      track('insight_resolved', {
+        insight_id: insight.id,
+        severity: insight.severity,
+        method: 'snoozed',
+      })
     },
   })
 
