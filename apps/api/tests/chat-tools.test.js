@@ -922,3 +922,40 @@ test('statusForBenchmarkPosition : seuils 75 / 50 / 25', () => {
   assert.equal(tools.statusForBenchmarkPosition(30), 'MOYEN')
   assert.equal(tools.statusForBenchmarkPosition(10), 'FAIBLE')
 })
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// L0-4 — Garde-fou "no_connector" : le tool retourne une erreur exploitable
+// par le LLM pour proposer la connexion (prompt REQUÊTES LIVE / LIVE QUERIES).
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('query_ga4 sans connecteur → error no_connector', async () => {
+  const tools = load({
+    live: {
+      ga4: {
+        queryGA4: async () => ({ error: 'no_connector', message: 'Aucun connecteur GA4 actif.' }),
+        getTrafficSources: async () => null,
+      },
+    },
+  })
+  const r = await tools.execute(
+    { name: 'query_ga4', args: { metrics: ['sessions'] } },
+    { workspaceId: 'ws-orphan' },
+  )
+  assert.equal(r.error, 'no_connector')
+  assert.ok(r.message, 'Le message aide le LLM à proposer la connexion')
+})
+
+test('query_meta_ads sans connecteur → error no_connector', async () => {
+  const tools = load({
+    live: {
+      meta: {
+        queryMetaAds: async () => ({ error: 'no_connector', message: 'Aucun connecteur Meta Ads actif.' }),
+      },
+    },
+  })
+  const r = await tools.execute(
+    { name: 'query_meta_ads', args: { metrics: ['spend'] } },
+    { workspaceId: 'ws-orphan' },
+  )
+  assert.equal(r.error, 'no_connector')
+})

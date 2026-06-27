@@ -300,7 +300,30 @@ SELECT is(
 );
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- 7. Vérification côté postgres role : le connecteur B est intact
+-- 7. Tables deny-all (service_role uniquement) — DOCUMENTATION
+--
+-- Les 3 tables ci-dessous ont RLS ACTIVÉ mais AUCUNE policy SELECT
+-- pour authenticated/anon. Seul le service_role (bypass RLS) y accède.
+-- Elles ne figurent PAS dans les assertions multi-tenant car un
+-- SELECT par un rôle authenticated retournerait toujours 0 rows,
+-- quel que soit le workspace — il n'y a rien à isoler côté user.
+--
+-- • feature_flags     (020_enable_rls_feature_flags.sql)
+--   Flags de rollout progressif. Deny-all depuis la migration 020.
+--
+-- • integration_providers  (011_add_integration_providers.sql)
+--   Catalogue des providers OAuth (client_id/secret chiffrés via Vault).
+--   Jamais exposé côté frontend — le backend sert un catalogue sanitisé.
+--
+-- • billing_events    (015_add_billing_events.sql)
+--   Ledger idempotent des webhooks Stripe. Écriture service_role seule.
+--
+-- Vérification manuelle : SELECT en role authenticated sur ces tables
+-- retourne 0 rows (deny par défaut = RLS ON sans policy permissive).
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 8. Vérification côté postgres role : le connecteur B est intact
 --    après les tentatives d'écriture cross-tenant ci-dessus.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
