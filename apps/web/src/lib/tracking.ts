@@ -31,6 +31,7 @@ export type TrackEvent =
   | 'first_insight_shown'
   | 'onboarding_completed'
   | 'onboarding_dropped'
+  | 'maturity_quiz_completed'
   // ── Engagement (boucle) ───────────────────────────────────────────────
   | 'brief_viewed'
   | 'chat_message_sent'
