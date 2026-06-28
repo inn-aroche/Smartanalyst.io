@@ -30,10 +30,28 @@ const askLimiter = rateLimit({
   },
 })
 
+// Per-workspace throttle — empêche un seul workspace de monopoliser les
+// ressources IA. Plus généreux que le per-IP (qui est un anti-abus), ici
+// on protège la fairness entre workspaces.
+const workspaceLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 40,
+  keyGenerator: (req) => req.body?.workspaceId || req.ip,
+  standardHeaders: false,
+  legacyHeaders: false,
+  message: {
+    error: {
+      code: 'RATE_LIMIT',
+      message: 'Ce workspace a atteint sa limite de requêtes. Réessaie dans une minute.',
+    },
+  },
+})
+
 router.post(
   '/ask',
   jwtMiddleware,
   askLimiter,
+  workspaceLimiter,
   [
     body('message')
       .isString()

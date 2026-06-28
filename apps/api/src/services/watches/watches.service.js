@@ -144,10 +144,26 @@ async function deleteWatch(workspaceId, watchId) {
   return { deleted: true }
 }
 
+async function getWatchHistory(workspaceId, watchId, limit = 20) {
+  const supabase = getServiceRoleClient()
+  const { data, error } = await supabase
+    .from('insights')
+    .select('id, title, summary, severity, created_at, evidence')
+    .eq('workspace_id', workspaceId)
+    .eq('category', 'custom_watch')
+    .like('dedup_key', `watch:${watchId}:%`)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data || []
+}
+
 module.exports = {
   listWatches,
   createWatch,
   patchWatch,
   deleteWatch,
+  getWatchHistory,
   OPERATORS,
+  MAX_WATCHES_PER_WORKSPACE,
 }

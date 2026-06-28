@@ -492,6 +492,7 @@ const en = {
   'chat.error': 'Something went wrong. Try again.',
   'chat.error.budget':
     'Your monthly AI budget is reached. Raise it in Settings or wait until the 1st.',
+  'chat.error.budget.cta': 'Upgrade →',
   'chat.error.rateLimit':
     'Too many questions at once — the AI is saturated. Give it a few seconds and try again.',
   'chat.error.timeout': 'That took too long. Try again — sometimes the second pass is faster.',
@@ -1829,6 +1830,7 @@ const fr: Record<keyof typeof en, string> = {
   'chat.error': 'Quelque chose a planté. Réessaie.',
   'chat.error.budget':
     'Ton budget IA mensuel est atteint. Augmente-le dans Réglages ou attends le 1ᵉʳ du mois.',
+  'chat.error.budget.cta': 'Passer au Pro →',
   'chat.error.rateLimit':
     "Trop de questions d'un coup — l'IA est saturée. Patiente quelques secondes et réessaie.",
   'chat.error.timeout':

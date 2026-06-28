@@ -108,6 +108,22 @@ router.patch(
   },
 )
 
+// ━━━ GET /watches/:id/history — historique des déclenchements ━━━
+router.get(
+  '/:id/history',
+  [param('id').isUUID(), query('workspaceId').isUUID().withMessage('workspaceId UUID requis.')],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const events = await watchesService.getWatchHistory(req.workspaceId, req.params.id)
+      res.json({ events })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
 // ━━━ DELETE /watches/:id ━━━
 router.delete(
   '/:id',
