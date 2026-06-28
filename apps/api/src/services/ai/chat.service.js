@@ -147,6 +147,24 @@ AJOUTE le marqueur [N] correspondant juste après le chiffre, sans crochet d'ouv
 supplémentaire. Exemple : "Ton MRR atteint 12 500 € [1], en hausse de 8% vs le mois précédent."
 Ne fabrique JAMAIS un marqueur qui ne correspond pas à une métrique de la liste.
 
+REQUÊTES LIVE — Tu peux interroger directement les APIs des sources connectées
+avec des métriques et dimensions ARBITRAIRES (pas limité aux 30 jours d'agrégats
+ci-dessous). Utilise ces tools quand l'user pose une question DIMENSIONNELLE
+qui nécessite un breakdown que les métriques pré-chargées ne couvrent pas :
+- query_ga4 : "top pages", "trafic par source sur /pricing", "sessions par
+  device", "landing pages qui convertissent", "nouveaux users par pays".
+- query_meta_ads : "quelle campagne dépense le plus", "CPC par tranche d'âge",
+  "FB vs Instagram", "top adsets".
+- query_stripe : "derniers paiements échoués", "abonnements actifs", "derniers
+  refunds", "factures impayées".
+- query_shopify : "dernières commandes", "top produits", "clients les plus
+  dépensiers", "commandes non fulfillées".
+- query_search_console : "quels mots-clés amènent le plus de clics", "position
+  moyenne sur tel mot-clé", "pages avec le plus d'impressions".
+IMPORTANT : ces tools font un appel API réel (cache 5 min). Préfère les
+métriques pré-chargées ci-dessous quand elles suffisent. Si la source n'est
+pas connectée, le tool retournera une erreur — propose alors de la connecter.
+
 Si la question demande des chiffres que tu n'as PAS (CTR / MRR / CAC absent du
 contexte), dis-le clairement et propose quelle source connecter (GA4, Meta Ads,
 Google Ads, Stripe, Search Console). NE FABRIQUE PAS DE CHIFFRES.
@@ -235,6 +253,24 @@ with a marker [N] (e.g. [1], [2]). When you cite a number from these metrics,
 APPEND the corresponding [N] marker right after the number.
 Example: "Your MRR is at €12,500 [1], up 8% from last month."
 Never fabricate a marker that doesn't correspond to a metric in the list.
+
+LIVE QUERIES — You can query connected source APIs directly with ARBITRARY
+metrics and dimensions (not limited to the 30-day aggregates below). Use
+these tools when the user asks a DIMENSIONAL question needing a breakdown
+that the pre-loaded metrics don't cover:
+- query_ga4: "top pages", "traffic by source on /pricing", "sessions by
+  device", "landing pages that convert", "new users by country".
+- query_meta_ads: "which campaign spends most", "CPC by age group",
+  "FB vs Instagram", "top adsets".
+- query_stripe: "recent failed payments", "active subscriptions", "recent
+  refunds", "unpaid invoices".
+- query_shopify: "recent orders", "top products", "biggest spenders",
+  "unfulfilled orders".
+- query_search_console: "which keywords drive the most clicks", "average
+  position on keyword X", "pages with most impressions".
+IMPORTANT: these tools make a real API call (cached 5 min). Prefer the
+pre-loaded metrics below when they're sufficient. If the source isn't
+connected, the tool will return an error — suggest connecting it.
 
 If the question asks for numbers you DON'T HAVE (CTR/MRR/CAC missing from
 context), say so clearly and suggest which source to connect (GA4, Meta Ads,
@@ -919,10 +955,12 @@ async function askStream({
   // Approfondi. Sur Free, on rebascule silencieusement sur Gemini — l'UI
   // côté front grise déjà le toggle Approfondi pour signaler la limite.
   let effectiveMode = mode
+  let modeDowngraded = false
   if (mode === 'deep' && workspaceId) {
     const plan = await entitlements.getWorkspacePlan(workspaceId)
     if (!entitlements.canUseFeature(plan, 'deep_chat')) {
       effectiveMode = 'fast'
+      modeDowngraded = true
       logger.info(
         { event: 'chat_mode_downgraded_by_plan', workspaceId, plan },
         'Deep mode requested but plan does not allow it — falling back to fast',
@@ -1196,6 +1234,7 @@ async function askStream({
     highlights,
     conversationId: conversation?.id || null,
     messageId: assistantMessageId,
+    modeDowngraded: modeDowngraded || undefined,
   })
 }
 

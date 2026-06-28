@@ -3,7 +3,7 @@
 // Auth: OAuth 2.0 Facebook for Developers — scopes ads_read + business_management.
 //       Tokens long-lived ~60 jours. Refresh via le même token_url avec
 //       grant_type=fb_exchange_token (géré côté oauth-generic standard).
-// API:  Graph API v18.0 — endpoint /act_{ad_account_id}/insights
+// API:  Graph API v21.0 — endpoint /act_{ad_account_id}/insights
 // Stockage: `connectors.account_id` = ad_account_id Meta (avec ou sans
 //           préfixe 'act_'). On normalise au moment de la requête.
 //
@@ -19,7 +19,7 @@ const { mapToCanonical } = require('./canonical-metrics-mapping')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
 const { getServiceRoleClient } = require('../lib/supabase')
 
-const META_API_VERSION = 'v18.0'
+const META_API_VERSION = 'v21.0'
 const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`
 
 // Action types Meta considérés comme "conversion" (sommés pour la métrique

@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/AppLayout'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useT } from '@/lib/i18n'
+import { track } from '@/lib/tracking'
 import { useEscapeKey } from '@/lib/use-escape-key'
 
 type Operator = 'drops_below' | 'rises_above' | 'changes_by_pct' | 'any_change'
@@ -71,6 +72,13 @@ export default function WatchModal({ onClose }: { onClose: () => void }) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['watches', wsId] })
       toast.push(t('watchModal.toast.created'))
+      // Measurement plan §6 — engagement / boucle.
+      track('watch_created', {
+        metric_key: metricKey,
+        operator,
+        notify_in_app: notifyInApp,
+        notify_email: notifyEmail,
+      })
       onClose()
     },
     onError: (err: unknown) => {

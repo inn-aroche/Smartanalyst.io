@@ -40,6 +40,12 @@ const SCHEDULES = [
     description: 'Weekly digest email — fan-out across all workspaces',
   },
   {
+    queueName: QUEUE_NAMES.NOTIFICATIONS,
+    jobName: JOB_NAMES.NOTIFICATIONS_CLEANUP,
+    pattern: '0 2 * * *', // 2h UTC quotidien — supprime les notifs > 30j
+    description: 'Notification TTL cleanup — purge old notifications',
+  },
+  {
     queueName: QUEUE_NAMES.ALERTS,
     jobName: JOB_NAMES.WATCHES_EVAL_SCAN,
     pattern: '0 * * * *', // toutes les heures (brief V2 §3.3 — alertes custom user)

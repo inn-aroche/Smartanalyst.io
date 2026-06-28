@@ -339,6 +339,8 @@ router.get(
     query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
   ],
   runValidation,
+  workspaceScope,
+  requireFeature('generate_slides'),
   async (req, res, next) => {
     try {
       const msg = await chatConversations.getMessageWithWorkspace(req.params.id)

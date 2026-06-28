@@ -170,4 +170,23 @@ async function invalidateCache(workspaceId) {
   }
 }
 
-module.exports = { ingest, query, invalidateCache }
+async function hasMetricKey(workspaceId, metricKey) {
+  try {
+    const supabase = getServiceRoleClient()
+    const { count, error } = await supabase
+      .from(TABLE)
+      .select('metric_key', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('metric_key', metricKey)
+    if (error) throw error
+    return (count || 0) > 0
+  } catch (err) {
+    logger.warn(
+      { event: 'canonical_metrics_has_key_failed', workspaceId, metricKey, error: err.message },
+      'hasMetricKey check failed — allowing by default',
+    )
+    return true
+  }
+}
+
+module.exports = { ingest, query, invalidateCache, hasMetricKey }

@@ -8,6 +8,7 @@
 
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
+const entitlements = require('../billing/entitlements.service')
 
 // Prix USD par 1M tokens (à jour juin 2026 — relire si on change de modèle).
 const PRICING = {
@@ -138,7 +139,14 @@ async function checkBudget(workspaceId) {
   if (!workspaceId) return { allowed: true, exceeded: false }
   try {
     const usage = await getMonthlyUsage(workspaceId)
-    const limit = usage.limit
+    let limit = usage.limit
+    // Si la colonne DB est NULL, on résout la limite depuis le plan
+    // (PLAN_FEATURES.maxAiTokensPerMonth). Sans ça, Free = NULL = pas de limite.
+    if (limit == null) {
+      const plan = await entitlements.getWorkspacePlan(workspaceId)
+      const planLimit = entitlements.PLAN_FEATURES[plan]?.maxAiTokensPerMonth
+      limit = Number.isFinite(planLimit) ? planLimit : null
+    }
     if (limit == null) {
       return { allowed: true, exceeded: false, used: usage.total_tokens, limit: null }
     }

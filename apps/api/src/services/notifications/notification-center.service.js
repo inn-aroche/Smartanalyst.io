@@ -195,12 +195,38 @@ async function markAllAsRead({ workspaceId, userId }) {
   return rows.length
 }
 
+/**
+ * Supprime les notifications de plus de `days` jours. Appele quotidiennement
+ * par le scheduler pour eviter l'accumulation infinie. Supprime aussi les
+ * reads orphelines dans la foulee.
+ * @returns {Promise<number>} nombre de notifs supprimées
+ */
+async function purgeOld(days = 30) {
+  const supabase = getServiceRoleClient()
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString()
+  const { data, error } = await supabase
+    .from('notifications')
+    .delete()
+    .lt('created_at', cutoff)
+    .select('id')
+  if (error) {
+    logger.warn({ event: 'notif_purge_failed', error: error.message }, 'purgeOld failed')
+    return 0
+  }
+  const count = data?.length ?? 0
+  if (count > 0) {
+    logger.info({ event: 'notif_purge_done', count, cutoff }, `Purged ${count} old notifications`)
+  }
+  return count
+}
+
 module.exports = {
   createNotification,
   listForUser,
   unreadCount,
   markAsRead,
   markAllAsRead,
+  purgeOld,
   ALLOWED_TYPES,
   ALLOWED_SEVERITIES,
 }

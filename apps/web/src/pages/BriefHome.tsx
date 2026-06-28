@@ -11,20 +11,22 @@
 // Tous les blocs ont un fallback élégant en cas d'absence de données ou
 // d'erreur API — la home reste utilisable même sur un workspace vide.
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
-import AppLayout, { Topbar } from '@/components/AppLayout'
+import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
 import DataFreshnessChip from '@/components/DataFreshnessChip'
+import Bars from '@/components/charts/Bars'
 import KpiCard, { type Kpi } from '@/components/charts/KpiCard'
 import PinnedWidgets from '@/components/dashboard/PinnedWidgets'
 import ScoreRing from '@/components/charts/ScoreRing'
 import FirstRunBlock from '@/components/onboarding/FirstRunBlock'
 import { openOnboarding } from '@/components/onboarding/OnboardingFlow'
+import { ErrorState } from '@/components/ui/states'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { useLocale, useT } from '@/lib/i18n'
+import { type StringKey, useLocale, useT } from '@/lib/i18n'
 import { track } from '@/lib/tracking'
 
 type HealthScore = {
@@ -60,6 +62,7 @@ type SummaryTile = {
   previous_value: number
   delta_pct: number | null
   has_data: boolean
+  spark?: number[]
 }
 type SummaryResponse = { tiles: SummaryTile[] }
 
@@ -68,6 +71,8 @@ export default function BriefHomePage() {
   const { locale } = useLocale()
   const navigate = useNavigate()
   const { state } = useAuth()
+  const toast = useToast()
+  const firstInsightFired = useRef(false)
   const workspace = state.workspaces[0]
   const wsId = workspace?.id
 
@@ -109,6 +114,18 @@ export default function BriefHomePage() {
     staleTime: 60_000,
   })
 
+  // Toast "premier insight" — déclenché une seule fois par workspace.
+  const insights = insightsQ.data?.insights
+  useEffect(() => {
+    if (firstInsightFired.current || !insights || insights.length === 0) return
+    const lsKey = `sa.first-insight-shown:${wsId}`
+    if (localStorage.getItem(lsKey)) return
+    firstInsightFired.current = true
+    localStorage.setItem(lsKey, '1')
+    toast.push(t('brief.firstInsight.toast'))
+    track('first_insight_shown')
+  }, [insights, wsId, t, toast])
+
   const firstName = (state.user?.full_name ?? state.user?.email ?? 'toi').split(/\s+|@/)[0]
   const dateStr = formatDate(locale)
   const sub = `${workspace?.name ?? '—'} · ${dateStr}`
@@ -139,7 +156,16 @@ export default function BriefHomePage() {
               n'a rien à dire — on remplace par un bloc d'accueil avec un vrai chemin
               à parcourir. Le loading initial reste géré par HeroBrief skeleton plus
               bas, donc on attend que scoreQ ait répondu avant de basculer. */}
-          {!scoreQ.isLoading && !scoreQ.data?.has_data ? (
+          {scoreQ.isError || insightsQ.isError || tasksQ.isError || kpisQ.isError ? (
+            <ErrorState
+              retry={() => {
+                if (scoreQ.isError) void scoreQ.refetch()
+                if (insightsQ.isError) void insightsQ.refetch()
+                if (tasksQ.isError) void tasksQ.refetch()
+                if (kpisQ.isError) void kpisQ.refetch()
+              }}
+            />
+          ) : !scoreQ.isLoading && !scoreQ.data?.has_data ? (
             <FirstRunBlock
               illustration={<FirstRunIllus />}
               eyebrow={t('brief.firstRun.eyebrow')}
@@ -170,6 +196,9 @@ export default function BriefHomePage() {
                 insights={insightsQ.data?.insights ?? []}
               />
 
+              {/* ─── Breakdown par dimension ─── */}
+              {scoreQ.data?.breakdown && <HealthBreakdown breakdown={scoreQ.data.breakdown} />}
+
               {/* ─── Les 3 choses qui comptent ce matin ─── */}
               <ThreeThings
                 insights={insightsQ.data?.insights ?? []}
@@ -185,6 +214,16 @@ export default function BriefHomePage() {
                 loading={kpisQ.isLoading}
                 locale={locale}
               />
+
+              {/* ─── CTA rapport ─── */}
+              <div className="mb-6">
+                <Link
+                  to="/rapports"
+                  className="sa-btn inline-flex items-center gap-1.5 !text-[13.5px]"
+                >
+                  📊 {t('brief.report.cta')} →
+                </Link>
+              </div>
 
               {/* ─── Mes épingles depuis le chat (cahier 22b §3.4 — Lot V2.3) ─── */}
               {wsId && <PinnedWidgets workspaceId={wsId} />}
@@ -293,6 +332,31 @@ function HeroBrief({
         </div>
       </div>
     </div>
+  )
+}
+
+const BREAKDOWN_KEYS: Array<{ key: string; labelKey: StringKey }> = [
+  { key: 'paid', labelKey: 'brief.breakdown.paid' },
+  { key: 'organic', labelKey: 'brief.breakdown.organic' },
+  { key: 'conversion', labelKey: 'brief.breakdown.conversion' },
+  { key: 'revenue', labelKey: 'brief.breakdown.revenue' },
+  { key: 'tracking', labelKey: 'brief.breakdown.tracking' },
+]
+
+function HealthBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
+  const t = useT()
+  const bars = BREAKDOWN_KEYS.filter((d) => breakdown[d.key] != null).map((d) => ({
+    label: t(d.labelKey),
+    value: breakdown[d.key],
+  }))
+  if (bars.length === 0) return null
+  return (
+    <section className="mb-7">
+      <div className="sa-eyebrow mb-2">{t('brief.breakdown.title')}</div>
+      <div className="rounded-brief border border-border bg-card p-5 shadow-card">
+        <Bars data={bars} height={140} activeIndex={-1} />
+      </div>
+    </section>
   )
 }
 
@@ -553,6 +617,7 @@ function tileToKpi(tile: SummaryTile, locale: string): Kpi {
     value,
     delta,
     up,
+    spark: tile.spark?.length ? tile.spark : undefined,
   }
 }
 

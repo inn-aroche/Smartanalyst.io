@@ -19,7 +19,7 @@ import { useT } from '@/lib/i18n'
 import { track } from '@/lib/tracking'
 
 type QuotaInfo = {
-  type: 'connectors' | 'insights'
+  type: 'connectors' | 'insights' | 'aiTokens'
   current: number
   limit: number | null
   pct: number
@@ -52,6 +52,16 @@ export default function QuotaChip() {
         limit: i.limit,
         pct: i.limit > 0 ? (i.current / i.limit) * 100 : 0,
         exceeded: i.exceeded,
+      })
+    }
+    const ai = q.data.quotas.aiTokensPerMonth
+    if (ai && ai.limit != null) {
+      candidates.push({
+        type: 'aiTokens',
+        current: ai.current,
+        limit: ai.limit,
+        pct: ai.limit > 0 ? (ai.current / ai.limit) * 100 : 0,
+        exceeded: ai.exceeded,
       })
     }
     if (candidates.length === 0) return null
@@ -92,7 +102,12 @@ export default function QuotaChip() {
     amber: 'border-brand-amber/40 bg-brand-amber/10 text-brand-amber',
     blue: 'border-border bg-bg-2 text-text-2',
   }
-  const label = type === 'connectors' ? t('quota.chip.connectors') : t('quota.chip.insights')
+  const label =
+    type === 'connectors'
+      ? t('quota.chip.connectors')
+      : type === 'insights'
+        ? t('quota.chip.insights')
+        : t('quota.chip.aiTokens')
 
   return (
     <>
@@ -112,7 +127,8 @@ export default function QuotaChip() {
       >
         <span aria-hidden="true">{exceeded ? '⛔' : pct >= 90 ? '⚠' : '◐'}</span>
         <span>
-          {current}/{limit} {label}
+          {type === 'aiTokens' ? formatTokens(current) : current}/
+          {type === 'aiTokens' ? formatTokens(limit!) : limit} {label}
         </span>
       </Link>
 
@@ -129,16 +145,21 @@ export default function QuotaChip() {
                   ? t(
                       type === 'connectors'
                         ? 'quota.toast.connectors.exceeded.title'
-                        : 'quota.toast.insights.exceeded.title',
+                        : type === 'insights'
+                          ? 'quota.toast.insights.exceeded.title'
+                          : 'quota.toast.aiTokens.exceeded.title',
                     )
                   : t(
                       type === 'connectors'
                         ? 'quota.toast.connectors.warn.title'
-                        : 'quota.toast.insights.warn.title',
+                        : type === 'insights'
+                          ? 'quota.toast.insights.warn.title'
+                          : 'quota.toast.aiTokens.warn.title',
                     )}
               </div>
               <div className="mt-0.5 text-[12px] text-text-2">
-                {current}/{limit} {label} · {Math.round(pct)}%
+                {type === 'aiTokens' ? formatTokens(current) : current}/
+                {type === 'aiTokens' ? formatTokens(limit!) : limit} {label} · {Math.round(pct)}%
               </div>
               <Link
                 to="/settings"
@@ -161,4 +182,10 @@ export default function QuotaChip() {
       )}
     </>
   )
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${Math.round(n / 1_000_000)}M`
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`
+  return String(n)
 }

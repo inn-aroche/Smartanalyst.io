@@ -3,7 +3,7 @@
 // Auth: OAuth 2.0 sur sub-domaine boutique ({shop}.myshopify.com).
 //       Le token offline ne change pas tant que l'utilisateur ne révoque
 //       pas l'app — pas de refresh.
-// API:  Admin REST 2024-07 (https://{shop}.myshopify.com/admin/api/2024-07/)
+// API:  Admin REST 2025-01 (https://{shop}.myshopify.com/admin/api/2025-01/)
 // Stockage: `connectors.account_id` = sub-domaine boutique ('maboutique'),
 //           sans suffixe .myshopify.com.
 //
@@ -19,7 +19,7 @@ const { logger } = require('../lib/logger')
 const vault = require('../lib/vault')
 const { mapToCanonical } = require('./canonical-metrics-mapping')
 
-const SHOPIFY_API_VERSION = '2024-07'
+const SHOPIFY_API_VERSION = '2025-01'
 const PAGE_SIZE = 250 // max Shopify
 const MAX_PAGES = 50 // sécurité anti-runaway
 
@@ -129,9 +129,9 @@ class ShopifyConnector extends BaseConnector {
     const metrics = []
 
     // ━━━ Agrégations par jour ━━━
-    const revenueByDate = new Map()  // jour → CA cumulé
-    const ordersByDate = new Map()   // jour → count
-    const refundsByDate = new Map()  // jour → CA refundé cumulé
+    const revenueByDate = new Map() // jour → CA cumulé
+    const ordersByDate = new Map() // jour → count
+    const refundsByDate = new Map() // jour → CA refundé cumulé
 
     for (const order of orders) {
       const date = _isoDate(order.created_at)

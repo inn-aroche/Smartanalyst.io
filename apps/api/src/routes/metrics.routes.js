@@ -50,7 +50,12 @@ const TILES_BY_SOURCE = {
   google_ads: [
     { key: 'spend_paid_search', label: 'Google Ads spend', kind: 'sum', format: 'currency' },
     { key: 'clicks_paid_search', label: 'Google Ads clicks', kind: 'sum', format: 'integer' },
-    { key: 'conversions_paid_search', label: 'Google Ads conversions', kind: 'sum', format: 'integer' },
+    {
+      key: 'conversions_paid_search',
+      label: 'Google Ads conversions',
+      kind: 'sum',
+      format: 'integer',
+    },
     { key: 'click_through_rate_paid', label: 'Google Ads CTR', kind: 'snapshot', format: 'ratio' },
   ],
   shopify: [
@@ -61,7 +66,12 @@ const TILES_BY_SOURCE = {
   ],
   search_console: [
     { key: 'clicks_organic_search', label: 'Organic clicks', kind: 'sum', format: 'integer' },
-    { key: 'impressions_organic_search', label: 'Organic impressions', kind: 'sum', format: 'integer' },
+    {
+      key: 'impressions_organic_search',
+      label: 'Organic impressions',
+      kind: 'sum',
+      format: 'integer',
+    },
     { key: 'click_through_rate_organic', label: 'Organic CTR', kind: 'snapshot', format: 'ratio' },
     { key: 'average_position_organic', label: 'Avg position', kind: 'snapshot', format: 'integer' },
   ],
@@ -149,10 +159,10 @@ async function summary(req, res, next) {
             endDate: prevEnd,
           }),
         ])
-        // snapshot = on prend la dernière valeur (MRR, customers actifs),
-        // sum = on additionne la fenêtre (sessions, conversions).
         const currentValue = m.kind === 'snapshot' ? lastValue(current) : sum(current)
         const previousValue = m.kind === 'snapshot' ? lastValue(previous) : sum(previous)
+        // Sparkline : valeur quotidienne sur la fenêtre courante, triée par date.
+        const spark = buildSparkline(current, m.kind)
         return {
           key: m.key,
           label: m.label,
@@ -161,6 +171,7 @@ async function summary(req, res, next) {
           previous_value: previousValue,
           delta_pct: pctChange(previousValue, currentValue),
           has_data: current.length > 0,
+          spark,
         }
       }),
     )
@@ -205,6 +216,29 @@ async function timeseries(req, res, next) {
 
 router.get('/summary', summary)
 router.get('/timeseries', timeseries)
+
+/**
+ * Construit un tableau de valeurs quotidiennes pour le sparkline.
+ * Pour les métriques 'sum', on additionne les lignes du même jour (multi-source).
+ * Pour les métriques 'snapshot', on prend la dernière valeur par jour.
+ */
+function buildSparkline(rows, kind) {
+  if (!rows || rows.length === 0) return []
+  const byDay = new Map()
+  for (const r of rows) {
+    const d = (r.date || '').slice(0, 10)
+    if (!d) continue
+    const v = Number(r.metric_value || 0)
+    if (kind === 'snapshot') {
+      byDay.set(d, v)
+    } else {
+      byDay.set(d, (byDay.get(d) || 0) + v)
+    }
+  }
+  return Array.from(byDay.entries())
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([, v]) => v)
+}
 
 function sum(rows) {
   if (!rows || rows.length === 0) return 0

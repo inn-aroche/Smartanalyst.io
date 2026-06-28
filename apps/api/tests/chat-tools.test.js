@@ -6,9 +6,22 @@ const assert = require('node:assert/strict')
 const CANONICAL_PATH = require.resolve('../src/services/metrics/canonical-metrics.service')
 const INSIGHTS_PATH = require.resolve('../src/services/insights/insights.service')
 const HEALTH_PATH = require.resolve('../src/services/health/health-score.service')
+const GA4_LIVE_PATH = require.resolve('../src/services/live/ga4-live.service')
+const META_LIVE_PATH = require.resolve('../src/services/live/meta-ads-live.service')
+const STRIPE_LIVE_PATH = require.resolve('../src/services/live/stripe-live.service')
+const SHOPIFY_LIVE_PATH = require.resolve('../src/services/live/shopify-live.service')
+const GSC_LIVE_PATH = require.resolve('../src/services/live/search-console-live.service')
 const TOOLS_PATH = require.resolve('../src/services/ai/chat-tools')
 
-function load({ metrics = [], insights = [], actions = [], health = null } = {}) {
+const defaultLiveMocks = {
+  ga4: { queryGA4: async () => ({ rows: [] }), getTrafficSources: async () => null },
+  meta: { queryMetaAds: async () => ({ rows: [] }) },
+  stripe: { queryStripe: async () => ({ rows: [] }) },
+  shopify: { queryShopify: async () => ({ rows: [] }) },
+  gsc: { querySearchConsole: async () => ({ rows: [] }) },
+}
+
+function load({ metrics = [], insights = [], actions = [], health = null, live = {} } = {}) {
   require.cache[CANONICAL_PATH] = {
     id: CANONICAL_PATH,
     filename: CANONICAL_PATH,
@@ -38,13 +51,23 @@ function load({ metrics = [], insights = [], actions = [], health = null } = {})
         },
     },
   }
+  const ga4 = { ...defaultLiveMocks.ga4, ...live.ga4 }
+  const meta = { ...defaultLiveMocks.meta, ...live.meta }
+  const stripe = { ...defaultLiveMocks.stripe, ...live.stripe }
+  const shopify = { ...defaultLiveMocks.shopify, ...live.shopify }
+  const gsc = { ...defaultLiveMocks.gsc, ...live.gsc }
+  require.cache[GA4_LIVE_PATH] = { id: GA4_LIVE_PATH, filename: GA4_LIVE_PATH, loaded: true, exports: ga4 }
+  require.cache[META_LIVE_PATH] = { id: META_LIVE_PATH, filename: META_LIVE_PATH, loaded: true, exports: meta }
+  require.cache[STRIPE_LIVE_PATH] = { id: STRIPE_LIVE_PATH, filename: STRIPE_LIVE_PATH, loaded: true, exports: stripe }
+  require.cache[SHOPIFY_LIVE_PATH] = { id: SHOPIFY_LIVE_PATH, filename: SHOPIFY_LIVE_PATH, loaded: true, exports: shopify }
+  require.cache[GSC_LIVE_PATH] = { id: GSC_LIVE_PATH, filename: GSC_LIVE_PATH, loaded: true, exports: gsc }
   delete require.cache[TOOLS_PATH]
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 14 tools déclarés (22c ajoute analyze_{performance,journey,benchmark})', () => {
+test('DECLARATIONS : 19 tools déclarés (+ 5 live query tools)', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 14)
+  assert.equal(tools.DECLARATIONS.length, 19)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
     'analyze_benchmark',
@@ -61,6 +84,11 @@ test('DECLARATIONS : 14 tools déclarés (22c ajoute analyze_{performance,journe
     'get_traffic_sources',
     'list_pending_actions',
     'list_top_insights',
+    'query_ga4',
+    'query_meta_ads',
+    'query_search_console',
+    'query_shopify',
+    'query_stripe',
   ])
 })
 
@@ -697,6 +725,194 @@ test('spectrumPosition : clamp 0..100 + invert lower_better', () => {
   )
 })
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Live query tools — query_ga4, query_meta_ads, query_stripe, etc.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('query_ga4 : passe les args au service live', async () => {
+  let captured = null
+  const tools = load({
+    live: {
+      ga4: {
+        queryGA4: async (params) => {
+          captured = params
+          return { source: 'ga4', rows: [{ pagePath: '/', sessions: 42 }] }
+        },
+        getTrafficSources: async () => null,
+      },
+    },
+  })
+  const r = await tools.execute(
+    {
+      name: 'query_ga4',
+      args: {
+        metrics: ['sessions', 'activeUsers'],
+        dimensions: ['pagePath'],
+        days: 14,
+        dimension_filter: { dimension: 'pagePath', value: '/pricing', matchType: 'CONTAINS' },
+        limit: 5,
+      },
+    },
+    { workspaceId: 'ws-live' },
+  )
+  assert.equal(r.source, 'ga4')
+  assert.equal(r.rows[0].sessions, 42)
+  assert.equal(captured.workspaceId, 'ws-live')
+  assert.deepEqual(captured.metrics, ['sessions', 'activeUsers'])
+  assert.deepEqual(captured.dimensions, ['pagePath'])
+  assert.deepEqual(captured.dateRange, { days: 14 })
+  assert.equal(captured.limit, 5)
+  assert.equal(captured.dimensionFilter.dimension, 'pagePath')
+})
+
+test('query_ga4 : days défaut à 7', async () => {
+  let captured = null
+  const tools = load({
+    live: {
+      ga4: {
+        queryGA4: async (p) => { captured = p; return { rows: [] } },
+        getTrafficSources: async () => null,
+      },
+    },
+  })
+  await tools.execute(
+    { name: 'query_ga4', args: { metrics: ['sessions'] } },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(captured.dateRange.days, 7)
+})
+
+test('query_meta_ads : passe les args au service live', async () => {
+  let captured = null
+  const tools = load({
+    live: {
+      meta: {
+        queryMetaAds: async (p) => {
+          captured = p
+          return { source: 'meta_ads', level: 'campaign', rows: [{ campaign_name: 'C1', spend: 100 }] }
+        },
+      },
+    },
+  })
+  const r = await tools.execute(
+    {
+      name: 'query_meta_ads',
+      args: {
+        metrics: ['spend', 'clicks'],
+        breakdowns: ['publisher_platform'],
+        level: 'campaign',
+        days: 30,
+        limit: 15,
+      },
+    },
+    { workspaceId: 'ws-meta' },
+  )
+  assert.equal(r.source, 'meta_ads')
+  assert.equal(captured.workspaceId, 'ws-meta')
+  assert.deepEqual(captured.metrics, ['spend', 'clicks'])
+  assert.deepEqual(captured.breakdowns, ['publisher_platform'])
+  assert.equal(captured.level, 'campaign')
+  assert.equal(captured.dateRange.days, 30)
+})
+
+test('query_stripe : passe entity + filters au service live', async () => {
+  let captured = null
+  const tools = load({
+    live: {
+      stripe: {
+        queryStripe: async (p) => {
+          captured = p
+          return { source: 'stripe', entity: 'charges', rows: [{ id: 'ch_1', amount: 50 }] }
+        },
+      },
+    },
+  })
+  const r = await tools.execute(
+    {
+      name: 'query_stripe',
+      args: { entity: 'charges', days: 7, filters: { status: 'failed' }, limit: 5 },
+    },
+    { workspaceId: 'ws-stripe' },
+  )
+  assert.equal(r.source, 'stripe')
+  assert.equal(captured.entity, 'charges')
+  assert.equal(captured.dateRange.days, 7)
+  assert.deepEqual(captured.filters, { status: 'failed' })
+})
+
+test('query_shopify : passe entity + filters au service live', async () => {
+  let captured = null
+  const tools = load({
+    live: {
+      shopify: {
+        queryShopify: async (p) => {
+          captured = p
+          return { source: 'shopify', entity: 'orders', rows: [] }
+        },
+      },
+    },
+  })
+  await tools.execute(
+    {
+      name: 'query_shopify',
+      args: { entity: 'orders', filters: { fulfillment_status: 'unfulfilled' } },
+    },
+    { workspaceId: 'ws-shop' },
+  )
+  assert.equal(captured.workspaceId, 'ws-shop')
+  assert.equal(captured.entity, 'orders')
+  assert.deepEqual(captured.filters, { fulfillment_status: 'unfulfilled' })
+  assert.equal(captured.dateRange.days, 30)
+})
+
+test('query_search_console : passe dimensions + filter au service live', async () => {
+  let captured = null
+  const tools = load({
+    live: {
+      gsc: {
+        querySearchConsole: async (p) => {
+          captured = p
+          return { source: 'search_console', rows: [{ query: 'test', clicks: 10 }] }
+        },
+      },
+    },
+  })
+  const r = await tools.execute(
+    {
+      name: 'query_search_console',
+      args: {
+        dimensions: ['query', 'page'],
+        days: 90,
+        dimension_filter: { dimension: 'query', expression: 'smartanalyst', operator: 'contains' },
+        limit: 20,
+      },
+    },
+    { workspaceId: 'ws-gsc' },
+  )
+  assert.equal(r.source, 'search_console')
+  assert.equal(captured.workspaceId, 'ws-gsc')
+  assert.deepEqual(captured.dimensions, ['query', 'page'])
+  assert.equal(captured.dateRange.days, 90)
+  assert.equal(captured.dimensionFilter.expression, 'smartanalyst')
+  assert.equal(captured.limit, 20)
+})
+
+test('query_search_console : days défaut à 28', async () => {
+  let captured = null
+  const tools = load({
+    live: {
+      gsc: {
+        querySearchConsole: async (p) => { captured = p; return { rows: [] } },
+      },
+    },
+  })
+  await tools.execute(
+    { name: 'query_search_console', args: { dimensions: ['query'] } },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(captured.dateRange.days, 28)
+})
+
 test('statusForBenchmarkPosition : seuils 75 / 50 / 25', () => {
   const tools = load()
   assert.equal(tools.statusForBenchmarkPosition(100), 'TOP')
@@ -705,4 +921,138 @@ test('statusForBenchmarkPosition : seuils 75 / 50 / 25', () => {
   assert.equal(tools.statusForBenchmarkPosition(50), 'BON')
   assert.equal(tools.statusForBenchmarkPosition(30), 'MOYEN')
   assert.equal(tools.statusForBenchmarkPosition(10), 'FAIBLE')
+})
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// L0-4 — Garde-fou "no_connector" : le tool retourne une erreur exploitable
+// par le LLM pour proposer la connexion (prompt REQUÊTES LIVE / LIVE QUERIES).
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('query_ga4 sans connecteur → error no_connector', async () => {
+  const tools = load({
+    live: {
+      ga4: {
+        queryGA4: async () => ({ error: 'no_connector', message: 'Aucun connecteur GA4 actif.' }),
+        getTrafficSources: async () => null,
+      },
+    },
+  })
+  const r = await tools.execute(
+    { name: 'query_ga4', args: { metrics: ['sessions'] } },
+    { workspaceId: 'ws-orphan' },
+  )
+  assert.equal(r.error, 'no_connector')
+  assert.ok(r.message, 'Le message aide le LLM à proposer la connexion')
+})
+
+test('query_meta_ads sans connecteur → error no_connector', async () => {
+  const tools = load({
+    live: {
+      meta: {
+        queryMetaAds: async () => ({ error: 'no_connector', message: 'Aucun connecteur Meta Ads actif.' }),
+      },
+    },
+  })
+  const r = await tools.execute(
+    { name: 'query_meta_ads', args: { metrics: ['spend'] } },
+    { workspaceId: 'ws-orphan' },
+  )
+  assert.equal(r.error, 'no_connector')
+})
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// L1-1 — create_watch : normalisation opérateurs abrégés → watches.service
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+test('create_watch : gt normalisé en rises_above', async () => {
+  const WATCHES_PATH = require.resolve('../src/services/watches/watches.service')
+  let captured = null
+  require.cache[WATCHES_PATH] = {
+    id: WATCHES_PATH,
+    filename: WATCHES_PATH,
+    loaded: true,
+    exports: {
+      createWatch: async (_wsId, _userId, payload) => {
+        captured = payload
+        return { id: 'w-1', description: payload.description, ...payload }
+      },
+    },
+  }
+  const tools = load()
+  const r = await tools.execute(
+    {
+      name: 'create_watch',
+      args: {
+        description: 'MRR drops',
+        metric_key: 'revenue_recurring_monthly',
+        operator: 'gt',
+        threshold: 5000,
+      },
+    },
+    { workspaceId: 'ws-1', userId: 'u-1' },
+  )
+  assert.equal(r.ok, true)
+  assert.equal(captured.operator, 'rises_above')
+})
+
+test('create_watch : lt normalisé en drops_below', async () => {
+  const WATCHES_PATH = require.resolve('../src/services/watches/watches.service')
+  let captured = null
+  require.cache[WATCHES_PATH] = {
+    id: WATCHES_PATH,
+    filename: WATCHES_PATH,
+    loaded: true,
+    exports: {
+      createWatch: async (_wsId, _userId, payload) => {
+        captured = payload
+        return { id: 'w-2', description: payload.description, ...payload }
+      },
+    },
+  }
+  const tools = load()
+  const r = await tools.execute(
+    {
+      name: 'create_watch',
+      args: {
+        description: 'Sessions low',
+        metric_key: 'sessions_all',
+        operator: 'lt',
+        threshold: 100,
+      },
+    },
+    { workspaceId: 'ws-1', userId: 'u-1' },
+  )
+  assert.equal(r.ok, true)
+  assert.equal(captured.operator, 'drops_below')
+})
+
+test('create_watch : pct_change_gt normalisé en changes_by_pct', async () => {
+  const WATCHES_PATH = require.resolve('../src/services/watches/watches.service')
+  let captured = null
+  require.cache[WATCHES_PATH] = {
+    id: WATCHES_PATH,
+    filename: WATCHES_PATH,
+    loaded: true,
+    exports: {
+      createWatch: async (_wsId, _userId, payload) => {
+        captured = payload
+        return { id: 'w-3', description: payload.description, ...payload }
+      },
+    },
+  }
+  const tools = load()
+  const r = await tools.execute(
+    {
+      name: 'create_watch',
+      args: {
+        description: 'Big change',
+        metric_key: 'conversions_total',
+        operator: 'pct_change_gt',
+        threshold: 20,
+      },
+    },
+    { workspaceId: 'ws-1', userId: 'u-1' },
+  )
+  assert.equal(r.ok, true)
+  assert.equal(captured.operator, 'changes_by_pct')
 })

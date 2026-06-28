@@ -7,6 +7,7 @@ const RESEND_PATH = require.resolve('../src/services/email/resend.service')
 const INSIGHTS_PATH = require.resolve('../src/services/insights/insights.service')
 const RECIPIENT_PATH = require.resolve('../src/services/notifications/recipient')
 const SETTINGS_PATH = require.resolve('../src/services/notifications/settings.service')
+const NOTIF_CENTER_PATH = require.resolve('../src/services/notifications/notification-center.service')
 const SERVICE_PATH = require.resolve('../src/services/notifications/digest.service')
 
 function load({ recipient = { email: 'me@acme.com', orgName: 'Acme' }, insights = [], emailResult = { ok: true, id: 'm1' } } = {}) {
@@ -28,6 +29,10 @@ function load({ recipient = { email: 'me@acme.com', orgName: 'Acme' }, insights 
     exports: {
       getSettings: async () => ({ weekly_digest: true, critical_alerts: true, email_override: null }),
     },
+  }
+  require.cache[NOTIF_CENTER_PATH] = {
+    id: NOTIF_CENTER_PATH, filename: NOTIF_CENTER_PATH, loaded: true,
+    exports: { createNotification: async () => ({}) },
   }
   delete require.cache[SERVICE_PATH]
   return { svc: require(SERVICE_PATH), sent }
