@@ -6,8 +6,10 @@
 
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { UserFacingError, NotFoundError } = require('../../lib/error-handler')
+const canonicalMetrics = require('../metrics/canonical-metrics.service')
 
 const OPERATORS = new Set(['drops_below', 'rises_above', 'changes_by_pct', 'any_change'])
+const MAX_WATCHES_PER_WORKSPACE = 50
 
 function validateInput({ description, metric_key, operator, threshold }) {
   const desc = String(description || '').trim()
@@ -52,6 +54,24 @@ async function listWatches(workspaceId) {
 async function createWatch(workspaceId, userId, payload) {
   validateInput(payload)
   const supabase = getServiceRoleClient()
+  const { count, error: countErr } = await supabase
+    .from('watches')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+  if (countErr) throw countErr
+  if ((count || 0) >= MAX_WATCHES_PER_WORKSPACE) {
+    throw new UserFacingError(
+      `Limite atteinte : ${MAX_WATCHES_PER_WORKSPACE} alertes maximum par workspace.`,
+      { statusCode: 400, code: 'WATCH_LIMIT_REACHED' },
+    )
+  }
+  const metricExists = await canonicalMetrics.hasMetricKey(workspaceId, payload.metric_key.trim())
+  if (!metricExists) {
+    throw new UserFacingError(
+      `Métrique « ${payload.metric_key.trim()} » introuvable dans ce workspace.`,
+      { statusCode: 400, code: 'UNKNOWN_METRIC_KEY' },
+    )
+  }
   const row = {
     workspace_id: workspaceId,
     created_by: userId || null,

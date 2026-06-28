@@ -68,6 +68,19 @@ function validateEnv() {
     throw new Error('ADMIN_TOKEN must be at least 32 characters long')
   }
 
+  // Stripe : en production, la clé DOIT être une clé live (`sk_live_`).
+  // On refuse de démarrer avec une clé test (`sk_test_`) en prod pour éviter
+  // des transactions fantômes. NB : on ne PASSE PAS en live ici — on vérifie
+  // juste le préfixe au boot.
+  if (isProduction && process.env.STRIPE_SECRET_KEY) {
+    if (!process.env.STRIPE_SECRET_KEY.startsWith('sk_live_')) {
+      throw new Error(
+        'STRIPE_SECRET_KEY must be a live key (sk_live_*) in production. ' +
+          'A test key (sk_test_*) would create sandbox-only transactions.',
+      )
+    }
+  }
+
   // APP_URL pilote l'URL de redirection OAuth pour TOUS les providers (GA4,
   // Meta, Stripe, Shopify, etc.). Une URL mal-formée (typo, slash final,
   // protocole oublié) produit un redirect_uri silencieusement invalide :

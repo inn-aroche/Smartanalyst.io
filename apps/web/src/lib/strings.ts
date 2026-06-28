@@ -499,6 +499,8 @@ const en = {
   'chat.error.creditDepleted':
     'Deep mode is temporarily unavailable. Switch back to Quick mode to keep going.',
   'chat.error.retry': 'Retry',
+  'chat.modeDowngraded':
+    'Deep mode is not available on your plan — this response used Fast mode instead.',
   'chat.you': 'You',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',
@@ -966,6 +968,9 @@ const en = {
   'quota.toast.insights.exceeded.title': 'Insights monthly limit reached',
   'quota.toast.connectors.warn.title': 'Almost at your connectors limit',
   'quota.toast.connectors.exceeded.title': 'Connectors limit reached',
+  'quota.chip.aiTokens': 'AI tokens',
+  'quota.toast.aiTokens.warn.title': 'You are nearing your AI usage limit',
+  'quota.toast.aiTokens.exceeded.title': 'AI usage limit reached',
   'quota.toast.cta': 'Upgrade to Pro',
   'aiUsage.title': 'Tokens used this month',
   'aiUsage.subtitle': 'Chat, insights, watch validation…',
@@ -1832,6 +1837,8 @@ const fr: Record<keyof typeof en, string> = {
   'chat.error.creditDepleted':
     'Le mode Approfondi est temporairement indisponible. Repasse en mode Rapide pour continuer.',
   'chat.error.retry': 'Réessayer',
+  'chat.modeDowngraded':
+    "Le mode Approfondi n'est pas disponible sur ton plan — cette réponse a utilisé le mode Rapide.",
   'chat.you': 'Toi',
   'chat.assistant': 'SmartAnalyst',
   'chat.sources': 'Sources',
@@ -2307,6 +2314,9 @@ const fr: Record<keyof typeof en, string> = {
   'quota.toast.insights.exceeded.title': 'Quota insights mensuel atteint',
   'quota.toast.connectors.warn.title': 'Presque à la limite de sources',
   'quota.toast.connectors.exceeded.title': 'Limite de sources atteinte',
+  'quota.chip.aiTokens': 'tokens IA',
+  'quota.toast.aiTokens.warn.title': 'Tu approches de ta limite IA',
+  'quota.toast.aiTokens.exceeded.title': 'Limite IA mensuelle atteinte',
   'quota.toast.cta': 'Passer au Pro',
   'aiUsage.title': 'Tokens consommés ce mois',
   'aiUsage.subtitle': 'Chat, insights, validation alertes…',

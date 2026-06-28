@@ -111,6 +111,7 @@ export default function ChatPage() {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [modeDowngraded, setModeDowngraded] = useState(false)
   const lastInputRef = useRef<string>('')
   // Fichier joint à la prochaine requête. Persiste tant que l'user ne
   // l'enlève pas — l'assistant peut s'y référer dans plusieurs échanges.
@@ -289,6 +290,7 @@ export default function ChatPage() {
 
     lastInputRef.current = trimmed
     setError(null)
+    setModeDowngraded(false)
     setInput('')
     const userMsg: Message = { id: nextId(), role: 'user', text: trimmed }
     const pendingMsg: Message = { id: nextId(), role: 'assistant', pending: true }
@@ -353,6 +355,7 @@ export default function ChatPage() {
             const highlights = payload?.highlights as Highlight[] | undefined
             const cid = payload?.conversationId as string | null | undefined
             const serverMessageId = (payload?.messageId as string | null | undefined) ?? null
+            if (payload?.modeDowngraded) setModeDowngraded(true)
             if (cid && cid !== conversationId) {
               setConversationId(cid)
               if (workspaceId) {
@@ -634,6 +637,12 @@ export default function ChatPage() {
                   {t('chat.error.retry')}
                 </button>
               )}
+            </div>
+          )}
+
+          {modeDowngraded && (
+            <div className="mt-2 flex-shrink-0 rounded-lg border border-brand-amber/30 bg-brand-amber/10 px-3 py-2 text-xs text-brand-amber">
+              {t('chat.modeDowngraded')}
             </div>
           )}
 

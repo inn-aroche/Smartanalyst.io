@@ -169,6 +169,8 @@ export default function ActionShelf({
             onClick={() => {
               void downloadExcel()
             }}
+            locked={!isPro}
+            lockedReason={t('chat.shelf.proOnly')}
           />
           <ShelfButton
             icon="📋"

@@ -221,7 +221,7 @@ test('insights generateForWorkspace délègue au moteur et passe le résultat', 
 
 test('scheduler exports schedules with valid cron patterns', () => {
   const { SCHEDULES } = require('../src/queue-jobs/scheduler')
-  assert.equal(SCHEDULES.length, 6)
+  assert.equal(SCHEDULES.length, 7)
   for (const s of SCHEDULES) {
     assert.ok(s.queueName, 'queueName required')
     assert.ok(s.jobName, 'jobName required')

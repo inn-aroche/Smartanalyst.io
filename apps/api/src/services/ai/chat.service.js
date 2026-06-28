@@ -955,10 +955,12 @@ async function askStream({
   // Approfondi. Sur Free, on rebascule silencieusement sur Gemini — l'UI
   // côté front grise déjà le toggle Approfondi pour signaler la limite.
   let effectiveMode = mode
+  let modeDowngraded = false
   if (mode === 'deep' && workspaceId) {
     const plan = await entitlements.getWorkspacePlan(workspaceId)
     if (!entitlements.canUseFeature(plan, 'deep_chat')) {
       effectiveMode = 'fast'
+      modeDowngraded = true
       logger.info(
         { event: 'chat_mode_downgraded_by_plan', workspaceId, plan },
         'Deep mode requested but plan does not allow it — falling back to fast',
@@ -1232,6 +1234,7 @@ async function askStream({
     highlights,
     conversationId: conversation?.id || null,
     messageId: assistantMessageId,
+    modeDowngraded: modeDowngraded || undefined,
   })
 }
 

@@ -22,6 +22,7 @@ const PLAN_FEATURES = {
   free: {
     maxConnectors: 1,
     maxInsightsPerMonth: 3,
+    maxAiTokensPerMonth: 50_000,
     canGenerateReports: false,
     canUseDeepChat: false,
     // Lot V2.3 — Pin / Slide deck Pro-only (cahier 22b §5).
@@ -31,6 +32,7 @@ const PLAN_FEATURES = {
   starter: {
     maxConnectors: 3,
     maxInsightsPerMonth: 100,
+    maxAiTokensPerMonth: 500_000,
     // Rapports OK pour Starter (cas d'usage cle du freelance : envoyer son
     // rapport mensuel au client meme sans toute la suite Pro).
     canGenerateReports: true,
@@ -42,6 +44,7 @@ const PLAN_FEATURES = {
   pro: {
     maxConnectors: Infinity,
     maxInsightsPerMonth: Infinity,
+    maxAiTokensPerMonth: Infinity,
     canGenerateReports: true,
     canUseDeepChat: true,
     canPinToDashboard: true,
@@ -161,6 +164,8 @@ function getQuotaLimit(plan, quotaType) {
       return features.maxConnectors
     case 'insights_per_month':
       return features.maxInsightsPerMonth
+    case 'ai_tokens_per_month':
+      return features.maxAiTokensPerMonth
     default:
       return Infinity
   }
@@ -191,6 +196,20 @@ async function getCurrentUsage(workspaceId, quotaType) {
         .gte('created_at', startOfMonth)
       return count || 0
     }
+    if (quotaType === 'ai_tokens_per_month') {
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      const { data } = await supabase
+        .from('ai_usage')
+        .select('input_tokens, output_tokens')
+        .eq('workspace_id', workspaceId)
+        .gte('created_at', startOfMonth)
+      let total = 0
+      for (const r of data || []) {
+        total += (r.input_tokens || 0) + (r.output_tokens || 0)
+      }
+      return total
+    }
   } catch {
     return 0
   }
@@ -203,9 +222,10 @@ async function getCurrentUsage(workspaceId, quotaType) {
  */
 async function getEntitlementsSummary(workspaceId) {
   const plan = await getWorkspacePlan(workspaceId)
-  const [connectorsQ, insightsQ] = await Promise.all([
+  const [connectorsQ, insightsQ, aiTokensQ] = await Promise.all([
     checkQuota(workspaceId, 'connectors'),
     checkQuota(workspaceId, 'insights_per_month'),
+    checkQuota(workspaceId, 'ai_tokens_per_month'),
   ])
   return {
     plan,
@@ -225,6 +245,11 @@ async function getEntitlementsSummary(workspaceId) {
         current: insightsQ.current,
         limit: insightsQ.limit === Infinity ? null : insightsQ.limit,
         exceeded: insightsQ.exceeded,
+      },
+      aiTokensPerMonth: {
+        current: aiTokensQ.current,
+        limit: aiTokensQ.limit === Infinity ? null : aiTokensQ.limit,
+        exceeded: aiTokensQ.exceeded,
       },
     },
   }

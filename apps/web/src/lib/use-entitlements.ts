@@ -22,6 +22,7 @@ export type Entitlements = {
   quotas: {
     connectors: { current: number; limit: number | null; exceeded: boolean }
     insightsPerMonth: { current: number; limit: number | null; exceeded: boolean }
+    aiTokensPerMonth?: { current: number; limit: number | null; exceeded: boolean }
   }
 }
 

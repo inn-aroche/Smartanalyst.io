@@ -45,7 +45,7 @@ function setRequiredEnv() {
 }
 
 function setProductionRequiredEnv() {
-  process.env.STRIPE_SECRET_KEY = 'sk'
+  process.env.STRIPE_SECRET_KEY = 'sk_live_test1234567890'
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec'
   process.env.RESEND_API_KEY = 'rs'
   process.env.APP_URL = 'https://app.smartanalyst.io'
@@ -133,6 +133,41 @@ test('validateEnv OK si ADMIN_TOKEN ≥ 32 chars', () => {
     const result = validateEnv()
     assert.equal(result.ok, true)
     assert.ok(!result.missingRecommended.includes('ADMIN_TOKEN'))
+  } finally {
+    restoreEnv(snap, keys)
+  }
+})
+
+// ━━━ Stripe live key validation ━━━
+
+test('validateEnv throw si STRIPE_SECRET_KEY = sk_test_ en prod', () => {
+  const { snap, keys } = snapshotEnv()
+  try {
+    delete require.cache[ENV_VALIDATOR_PATH]
+    process.env.NODE_ENV = 'production'
+    setRequiredEnv()
+    setProductionRequiredEnv()
+    process.env.STRIPE_SECRET_KEY = 'sk_test_fake_key_1234'
+
+    const { validateEnv } = require(ENV_VALIDATOR_PATH)
+    assert.throws(() => validateEnv(), /must be a live key/)
+  } finally {
+    restoreEnv(snap, keys)
+  }
+})
+
+test('validateEnv OK avec sk_live_ en prod', () => {
+  const { snap, keys } = snapshotEnv()
+  try {
+    delete require.cache[ENV_VALIDATOR_PATH]
+    process.env.NODE_ENV = 'production'
+    setRequiredEnv()
+    setProductionRequiredEnv()
+    process.env.STRIPE_SECRET_KEY = 'sk_live_real_key_1234'
+
+    const { validateEnv } = require(ENV_VALIDATOR_PATH)
+    const result = validateEnv()
+    assert.equal(result.ok, true)
   } finally {
     restoreEnv(snap, keys)
   }
