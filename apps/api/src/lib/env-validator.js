@@ -68,15 +68,14 @@ function validateEnv() {
     throw new Error('ADMIN_TOKEN must be at least 32 characters long')
   }
 
-  // Stripe : en production, la clé DOIT être une clé live (`sk_live_`).
-  // On refuse de démarrer avec une clé test (`sk_test_`) en prod pour éviter
-  // des transactions fantômes. NB : on ne PASSE PAS en live ici — on vérifie
-  // juste le préfixe au boot.
+  // Stripe : en production, la clé DEVRAIT être une clé live (`sk_live_`).
+  // Warning (pas throw) car le passage en live Stripe est un verrou humain
+  // explicite (CLAUDE.md) — on ne veut pas crasher l'API existante.
   if (isProduction && process.env.STRIPE_SECRET_KEY) {
     if (!process.env.STRIPE_SECRET_KEY.startsWith('sk_live_')) {
-      throw new Error(
-        'STRIPE_SECRET_KEY must be a live key (sk_live_*) in production. ' +
-          'A test key (sk_test_*) would create sandbox-only transactions.',
+      console.warn(
+        '⚠ STRIPE_SECRET_KEY is a test key (sk_test_*) in production. ' +
+          'Transactions will be sandbox-only. Switch to sk_live_* before going live.',
       )
     }
   }
