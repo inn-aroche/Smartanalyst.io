@@ -76,3 +76,35 @@ test('quotas insights : free=3/mois, starter=100/mois, pro=Infinity', () => {
   assert.equal(PLAN_FEATURES.starter.maxInsightsPerMonth, 100)
   assert.equal(PLAN_FEATURES.pro.maxInsightsPerMonth, Infinity)
 })
+
+test('quotas AI tokens : free=50K, starter=500K, pro=Infinity', () => {
+  assert.equal(PLAN_FEATURES.free.maxAiTokensPerMonth, 50_000)
+  assert.equal(PLAN_FEATURES.starter.maxAiTokensPerMonth, 500_000)
+  assert.equal(PLAN_FEATURES.pro.maxAiTokensPerMonth, Infinity)
+})
+
+// ─── normalizePlan ──────────────────────────────────────────────────────
+const { normalizePlan } = require('../src/services/billing/entitlements.service')
+
+test('normalizePlan : plans connus retournés tels quels', () => {
+  assert.equal(normalizePlan('free'), 'free')
+  assert.equal(normalizePlan('starter'), 'starter')
+  assert.equal(normalizePlan('pro'), 'pro')
+})
+
+test('normalizePlan : legacy mapping (agency→pro, trial→free)', () => {
+  assert.equal(normalizePlan('agency'), 'pro')
+  assert.equal(normalizePlan('trial'), 'free')
+})
+
+test('normalizePlan : null/undefined/unknown → free', () => {
+  assert.equal(normalizePlan(null), 'free')
+  assert.equal(normalizePlan(undefined), 'free')
+  assert.equal(normalizePlan('unknown'), 'free')
+})
+
+test('normalizePlan : case-insensitive', () => {
+  assert.equal(normalizePlan('PRO'), 'pro')
+  assert.equal(normalizePlan('Free'), 'free')
+  assert.equal(normalizePlan('TRIAL'), 'free')
+})

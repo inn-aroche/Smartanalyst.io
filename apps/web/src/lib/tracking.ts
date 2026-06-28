@@ -46,6 +46,7 @@ export type TrackEvent =
   | 'billing_portal_opened'
   | 'plan_changed'
   | 'payment_failed'
+  | 'grace_period_warning_shown'
   | 'dunning_recovered'
   // ── Qualité IA ────────────────────────────────────────────────────────
   | 'chat_error_shown'

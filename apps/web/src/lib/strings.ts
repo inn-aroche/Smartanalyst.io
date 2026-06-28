@@ -1182,6 +1182,13 @@ const en = {
   'billing.error.noCustomer': 'No subscription to manage yet — upgrade first.',
   'billing.error.planUnavailable': 'This plan is currently unavailable.',
   'billing.error.generic': 'Billing request failed. Try again.',
+  'billing.grace.title': 'Payment failed',
+  'billing.grace.body':
+    'Your last payment did not go through. Update your payment method within {days} days to keep your current plan.',
+  'billing.grace.expiredTitle': 'Plan suspended',
+  'billing.grace.expiredBody':
+    'Your payment method could not be charged and the grace period has ended. Your plan has been downgraded to Free. Update your payment method to reactivate.',
+  'billing.grace.cta': 'Update payment method',
   // ━━━ UpgradePrompt ━━━
   'upgrade.title': 'Pro feature',
   'upgrade.cta': 'Upgrade to Pro',
@@ -2553,6 +2560,13 @@ const fr: Record<keyof typeof en, string> = {
   'billing.error.noCustomer': "Pas encore d'abonnement à gérer — passe Pro d'abord.",
   'billing.error.planUnavailable': "Ce plan n'est pas disponible pour le moment.",
   'billing.error.generic': 'Requête de facturation échouée. Réessaie.',
+  'billing.grace.title': 'Échec de paiement',
+  'billing.grace.body':
+    "Ton dernier paiement n'a pas abouti. Mets à jour ton moyen de paiement dans les {days} jours pour conserver ton plan actuel.",
+  'billing.grace.expiredTitle': 'Plan suspendu',
+  'billing.grace.expiredBody':
+    "Ton moyen de paiement n'a pas pu être débité et la période de grâce est terminée. Ton plan a été rétrogradé en Free. Mets à jour ton moyen de paiement pour réactiver.",
+  'billing.grace.cta': 'Mettre à jour le paiement',
   // ━━━ UpgradePrompt ━━━
   'upgrade.title': 'Fonctionnalité Pro',
   'upgrade.cta': 'Passer au plan Pro',

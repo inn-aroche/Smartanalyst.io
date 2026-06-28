@@ -65,12 +65,58 @@ const PLAN_FEATURES = {
 // matchent ce qu'il a achete).
 const LEGACY_TO_MVP = { agency: 'pro', trial: 'free' }
 
+// Durée de grâce après échec de paiement : 7 jours après la fin de la
+// période payée avant dégradation vers free.
+const GRACE_PERIOD_DAYS = 7
+
 function normalizePlan(plan) {
   if (!plan) return 'free'
   const lower = String(plan).toLowerCase()
   if (PLAN_FEATURES[lower]) return lower
   if (LEGACY_TO_MVP[lower]) return LEGACY_TO_MVP[lower]
   return 'free'
+}
+
+/**
+ * Vérifie si l'organisation est en période de grâce expirée (paiement
+ * échoué depuis plus de GRACE_PERIOD_DAYS). Si oui, le plan doit être
+ * dégradé en 'free' même si organizations.plan dit encore 'pro'.
+ * Fail-open : retourne { expired: false } en cas d'erreur DB.
+ */
+async function _checkGracePeriod(organizationId) {
+  if (!organizationId) return { expired: false, inGrace: false }
+  try {
+    const supabase = getServiceRoleClient()
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('status, current_period_end')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (!sub) return { expired: false, inGrace: false }
+    if (sub.status !== 'past_due') return { expired: false, inGrace: false }
+    // past_due : le paiement a échoué, Stripe réessaie.
+    if (!sub.current_period_end) return { expired: false, inGrace: true }
+    const periodEnd = new Date(sub.current_period_end)
+    const graceDeadline = new Date(periodEnd.getTime() + GRACE_PERIOD_DAYS * 86_400_000)
+    const now = new Date()
+    if (now > graceDeadline) {
+      return { expired: true, inGrace: false, deadlineAt: graceDeadline.toISOString() }
+    }
+    return {
+      expired: false,
+      inGrace: true,
+      deadlineAt: graceDeadline.toISOString(),
+      daysLeft: Math.ceil((graceDeadline.getTime() - now.getTime()) / 86_400_000),
+    }
+  } catch (err) {
+    logger.warn(
+      { event: 'grace_period_check_failed', organizationId, error: err.message },
+      'Grace period check failed, defaulting to no grace',
+    )
+    return { expired: false, inGrace: false }
+  }
 }
 
 /**
@@ -94,7 +140,18 @@ async function getWorkspacePlan(workspaceId) {
       )
       return 'free'
     }
-    return normalizePlan(data.organizations?.plan)
+    const plan = normalizePlan(data.organizations?.plan)
+    if (plan !== 'free') {
+      const grace = await _checkGracePeriod(data.organization_id)
+      if (grace.expired) {
+        logger.info(
+          { event: 'grace_period_expired_downgrade', workspaceId, orgId: data.organization_id },
+          'Grace period expired — returning free plan',
+        )
+        return 'free'
+      }
+    }
+    return plan
   } catch (err) {
     logger.warn(
       { event: 'entitlements_plan_lookup_threw', workspaceId, error: err.message },
@@ -117,7 +174,12 @@ async function getOrganizationPlan(organizationId) {
       .eq('id', organizationId)
       .maybeSingle()
     if (error || !data) return 'free'
-    return normalizePlan(data.plan)
+    const plan = normalizePlan(data.plan)
+    if (plan !== 'free') {
+      const grace = await _checkGracePeriod(organizationId)
+      if (grace.expired) return 'free'
+    }
+    return plan
   } catch {
     return 'free'
   }
@@ -227,6 +289,33 @@ async function getEntitlementsSummary(workspaceId) {
     checkQuota(workspaceId, 'insights_per_month'),
     checkQuota(workspaceId, 'ai_tokens_per_month'),
   ])
+
+  // Résolution de l'org pour vérifier la grâce (le plan retourné par
+  // getWorkspacePlan est déjà dégradé si la grâce est expirée, mais le
+  // frontend a besoin du flag pour afficher un bandeau d'alerte).
+  let gracePeriod = null
+  try {
+    const supabase = getServiceRoleClient()
+    const { data } = await supabase
+      .from('workspaces')
+      .select('organization_id')
+      .eq('id', workspaceId)
+      .maybeSingle()
+    if (data?.organization_id) {
+      const grace = await _checkGracePeriod(data.organization_id)
+      if (grace.inGrace || grace.expired) {
+        gracePeriod = {
+          active: grace.inGrace,
+          expired: grace.expired,
+          deadlineAt: grace.deadlineAt || null,
+          daysLeft: grace.daysLeft ?? 0,
+        }
+      }
+    }
+  } catch {
+    // Fail-open : on ne bloque pas le résumé si la grâce est illisible.
+  }
+
   return {
     plan,
     features: {
@@ -252,6 +341,7 @@ async function getEntitlementsSummary(workspaceId) {
         exceeded: aiTokensQ.exceeded,
       },
     },
+    gracePeriod,
   }
 }
 

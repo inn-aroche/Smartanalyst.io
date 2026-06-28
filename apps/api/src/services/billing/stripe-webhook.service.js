@@ -276,15 +276,37 @@ async function _onInvoicePaymentFailed(event) {
     )
     return
   }
+  // Calcul des jours de grâce restants pour le message.
+  const sub = await supabase
+    .from('subscriptions')
+    .select('current_period_end')
+    .eq('organization_id', org.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+    .then((r) => r.data)
+    .catch(() => null)
+  const GRACE_DAYS = 7
+  let graceMsg = ''
+  if (sub?.current_period_end) {
+    const deadline = new Date(new Date(sub.current_period_end).getTime() + GRACE_DAYS * 86_400_000)
+    const daysLeft = Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / 86_400_000))
+    graceMsg = ` Tu as ${daysLeft} jour${daysLeft > 1 ? 's' : ''} pour régulariser avant la suspension de ton plan.`
+  }
+
   await notificationCenter
     .createNotification({
       workspaceId,
       type: 'system',
       severity: 'critical',
       title: 'Échec de paiement',
-      body: 'Le règlement de ton abonnement a échoué. Mets à jour ton moyen de paiement dans Réglages → Plan & facturation pour éviter une interruption.',
-      link: '/settings',
-      meta: { invoice_id: invoice.id, amount_due: invoice.amount_due },
+      body: `Le règlement de ton abonnement a échoué. Mets à jour ton moyen de paiement dans Réglages → Plan & facturation.${graceMsg}`,
+      link: '/settings?tab=billing',
+      meta: {
+        invoice_id: invoice.id,
+        amount_due: invoice.amount_due,
+        action: 'update_payment_method',
+      },
     })
     .catch(() => null)
   logger.warn(
