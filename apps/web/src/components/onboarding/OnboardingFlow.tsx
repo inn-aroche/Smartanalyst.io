@@ -23,7 +23,7 @@ import ScoreRing from '@/components/charts/ScoreRing'
 import ActivationErrorState from '@/components/connectors/ActivationErrorState'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { useT } from '@/lib/i18n'
+import { type StringKey, useT } from '@/lib/i18n'
 import { track } from '@/lib/tracking'
 
 export const ONBOARDING_OPEN_EVENT = 'sa-onboarding:open'
@@ -33,8 +33,11 @@ export const ONBOARDING_OPEN_EVENT = 'sa-onboarding:open'
 // donc sans persistance le user revient à la step 1, perte sèche d'UX.
 const STORAGE_KEY = 'sa-onboarding:state-v1'
 
+type StepNumber = 1 | 2 | 3 | 4 | 5 | 6
+const TOTAL_STEPS = 6
+
 type PersistedState = {
-  step: 1 | 2 | 3 | 4 | 5
+  step: StepNumber
   url: string
   detected: DetectedProfile | null
   fallback: boolean
@@ -46,9 +49,9 @@ function loadPersisted(): PersistedState | null {
     const raw = window.sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<PersistedState>
-    if (!parsed || !parsed.step || parsed.step < 1 || parsed.step > 5) return null
+    if (!parsed || !parsed.step || parsed.step < 1 || parsed.step > TOTAL_STEPS) return null
     return {
-      step: parsed.step as 1 | 2 | 3 | 4 | 5,
+      step: parsed.step as StepNumber,
       url: typeof parsed.url === 'string' ? parsed.url : 'https://',
       detected: parsed.detected ?? null,
       fallback: !!parsed.fallback,
@@ -158,13 +161,14 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
   // Hydrate depuis sessionStorage si on reprend un flow en cours (cas OAuth :
   // user redirigé hors app puis ramené, React state perdu).
   const persisted = useMemo(() => loadPersisted(), [])
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(persisted?.step ?? 1)
+  const [step, setStep] = useState<StepNumber>(persisted?.step ?? 1)
   const [url, setUrl] = useState(persisted?.url ?? 'https://')
   const [detected, setDetected] = useState<DetectedProfile | null>(persisted?.detected ?? null)
   const [fallback, setFallback] = useState<boolean>(persisted?.fallback ?? false)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [quizSaving, setQuizSaving] = useState(false)
   const [phases, setPhases] = useState<LoadingPhases>({
     connection: 'pending',
     score: 'pending',
@@ -185,10 +189,10 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
     track('onboarding_step_viewed', { step })
   }, [step])
 
-  // Event first_insight_shown à l'arrivée step 5 si on a effectivement un
+  // Event first_insight_shown à l'arrivée step 6 si on a effectivement un
   // insight à montrer (sinon l'event mentirait sur le vrai "premier wow").
   useEffect(() => {
-    if (step !== 5) return
+    if (step !== 6) return
     if (firstInsightTracked.current) return
     if (finalInsights.length === 0) return
     const latencyMs =
@@ -203,7 +207,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
   // profil détecté / flag fallback). Step 5 n'est pas persisté : si le user
   // a atteint le wow, c'est terminé, pas besoin de rouvrir au F5.
   useEffect(() => {
-    if (step >= 5) return
+    if (step >= TOTAL_STEPS) return
     const payload: PersistedState = { step, url, detected, fallback }
     try {
       window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -218,7 +222,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
   // on coche "connexion" immédiatement, puis on enchaîne les vrais appels
   // score → insights. Aucune barre simulée, aucun timer cosmétique.
   useEffect(() => {
-    if (step !== 4) return
+    if (step !== 5) return
     setPhases({ connection: 'done', score: 'pending', insights: 'pending' })
     setSlowSignal(false)
     step4StartedAt.current = performance.now()
@@ -236,8 +240,8 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
       // (ex. retour OAuth dans une nouvelle session, refresh raté). On
       // affiche step 5 quand même, mais avec un message explicite plutôt
       // qu'un écran blanc.
-      setLoadWowError(t('onboarding.s5.errorNoWorkspace'))
-      setStep(5)
+      setLoadWowError(t('onboarding.s6.errorNoWorkspace'))
+      setStep(6)
       return
     }
     // Phase score — best-effort : si l'API n'a rien, on garde finalScore=null
@@ -266,7 +270,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
     }
     // Refresh tout — BriefHome se mettra à jour à la fermeture.
     void queryClient.invalidateQueries()
-    setStep(5)
+    setStep(6)
   }
 
   async function handleAnalyze() {
@@ -335,7 +339,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
         },
       })
       track('profile_confirmed')
-      setStep(3)
+      setStep(3) // quiz maturité
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : t('onboarding.error.generic'))
     } finally {
@@ -347,7 +351,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
     if (window.confirm(t('onboarding.exit.confirm'))) {
       // L'event onboarding_dropped n'a de sens que si l'user abandonne en
       // cours de flow — pas s'il est déjà arrivé au wow (step 5).
-      if (step < 5) track('onboarding_dropped', { step })
+      if (step < TOTAL_STEPS) track('onboarding_dropped', { step })
       onClose()
     }
   }
@@ -360,7 +364,7 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
     // sur l'écran connexion plutôt que step 1), puis on ferme l'overlay
     // et on navigue vers /connectors.
     try {
-      const payload: PersistedState = { step: 3, url, detected, fallback }
+      const payload: PersistedState = { step: 4, url, detected, fallback }
       window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
     } catch {
       // sessionStorage indispo : on continue, dans le pire des cas l'user
@@ -403,10 +407,45 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
             />
           )}
           {step === 3 && (
-            <StepConnect onConnect={handleConnect} onSkip={() => setStep(4)} fallback={fallback} />
+            <StepQuiz
+              detectedTools={detected?.detected_tools}
+              saving={quizSaving}
+              onSubmit={async (quiz) => {
+                if (!workspace?.id) return
+                setQuizSaving(true)
+                try {
+                  await apiFetch('/api/v1/onboarding/profile', {
+                    method: 'POST',
+                    body: {
+                      workspaceId: workspace.id,
+                      url: detected?.url || url,
+                      sector: detected?.sector || '',
+                      market: detected?.market || '',
+                      ...quiz,
+                    },
+                  })
+                  track('maturity_quiz_completed', {
+                    business_model: quiz.business_model,
+                    maturity_level: quiz.maturity_level,
+                    primary_goal: quiz.primary_goal,
+                    stack_count: quiz.current_stack.length,
+                  })
+                  setStep(4)
+                } catch (err) {
+                  setAnalyzeError(
+                    err instanceof Error ? err.message : t('onboarding.error.generic'),
+                  )
+                } finally {
+                  setQuizSaving(false)
+                }
+              }}
+            />
           )}
-          {step === 4 && <StepLoading phases={phases} slow={slowSignal} />}
-          {step === 5 && (
+          {step === 4 && (
+            <StepConnect onConnect={handleConnect} onSkip={() => setStep(5)} fallback={fallback} />
+          )}
+          {step === 5 && <StepLoading phases={phases} slow={slowSignal} />}
+          {step === 6 && (
             <StepWow
               score={finalScore}
               insights={finalInsights}
@@ -417,6 +456,12 @@ function OnboardingShell({ onClose }: { onClose: (opts?: { keepState?: boolean }
                   has_score: finalScore?.has_data ?? false,
                   insights_count: finalInsights.length,
                 })
+                if (workspace?.id) {
+                  void apiFetch('/api/v1/onboarding/complete', {
+                    method: 'POST',
+                    body: { workspaceId: workspace.id },
+                  })
+                }
                 onClose()
                 navigate('/')
               }}
@@ -451,7 +496,7 @@ function TopBar({ step, onClose }: { step: number; onClose: () => void }) {
       </div>
       <div className="flex items-center gap-5">
         <div className="flex items-center gap-1.5">
-          {[1, 2, 3, 4, 5].map((i) => (
+          {Array.from({ length: TOTAL_STEPS }, (_, k) => k + 1).map((i) => (
             <div
               key={i}
               className={[
@@ -643,7 +688,200 @@ function Row({
   )
 }
 
-// ─── Step 3 : Connecter 1re source ───────────────────────────────────────
+// ─── Step 3 : Quiz maturité ──────────────────────────────────────────────
+
+const BUSINESS_MODELS = ['b2b', 'b2c', 'b2b2c', 'marketplace', 'other'] as const
+const MATURITY_LEVELS = ['beginner', 'intermediate', 'advanced'] as const
+const PRIMARY_GOALS = [
+  'grow_revenue',
+  'reduce_cac',
+  'improve_retention',
+  'optimize_campaigns',
+  'understand_customers',
+] as const
+const STACK_OPTIONS = [
+  'GA4',
+  'Google Ads',
+  'Meta Ads',
+  'Shopify',
+  'WooCommerce',
+  'Stripe',
+  'HubSpot',
+  'Mailchimp',
+  'Klaviyo',
+  'Search Console',
+  'TikTok Ads',
+  'LinkedIn Ads',
+  'Semrush',
+  'Ahrefs',
+] as const
+
+type QuizData = {
+  business_model: string
+  maturity_level: string
+  primary_goal: string
+  current_stack: string[]
+}
+
+function StepQuiz({
+  detectedTools,
+  saving,
+  onSubmit,
+}: {
+  detectedTools?: Record<string, boolean>
+  saving: boolean
+  onSubmit: (data: QuizData) => void
+}) {
+  const t = useT()
+  const [businessModel, setBusinessModel] = useState('')
+  const [maturityLevel, setMaturityLevel] = useState('')
+  const [primaryGoal, setPrimaryGoal] = useState('')
+  const [stack, setStack] = useState<string[]>(() => {
+    if (!detectedTools) return []
+    return Object.entries(detectedTools)
+      .filter(([, v]) => v)
+      .map(([k]) => k)
+      .filter((k) => (STACK_OPTIONS as readonly string[]).includes(k))
+  })
+  const canSubmit = businessModel && maturityLevel && primaryGoal
+
+  function toggleStack(tool: string) {
+    setStack((prev) => (prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]))
+  }
+
+  return (
+    <>
+      <Eyebrow n={3} hint={t('onboarding.s3.hint')} />
+      <h1 className="mb-2.5 font-head text-[26px] font-bold tracking-[-0.02em] text-text-1">
+        {t('onboarding.s3.title')}
+      </h1>
+      <p className="mb-6 text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s3.body')}</p>
+
+      {/* Business model */}
+      <fieldset className="mb-5">
+        <legend className="sa-label mb-2">{t('onboarding.s3.businessModel')}</legend>
+        <div className="flex flex-wrap gap-2">
+          {BUSINESS_MODELS.map((bm) => (
+            <button
+              key={bm}
+              type="button"
+              onClick={() => setBusinessModel(bm)}
+              className={[
+                'sa-chip cursor-pointer transition-colors',
+                businessModel === bm
+                  ? 'bg-brand-blue-deep text-white'
+                  : 'bg-bg-2 text-text-2 hover:bg-bg-3',
+              ].join(' ')}
+            >
+              {t(`onboarding.s3.businessModel.${bm}` as StringKey)}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* Maturity level */}
+      <fieldset className="mb-5">
+        <legend className="sa-label mb-2">{t('onboarding.s3.maturityLevel')}</legend>
+        <div className="flex flex-col gap-2">
+          {MATURITY_LEVELS.map((ml) => (
+            <button
+              key={ml}
+              type="button"
+              onClick={() => setMaturityLevel(ml)}
+              className={[
+                'flex items-center gap-3 rounded-[10px] border px-4 py-3 text-left transition-colors',
+                maturityLevel === ml
+                  ? 'border-brand-blue-deep bg-brand-blue-deep/5'
+                  : 'border-border bg-bg-1 hover:border-border-bright',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2',
+                  maturityLevel === ml ? 'border-brand-blue-deep' : 'border-border',
+                ].join(' ')}
+              >
+                {maturityLevel === ml && (
+                  <span className="h-2.5 w-2.5 rounded-full bg-brand-blue-deep" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-text-1">
+                  {t(`onboarding.s3.maturityLevel.${ml}` as StringKey)}
+                </div>
+                <div className="text-[12.5px] text-text-2">
+                  {t(`onboarding.s3.maturityLevel.${ml}.desc` as StringKey)}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* Primary goal */}
+      <fieldset className="mb-5">
+        <legend className="sa-label mb-2">{t('onboarding.s3.primaryGoal')}</legend>
+        <div className="flex flex-wrap gap-2">
+          {PRIMARY_GOALS.map((pg) => (
+            <button
+              key={pg}
+              type="button"
+              onClick={() => setPrimaryGoal(pg)}
+              className={[
+                'sa-chip cursor-pointer transition-colors',
+                primaryGoal === pg
+                  ? 'bg-brand-blue-deep text-white'
+                  : 'bg-bg-2 text-text-2 hover:bg-bg-3',
+              ].join(' ')}
+            >
+              {t(`onboarding.s3.primaryGoal.${pg}` as StringKey)}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* Current stack */}
+      <fieldset className="mb-6">
+        <legend className="sa-label mb-2">{t('onboarding.s3.currentStack')}</legend>
+        <div className="flex flex-wrap gap-2">
+          {STACK_OPTIONS.map((tool) => (
+            <button
+              key={tool}
+              type="button"
+              onClick={() => toggleStack(tool)}
+              className={[
+                'sa-chip cursor-pointer transition-colors',
+                stack.includes(tool)
+                  ? 'bg-brand-cyan/15 text-brand-cyan'
+                  : 'bg-bg-2 text-text-2 hover:bg-bg-3',
+              ].join(' ')}
+            >
+              {tool}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <button
+        type="button"
+        disabled={!canSubmit || saving}
+        onClick={() =>
+          onSubmit({
+            business_model: businessModel,
+            maturity_level: maturityLevel,
+            primary_goal: primaryGoal,
+            current_stack: stack,
+          })
+        }
+        className="sa-btn sa-btn-primary w-full !py-3.5 !text-base disabled:opacity-60"
+      >
+        {saving ? t('onboarding.s3.saving') : t('onboarding.s3.cta')} →
+      </button>
+    </>
+  )
+}
+
+// ─── Step 4 : Connecter 1re source ───────────────────────────────────────
 
 function StepConnect({
   onConnect,
@@ -657,17 +895,17 @@ function StepConnect({
   const t = useT()
   return (
     <>
-      <Eyebrow n={3} hint={t('onboarding.s3.hint')} />
+      <Eyebrow n={4} hint={t('onboarding.s4.hint')} />
       <h1 className="mb-2.5 font-head text-[25px] font-bold tracking-[-0.02em] text-text-1">
-        {t('onboarding.s3.title')}
+        {t('onboarding.s4.title')}
       </h1>
-      <p className="mb-3 text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s3.body')}</p>
+      <p className="mb-3 text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s4.body')}</p>
       {fallback && (
         <div className="mb-5 flex items-start gap-2.5 rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-[13px] text-text-1">
           <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-brand-amber font-bold text-white">
             !
           </span>
-          <span>{t('onboarding.s3.fallback')}</span>
+          <span>{t('onboarding.s4.fallback')}</span>
         </div>
       )}
       <div className="sa-card">
@@ -680,14 +918,14 @@ function StepConnect({
           </div>
           <div className="flex-1">
             <div className="font-head text-base font-bold text-text-1">Shopify</div>
-            <div className="text-[13px] text-text-2">{t('onboarding.s3.desc')}</div>
+            <div className="text-[13px] text-text-2">{t('onboarding.s4.desc')}</div>
           </div>
           <span className="sa-chip bg-brand-cyan/10 text-brand-cyan">
-            {t('onboarding.s3.recommended')}
+            {t('onboarding.s4.recommended')}
           </span>
         </div>
         <button type="button" onClick={onConnect} className="sa-btn sa-btn-primary w-full !text-sm">
-          {t('onboarding.s3.connect')}
+          {t('onboarding.s4.connect')}
         </button>
       </div>
       <div className="mt-4 text-center">
@@ -696,36 +934,34 @@ function StepConnect({
           onClick={onSkip}
           className="text-[13px] text-text-3 hover:text-text-2"
         >
-          {t('onboarding.s3.later')} →
+          {t('onboarding.s4.later')} →
         </button>
       </div>
     </>
   )
 }
 
-// ─── Step 4 : Loading ────────────────────────────────────────────────────
+// ─── Step 5 : Loading ────────────────────────────────────────────────────
 
 function StepLoading({ phases, slow }: { phases: LoadingPhases; slow: boolean }) {
   const t = useT()
-  // L'ordre suit la timeline réelle d'exécution : connexion (déjà OK à
-  // l'entrée du step) → score → insights. Pas de palier cosmétique.
   const checks: Array<{ key: keyof LoadingPhases; label: string }> = [
-    { key: 'connection', label: t('onboarding.s4.check1') },
-    { key: 'score', label: t('onboarding.s4.check2') },
-    { key: 'insights', label: t('onboarding.s4.check3') },
+    { key: 'connection', label: t('onboarding.s5.check1') },
+    { key: 'score', label: t('onboarding.s5.check2') },
+    { key: 'insights', label: t('onboarding.s5.check3') },
   ]
   const hasError = phases.score === 'error' || phases.insights === 'error'
   return (
     <div className="text-center">
       <ConnectIllus />
       <h1 className="mb-2.5 mt-6 font-head text-[23px] font-bold tracking-[-0.02em] text-text-1">
-        {t('onboarding.s4.title')}
+        {t('onboarding.s5.title')}
       </h1>
-      <p className="mb-6 text-[14px] text-text-2">{t('onboarding.s4.body')}</p>
+      <p className="mb-6 text-[14px] text-text-2">{t('onboarding.s5.body')}</p>
       <div
         className="mx-auto mb-6 flex items-center justify-center"
         role="status"
-        aria-label={t('onboarding.s4.live')}
+        aria-label={t('onboarding.s5.live')}
       >
         <Spinner />
       </div>
@@ -751,7 +987,7 @@ function StepLoading({ phases, slow }: { phases: LoadingPhases; slow: boolean })
           className="mx-auto mt-5 max-w-[440px] rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-left text-[13px] text-text-1"
           role="status"
         >
-          {t('onboarding.s4.slow')}
+          {t('onboarding.s5.slow')}
         </div>
       )}
       {hasError && (
@@ -759,7 +995,7 @@ function StepLoading({ phases, slow }: { phases: LoadingPhases; slow: boolean })
           className="mx-auto mt-5 max-w-[440px] rounded-[10px] border border-brand-amber/30 bg-brand-amber/10 px-3.5 py-2.5 text-left text-[13px] text-text-1"
           role="status"
         >
-          {t('onboarding.s4.error')}
+          {t('onboarding.s5.error')}
         </div>
       )}
     </div>
@@ -834,7 +1070,7 @@ function PhaseDot({ status }: { status: PhaseStatus }) {
   )
 }
 
-// ─── Step 5 : First wow ──────────────────────────────────────────────────
+// ─── Step 6 : First wow ──────────────────────────────────────────────────
 
 function StepWow({
   score,
@@ -851,21 +1087,18 @@ function StepWow({
 }) {
   const t = useT()
   const hasScore = score?.has_data && typeof score.score === 'number'
-  // Compte tenu de l'audit Lot 0 : si on n'a ni score ni insight, on doit
-  // dire au user que c'est par manque de données (et pas crier "Voici ce
-  // que j'ai repéré" sur du vide).
   const insufficient = !loadError && !hasScore && insights.length === 0
   return (
     <>
       <div className="mb-6 text-center">
         <span className="sa-chip mb-3.5 inline-flex bg-brand-green/10 text-brand-green">
           <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-          {t('onboarding.s5.done')}
+          {t('onboarding.s6.done')}
         </span>
         <h1 className="mb-2.5 font-head text-[27px] font-extrabold tracking-[-0.03em] text-text-1">
-          {t('onboarding.s5.title')}
+          {t('onboarding.s6.title')}
         </h1>
-        <p className="text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s5.body')}</p>
+        <p className="text-[14.5px] leading-[1.6] text-text-2">{t('onboarding.s6.body')}</p>
       </div>
 
       {loadError && (
@@ -896,11 +1129,11 @@ function StepWow({
           <div className="flex-1">
             <div className="mb-1.5 font-head text-[17px] font-bold text-text-1">
               {firstName
-                ? t('onboarding.s5.cardTitleNamed', { name: firstName })
-                : t('onboarding.s5.cardTitle')}
+                ? t('onboarding.s6.cardTitleNamed', { name: firstName })
+                : t('onboarding.s6.cardTitle')}
             </div>
             <p className="text-[13.5px] leading-[1.55] text-text-2">
-              {hasScore ? t('onboarding.s5.cardBody') : t('onboarding.s5.cardBodyNoData')}
+              {hasScore ? t('onboarding.s6.cardBody') : t('onboarding.s6.cardBodyNoData')}
             </p>
           </div>
         </div>
@@ -930,7 +1163,7 @@ function StepWow({
         onClick={onDone}
         className="sa-btn sa-btn-primary w-full !py-3.5 !text-base"
       >
-        {t('onboarding.s5.cta')} →
+        {t('onboarding.s6.cta')} →
       </button>
     </>
   )
@@ -959,7 +1192,7 @@ function Eyebrow({ n, hint }: { n: number; hint: string }) {
   return (
     <div className="mb-3.5 flex items-center gap-2.5">
       <span className="font-mono text-[11px] tracking-[0.1em] text-brand-blue-deep">
-        {t('onboarding.step')} {n}/5
+        {t('onboarding.step')} {n}/{TOTAL_STEPS}
       </span>
       <span className="h-px flex-1 bg-border" />
       <span className="font-mono text-[11px] text-text-3">{hint}</span>

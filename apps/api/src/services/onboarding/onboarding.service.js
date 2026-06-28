@@ -17,10 +17,10 @@ const { detectProfile } = require('./business-profile-detector.service')
  */
 async function analyzeUrl(url) {
   if (!isPublicHttpUrl(url)) {
-    throw new UserFacingError(
-      'URL invalide. Renseigne une URL publique en http(s).',
-      { statusCode: 400, code: 'INVALID_URL' },
-    )
+    throw new UserFacingError('URL invalide. Renseigne une URL publique en http(s).', {
+      statusCode: 400,
+      code: 'INVALID_URL',
+    })
   }
 
   const scraped = await scrapeWebsite(url)
@@ -87,26 +87,36 @@ async function saveProfile({
   detected_tools,
   confidence_score,
   raw_html_data,
+  vertical,
+  business_model,
+  primary_goal,
+  current_stack,
+  maturity_level,
 }) {
   const supabase = getServiceRoleClient()
 
+  const row = {
+    workspace_id: workspaceId,
+    url,
+    sector,
+    market,
+    brand_keywords: brand_keywords || [],
+    description: description || null,
+    detected_tools: detected_tools || {},
+    confidence_score: typeof confidence_score === 'number' ? confidence_score : 50,
+    raw_html_data: raw_html_data || null,
+    updated_at: new Date().toISOString(),
+  }
+  if (vertical !== undefined) row.vertical = vertical || null
+  if (business_model !== undefined) row.business_model = business_model || null
+  if (primary_goal !== undefined) row.primary_goal = primary_goal || null
+  if (current_stack !== undefined)
+    row.current_stack = Array.isArray(current_stack) ? current_stack : []
+  if (maturity_level !== undefined) row.maturity_level = maturity_level || null
+
   const { data: profile, error: upsertError } = await supabase
     .from('business_profiles')
-    .upsert(
-      {
-        workspace_id: workspaceId,
-        url,
-        sector,
-        market,
-        brand_keywords: brand_keywords || [],
-        description: description || null,
-        detected_tools: detected_tools || {},
-        confidence_score: typeof confidence_score === 'number' ? confidence_score : 50,
-        raw_html_data: raw_html_data || null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'workspace_id' },
-    )
+    .upsert(row, { onConflict: 'workspace_id' })
     .select()
     .single()
 
@@ -146,4 +156,29 @@ async function saveProfile({
   return profile
 }
 
-module.exports = { analyzeUrl, saveProfile }
+async function completeOnboarding(workspaceId) {
+  const supabase = getServiceRoleClient()
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ onboarding_completed_at: new Date().toISOString() })
+    .eq('id', workspaceId)
+    .is('onboarding_completed_at', null)
+  if (error) {
+    logger.error({ event: 'onboarding_complete_failed', workspaceId, error: error.message })
+    throw error
+  }
+  logger.info({ event: 'onboarding_completed', workspaceId }, 'Onboarding marked complete')
+}
+
+async function getOnboardingStatus(workspaceId) {
+  const supabase = getServiceRoleClient()
+  const { data, error } = await supabase
+    .from('workspaces')
+    .select('onboarding_completed_at')
+    .eq('id', workspaceId)
+    .single()
+  if (error) throw error
+  return { completed: !!data?.onboarding_completed_at, completedAt: data?.onboarding_completed_at }
+}
+
+module.exports = { analyzeUrl, saveProfile, completeOnboarding, getOnboardingStatus }

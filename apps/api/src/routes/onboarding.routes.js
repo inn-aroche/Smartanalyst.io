@@ -3,7 +3,7 @@
 
 const express = require('express')
 const rateLimit = require('express-rate-limit')
-const { body } = require('express-validator')
+const { body, query } = require('express-validator')
 
 const { jwtMiddleware } = require('../middleware/jwt.middleware')
 const { workspaceScope, requireRole } = require('../middleware/workspace-scope.middleware')
@@ -70,6 +70,19 @@ router.post(
     body('description').optional().isString(),
     body('detected_tools').optional().isObject(),
     body('confidence_score').optional().isInt({ min: 0, max: 100 }),
+    body('vertical').optional().isString().trim().isLength({ max: 60 }),
+    body('business_model').optional().isIn(['b2b', 'b2c', 'b2b2c', 'marketplace', 'other']),
+    body('primary_goal')
+      .optional()
+      .isIn([
+        'grow_revenue',
+        'reduce_cac',
+        'improve_retention',
+        'optimize_campaigns',
+        'understand_customers',
+      ]),
+    body('current_stack').optional().isArray(),
+    body('maturity_level').optional().isIn(['beginner', 'intermediate', 'advanced']),
   ],
   runValidation,
   workspaceScope,
@@ -85,8 +98,46 @@ router.post(
         description: req.body.description,
         detected_tools: req.body.detected_tools,
         confidence_score: req.body.confidence_score,
+        vertical: req.body.vertical,
+        business_model: req.body.business_model,
+        primary_goal: req.body.primary_goal,
+        current_stack: req.body.current_stack,
+        maturity_level: req.body.maturity_level,
       })
       res.status(201).json({ profile })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ━━━ POST /complete — marque l'onboarding comme terminé ━━━
+router.post(
+  '/complete',
+  [body('workspaceId').isUUID().withMessage('workspaceId UUID requis.')],
+  runValidation,
+  workspaceScope,
+  requireRole('editor'),
+  async (req, res, next) => {
+    try {
+      await onboardingService.completeOnboarding(req.workspaceId)
+      res.json({ completed: true })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ━━━ GET /status — vérifie si l'onboarding est complété ━━━
+router.get(
+  '/status',
+  [query('workspaceId').isUUID().withMessage('workspaceId UUID requis.')],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const status = await onboardingService.getOnboardingStatus(req.workspaceId)
+      res.json(status)
     } catch (err) {
       next(err)
     }
