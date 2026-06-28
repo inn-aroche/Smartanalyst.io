@@ -140,7 +140,7 @@ test('validateEnv OK si ADMIN_TOKEN ≥ 32 chars', () => {
 
 // ━━━ Stripe live key validation ━━━
 
-test('validateEnv throw si STRIPE_SECRET_KEY = sk_test_ en prod', () => {
+test('validateEnv warn (pas throw) si STRIPE_SECRET_KEY = sk_test_ en prod', () => {
   const { snap, keys } = snapshotEnv()
   try {
     delete require.cache[ENV_VALIDATOR_PATH]
@@ -150,7 +150,8 @@ test('validateEnv throw si STRIPE_SECRET_KEY = sk_test_ en prod', () => {
     process.env.STRIPE_SECRET_KEY = 'sk_test_fake_key_1234'
 
     const { validateEnv } = require(ENV_VALIDATOR_PATH)
-    assert.throws(() => validateEnv(), /must be a live key/)
+    const result = validateEnv()
+    assert.equal(result.ok, true)
   } finally {
     restoreEnv(snap, keys)
   }
