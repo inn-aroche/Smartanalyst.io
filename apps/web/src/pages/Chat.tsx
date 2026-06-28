@@ -112,6 +112,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [modeDowngraded, setModeDowngraded] = useState(false)
+  const [budgetExceeded, setBudgetExceeded] = useState(false)
   const lastInputRef = useRef<string>('')
   // Fichier joint à la prochaine requête. Persiste tant que l'user ne
   // l'enlève pas — l'assistant peut s'y référer dans plusieurs échanges.
@@ -291,6 +292,7 @@ export default function ChatPage() {
     lastInputRef.current = trimmed
     setError(null)
     setModeDowngraded(false)
+    setBudgetExceeded(false)
     setInput('')
     const userMsg: Message = { id: nextId(), role: 'user', text: trimmed }
     const pendingMsg: Message = { id: nextId(), role: 'assistant', pending: true }
@@ -390,6 +392,7 @@ export default function ChatPage() {
             // Measurement plan §6 — qualité IA.
             track('chat_error_shown', { code })
             if (code === 'AI_BUDGET_EXCEEDED') {
+              setBudgetExceeded(true)
               track('chat_budget_blocked')
             }
           }
@@ -420,6 +423,7 @@ export default function ChatPage() {
         const errCode = err instanceof ApiError ? (err.code ?? String(err.status)) : 'NETWORK'
         track('chat_error_shown', { code: errCode })
         if (err instanceof ApiError && err.code === 'AI_BUDGET_EXCEEDED') {
+          setBudgetExceeded(true)
           track('chat_budget_blocked')
         }
       }
@@ -625,17 +629,26 @@ export default function ChatPage() {
           {error && (
             <div className="mt-3 flex items-center gap-2 flex-shrink-0 rounded-lg border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">
               <span className="flex-1">{error}</span>
-              {lastInputRef.current && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError(null)
-                    void send(lastInputRef.current)
-                  }}
+              {budgetExceeded ? (
+                <a
+                  href="/settings"
                   className="flex-shrink-0 rounded-md bg-brand-red/15 px-2.5 py-1 text-xs font-medium hover:bg-brand-red/25 transition"
                 >
-                  {t('chat.error.retry')}
-                </button>
+                  {t('chat.error.budget.cta')}
+                </a>
+              ) : (
+                lastInputRef.current && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null)
+                      void send(lastInputRef.current)
+                    }}
+                    className="flex-shrink-0 rounded-md bg-brand-red/15 px-2.5 py-1 text-xs font-medium hover:bg-brand-red/25 transition"
+                  >
+                    {t('chat.error.retry')}
+                  </button>
+                )
               )}
             </div>
           )}
