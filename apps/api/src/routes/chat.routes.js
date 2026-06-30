@@ -16,6 +16,34 @@ const chatPptx = require('../services/ai/chat-pptx.service')
 
 const router = express.Router()
 
+// Compteur de streams SSE ouverts par user (en mémoire, par worker PM2).
+// Limite : 3 streams simultanés. Au-delà → 429 pour éviter l'épuisement
+// mémoire (chaque stream SSE maintient une socket HTTP ouverte).
+// Note : en-mémoire = pas partagé entre workers PM2. La vraie limite effective
+// est donc MAX_SSE_STREAMS × nombre de workers. Acceptable pour le MVP.
+const MAX_SSE_STREAMS = 3
+const activeStreams = new Map()
+
+function sseStreamLimit(req, res, next) {
+  const userId = req.user?.id || req.ip
+  const current = activeStreams.get(userId) || 0
+  if (current >= MAX_SSE_STREAMS) {
+    return res.status(429).json({
+      error: {
+        code: 'TOO_MANY_STREAMS',
+        message: `Trop de sessions de chat ouvertes (max ${MAX_SSE_STREAMS}). Ferme un autre onglet.`,
+      },
+    })
+  }
+  activeStreams.set(userId, current + 1)
+  req.on('close', () => {
+    const n = (activeStreams.get(userId) || 1) - 1
+    if (n <= 0) activeStreams.delete(userId)
+    else activeStreams.set(userId, n)
+  })
+  next()
+}
+
 // Per-IP throttle so a runaway client can't burn through the Gemini quota.
 const askLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -155,6 +183,7 @@ router.post(
   '/stream',
   jwtMiddleware,
   askLimiter,
+  sseStreamLimit,
   [
     body('message').isString().bail().trim().isLength({ min: 1, max: 2000 }),
     body('workspaceId').optional().isUUID(),

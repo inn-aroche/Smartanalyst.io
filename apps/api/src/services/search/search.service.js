@@ -13,9 +13,9 @@ const { getServiceRoleClient } = require('../../lib/supabase')
 const PER_BUCKET = 5
 
 function escapeLike(q) {
-  // Sécurise les wildcards SQL (% et _) qui pourraient transformer la requête
-  // user en match large involontaire.
-  return String(q).replace(/[%_]/g, '\\$&')
+  // Échappe les wildcards SQL (% et _) et supprime les séparateurs PostgREST
+  // ( , ( ) ) pour éviter l'injection dans .or() via template literal.
+  return String(q).replace(/[%_]/g, '\\$&').replace(/[(),]/g, '')
 }
 
 async function search({ workspaceId, query, limit = PER_BUCKET }) {

@@ -22,6 +22,11 @@ router.get(
   [
     query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
     query('status').optional().isIn(['open', 'snoozed', 'resolved', 'dismissed', 'all']),
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('limit doit être entre 1 et 100.'),
+    query('offset').optional().isInt({ min: 0 }).withMessage('offset doit être >= 0.'),
   ],
   runValidation,
   workspaceScope,
@@ -29,6 +34,8 @@ router.get(
     try {
       const insights = await insightsService.listInsights(req.workspaceId, {
         status: req.query.status || 'open',
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+        offset: req.query.offset ? Number(req.query.offset) : undefined,
       })
       res.json({ insights })
     } catch (err) {
@@ -48,6 +55,11 @@ router.get(
     query('status')
       .optional()
       .isIn(['proposed', 'todo', 'in_progress', 'done', 'archived', 'dismissed', 'all']),
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('limit doit être entre 1 et 100.'),
+    query('offset').optional().isInt({ min: 0 }).withMessage('offset doit être >= 0.'),
   ],
   runValidation,
   workspaceScope,
@@ -55,6 +67,8 @@ router.get(
     try {
       const actions = await insightsService.listActions(req.workspaceId, {
         status: req.query.status,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+        offset: req.query.offset ? Number(req.query.offset) : undefined,
       })
       res.json({ actions })
     } catch (err) {

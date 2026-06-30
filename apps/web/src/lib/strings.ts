@@ -1364,6 +1364,12 @@ const en = {
   'audit.error.generic': 'Something went wrong running the audit. Try again.',
   'audit.finalUrl': 'Final URL after redirects',
   'audit.httpStatus': 'HTTP status',
+  // ━━━ ErrorBoundary ━━━
+  'error.boundary.badge': 'Unexpected error',
+  'error.boundary.title': 'Something went wrong.',
+  'error.boundary.body': 'The issue has been noted. Refresh the page or go home to continue.',
+  'error.boundary.refresh': 'Refresh',
+  'error.boundary.home': 'Go home',
 } as const
 
 const fr: Record<keyof typeof en, string> = {
@@ -2743,6 +2749,13 @@ const fr: Record<keyof typeof en, string> = {
   'audit.error.generic': 'Quelque chose a planté pendant l’audit. Réessaie.',
   'audit.finalUrl': 'URL finale après redirections',
   'audit.httpStatus': 'Code HTTP',
+  // ━━━ ErrorBoundary ━━━
+  'error.boundary.badge': 'Erreur inattendue',
+  'error.boundary.title': "Quelque chose s'est mal passé.",
+  'error.boundary.body':
+    "Le problème a été noté. Rafraîchis la page ou reviens à l'accueil pour continuer.",
+  'error.boundary.refresh': 'Rafraîchir',
+  'error.boundary.home': "Retour à l'accueil",
 }
 
 export const STRINGS = { en, fr }
