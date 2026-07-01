@@ -17,7 +17,10 @@ router.post(
   [
     body('workspaceId').isUUID(),
     body('filename').isString().isLength({ min: 1, max: 200 }),
-    body('mimeType').isString().notEmpty(),
+    body('mimeType')
+      .isString()
+      .isIn([...filesService.ALLOWED_MIME])
+      .withMessage('Type MIME non autorisé.'),
   ],
   runValidation,
   workspaceScope,
@@ -42,8 +45,14 @@ router.post(
     body('workspaceId').isUUID(),
     body('path').isString().notEmpty(),
     body('filename').isString().isLength({ min: 1, max: 200 }),
-    body('mimeType').isString().notEmpty(),
-    body('sizeBytes').optional().isInt({ min: 0 }),
+    body('mimeType')
+      .isString()
+      .isIn([...filesService.ALLOWED_MIME])
+      .withMessage('Type MIME non autorisé.'),
+    body('sizeBytes')
+      .notEmpty()
+      .isInt({ min: 1, max: filesService.MAX_SIZE })
+      .withMessage(`sizeBytes requis, entre 1 et ${filesService.MAX_SIZE} octets.`),
   ],
   runValidation,
   workspaceScope,
