@@ -71,8 +71,6 @@ export default function BriefHomePage() {
   const { locale } = useLocale()
   const navigate = useNavigate()
   const { state } = useAuth()
-  const toast = useToast()
-  const firstInsightFired = useRef(false)
   const workspace = state.workspaces[0]
   const wsId = workspace?.id
 
@@ -114,24 +112,16 @@ export default function BriefHomePage() {
     staleTime: 60_000,
   })
 
-  // Toast "premier insight" — déclenché une seule fois par workspace.
-  const insights = insightsQ.data?.insights
-  useEffect(() => {
-    if (firstInsightFired.current || !insights || insights.length === 0) return
-    const lsKey = `sa.first-insight-shown:${wsId}`
-    if (localStorage.getItem(lsKey)) return
-    firstInsightFired.current = true
-    localStorage.setItem(lsKey, '1')
-    toast.push(t('brief.firstInsight.toast'))
-    track('first_insight_shown')
-  }, [insights, wsId, t, toast])
-
   const firstName = (state.user?.full_name ?? state.user?.email ?? 'toi').split(/\s+|@/)[0]
   const dateStr = formatDate(locale)
   const sub = `${workspace?.name ?? '—'} · ${dateStr}`
 
   return (
     <AppLayout>
+      {/* useToast() exige un descendant de AppLayout — ce petit composant
+          sans rendu porte l'effet "premier insight" pour rester dans l'arbre
+          fourni par le Provider (voir postmortem juin/juillet 2026). */}
+      <FirstInsightToast insights={insightsQ.data?.insights} wsId={wsId} />
       <Topbar
         title={t('brief.topbar.title')}
         subtitle={sub}
@@ -261,6 +251,36 @@ export default function BriefHomePage() {
       </div>
     </AppLayout>
   )
+}
+
+// ─── Toast "premier insight" (déclenché une seule fois par workspace) ────
+// Composant sans rendu : DOIT être monté à l'intérieur de <AppLayout> pour
+// que useToast() trouve son Provider (l'appeler dans BriefHomePage lui-même
+// crashait toute l'app — useToast() y était appelé AVANT que AppLayout,
+// qui fournit le contexte, ne soit rendu comme enfant).
+
+function FirstInsightToast({
+  insights,
+  wsId,
+}: {
+  insights: Insight[] | undefined
+  wsId: string | undefined
+}) {
+  const t = useT()
+  const toast = useToast()
+  const fired = useRef(false)
+
+  useEffect(() => {
+    if (fired.current || !insights || insights.length === 0 || !wsId) return
+    const lsKey = `sa.first-insight-shown:${wsId}`
+    if (localStorage.getItem(lsKey)) return
+    fired.current = true
+    localStorage.setItem(lsKey, '1')
+    toast.push(t('brief.firstInsight.toast'))
+    track('first_insight_shown')
+  }, [insights, wsId, t, toast])
+
+  return null
 }
 
 // ─── Hero brief : ScoreRing 128px + chip + paragraphe narré ───────────────
