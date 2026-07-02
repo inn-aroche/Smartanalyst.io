@@ -30,6 +30,22 @@ const { logger } = require('../../lib/logger')
 // valeur en usage réel.
 const DECLARATIONS = [
   {
+    name: 'set_analysis_plan',
+    description:
+      "Annonce le plan d'investigation à l'utilisateur AVANT de commencer une analyse multi-étapes (mode approfondi). À appeler EN PREMIER, une seule fois, quand la question nécessite de croiser plusieurs sources ou de tester des hypothèses. 2 à 5 étapes courtes et concrètes (ex: « Vérifier le spend Meta sur 30 j »).",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        steps: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: "Les étapes du plan, dans l'ordre d'exécution (2 à 5).",
+        },
+      },
+      required: ['steps'],
+    },
+  },
+  {
     name: 'get_health_score',
     description:
       "Récupère le score de santé global du workspace (0-100) avec breakdown par dimension (revenue, paid, organic, conversion, tracking). À utiliser quand l'user demande comment va son business globalement.",
@@ -109,6 +125,46 @@ const DECLARATIONS = [
         },
       },
       required: ['title'],
+    },
+  },
+  {
+    name: 'propose_action_plan',
+    description:
+      "Propose un plan d'action séquencé de 3 à 5 étapes priorisées (SANS les créer — l'utilisateur choisit ensuite lesquelles matérialiser en tâches d'un clic). À utiliser quand ta recommandation implique plusieurs actions coordonnées (redresser un ROAS, préparer une promo, corriger un funnel…). Préfère ce tool à create_action_card dès qu'il y a plus d'une action. Chaque étape : titre actionnable (verbe d'action), priorité, impact et effort estimés (1-5).",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        goal: {
+          type: 'STRING',
+          description: "Objectif du plan en une phrase courte. Ex: 'Redresser le ROAS Meta'.",
+        },
+        steps: {
+          type: 'ARRAY',
+          description: "3 à 5 étapes, dans l'ordre d'exécution recommandé.",
+          items: {
+            type: 'OBJECT',
+            properties: {
+              title: {
+                type: 'STRING',
+                description:
+                  "Titre court, verbe d'action en tête. Ex: 'Couper les 3 adsets à CPA > 40 €'.",
+              },
+              description: {
+                type: 'STRING',
+                description: 'Contexte optionnel (1-2 phrases).',
+              },
+              priority: {
+                type: 'STRING',
+                description: "'critical', 'high', 'medium' (défaut) ou 'low'.",
+              },
+              impact: { type: 'INTEGER', description: 'Impact estimé 1-5.' },
+              effort: { type: 'INTEGER', description: 'Effort estimé 1-5.' },
+            },
+            required: ['title'],
+          },
+        },
+      },
+      required: ['goal', 'steps'],
     },
   },
   {
@@ -564,6 +620,12 @@ async function execute({ name, args }, { workspaceId, userId }) {
   if (!workspaceId) return { error: 'no_workspace' }
 
   try {
+    // No-op côté data : la couche chat intercepte l'appel pour émettre
+    // l'event SSE `plan` (checklist visible pendant l'analyse approfondie).
+    if (name === 'set_analysis_plan') {
+      return { ok: true }
+    }
+
     if (name === 'get_health_score') {
       const r = await healthScore.getScore(workspaceId)
       return {
@@ -656,6 +718,28 @@ async function execute({ name, args }, { workspaceId, userId }) {
         channel_count: res.channels.length,
         channels: res.channels,
       }
+    }
+
+    // Normalise et renvoie le plan SANS rien écrire : la matérialisation en
+    // tâches se fait côté UI (choix de l'user, POST /insights/actions) —
+    // idempotence par design, rien n'est créé sans clic explicite.
+    if (name === 'propose_action_plan') {
+      const goal = String(args?.goal || '').trim()
+      const rawSteps = Array.isArray(args?.steps) ? args.steps : []
+      const steps = rawSteps
+        .map((s) => ({
+          title: String(s?.title || '').trim(),
+          description: s?.description ? String(s.description).trim().slice(0, 500) : null,
+          priority: ['critical', 'high', 'medium', 'low'].includes(s?.priority)
+            ? s.priority
+            : 'medium',
+          impact: Number.isInteger(s?.impact) && s.impact >= 1 && s.impact <= 5 ? s.impact : null,
+          effort: Number.isInteger(s?.effort) && s.effort >= 1 && s.effort <= 5 ? s.effort : null,
+        }))
+        .filter((s) => s.title.length >= 3)
+        .slice(0, 5)
+      if (!goal || steps.length < 2) return { error: 'plan_requires_goal_and_2plus_steps' }
+      return { ok: true, kind: 'action_plan', goal, steps }
     }
 
     if (name === 'create_action_card') {

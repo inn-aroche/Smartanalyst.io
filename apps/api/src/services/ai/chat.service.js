@@ -696,7 +696,7 @@ async function ask({
   // 2e passe : extrait 0-3 highlights visuels (KPI cards / callouts) à partir
   // de la réponse prose. Best-effort, latence ~500ms-1s. Si KO, on continue
   // sans highlights — le chat texte reste pleinement utilisable.
-  const highlights = await chatHighlights.extract({
+  const { highlights } = await chatHighlights.extract({
     workspaceId,
     userId,
     question: message,
@@ -968,7 +968,28 @@ async function askStream({
     }
   }
   const useClaude = effectiveMode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
-  const MAX_TOOL_ROUNDS = 3
+  // Mode approfondi = vraie enquête multi-étapes : jusqu'à 8 tours de tools
+  // (croiser les sources, tester des hypothèses) vs 3 en rapide. Le coût est
+  // borné par le budget tokens mensuel (checkBudget en amont).
+  const MAX_TOOL_ROUNDS = effectiveMode === 'deep' ? 8 : 3
+
+  // Directives d'enquête spécifiques au mode approfondi — le mode ne doit
+  // pas être « le même prompt avec un autre modèle » mais une vraie
+  // investigation d'analyste (croisement de sources, hypothèses testées).
+  if (effectiveMode === 'deep') {
+    systemPrompt +=
+      locale === 'en'
+        ? `\n\nDEEP ANALYSIS MODE — investigate like a senior analyst:
+1. If the question requires multi-step investigation, FIRST call set_analysis_plan with 2-5 short concrete steps, then execute them.
+2. Cross-check several sources (analytics × ads × payments) before concluding — a drop in one metric must be explained by evidence, not guessed.
+3. Form hypotheses and test them with tools (live queries, series, funnels). Discard what the data contradicts.
+4. Conclude with: what happened, why (verified numbers cited), and what to do next. If the data is insufficient, say exactly what's missing.`
+        : `\n\nMODE APPROFONDI — enquête comme un analyste senior :
+1. Si la question demande une investigation multi-étapes, appelle D'ABORD set_analysis_plan avec 2 à 5 étapes courtes et concrètes, puis exécute-les.
+2. Croise plusieurs sources (analytics × ads × paiements) avant de conclure — une baisse doit être expliquée par des preuves, pas devinée.
+3. Formule des hypothèses et teste-les avec les tools (requêtes live, séries, funnels). Écarte ce que les données contredisent.
+4. Conclus avec : ce qui s'est passé, pourquoi (chiffres vérifiés cités), et quoi faire. Si les données sont insuffisantes, dis exactement ce qui manque.`
+  }
   const toolsUsed = []
   // Capture des séries temporelles retournées par les tools (get_metric_series).
   // Auto-injectées en fin de tour comme highlights `chart` pour rendre une vraie
@@ -984,23 +1005,34 @@ async function askStream({
   // Cahier 22c — réponses analystes structurées (analyze_performance).
   // Place toujours le verdict en TÊTE des highlights pour qu'il soit lu en premier.
   const toolVerdicts = []
+  // C1 — plans d'action proposés (propose_action_plan). Rendus en bloc
+  // interactif « Ajouter à mes tâches » côté UI.
+  const toolActionPlans = []
   let finalText = ''
+  // Textes de TOUS les tours (pas seulement le dernier) : le modèle commente
+  // souvent avant un tool call — ce texte est streamé au client, il doit
+  // aussi survivre dans la réponse finale persistée (fix « texte écrasé »).
+  const textParts = []
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
     let out
+    // Séparateur visuel entre le texte de deux tours successifs, émis avec
+    // le premier delta du tour (pas de ligne vide orpheline sinon).
+    let separatorEmitted = false
     try {
-      // Seul le DERNIER tour (sans plus de tool-call) est utile à streamer
-      // pour l'user. Les tours intermédiaires (functionCall → toolResponse)
-      // n'émettent typiquement aucun texte ; on les exécute en non-streaming
-      // pour éviter une SSE qui ouvre/ferme à vide. Stratégie : on tente le
-      // streaming sur chaque tour ; les chunks vides sont ignorés.
       const streamFn = useClaude ? claudeService.generateStream : generateStream
       out = await streamFn({
         systemPrompt,
         contents: history,
         tools: chatTools.DECLARATIONS,
         temperature: 0.4,
-        onDelta: (delta) => emit({ type: 'delta', text: delta }),
+        onDelta: (delta) => {
+          if (!separatorEmitted && textParts.length > 0) {
+            separatorEmitted = true
+            emit({ type: 'delta', text: '\n\n' })
+          }
+          emit({ type: 'delta', text: delta })
+        },
       })
     } catch (err) {
       // Erreurs Anthropic non classifiées : on les laisse remonter au
@@ -1020,8 +1052,9 @@ async function askStream({
       durationMs: out.usage?.durationMs,
     })
 
+    if (out.text && out.text.trim()) textParts.push(out.text.trim())
+
     if (out.functionCalls.length === 0 || round === MAX_TOOL_ROUNDS) {
-      finalText = out.text
       break
     }
 
@@ -1029,6 +1062,16 @@ async function askStream({
 
     const responses = await Promise.all(
       out.functionCalls.map(async (call) => {
+        // set_analysis_plan : pas un vrai tool data — on émet l'event SSE
+        // `plan` (checklist visible côté UI pendant l'enquête) et on rend
+        // la main au modèle immédiatement, sans badge tool.
+        if (call.name === 'set_analysis_plan') {
+          const steps = Array.isArray(call.args?.steps)
+            ? call.args.steps.filter((s) => typeof s === 'string' && s.trim()).slice(0, 6)
+            : []
+          if (steps.length > 0) emit({ type: 'plan', steps })
+          return { functionResponse: { name: call.name, response: { result: { ok: true } } } }
+        }
         // Emit le badge "tool running" cote UI (cahier 22b §3.5 — feedback
         // temps reel pendant le streaming). status='running' au depart,
         // status='done' apres l'execution. Le client affiche un chip
@@ -1114,12 +1157,22 @@ async function askStream({
         ) {
           toolVerdicts.push(res)
         }
+        // C1 — auto-capture des plans d'action proposés.
+        if (
+          call.name === 'propose_action_plan' &&
+          res?.ok &&
+          Array.isArray(res.steps) &&
+          res.steps.length >= 2
+        ) {
+          toolActionPlans.push({ goal: res.goal, steps: res.steps })
+        }
         return { functionResponse: { name: call.name, response: { result: res } } }
       }),
     )
     history.push({ role: 'user', parts: responses })
   }
 
+  finalText = textParts.join('\n\n')
   const text = finalText
   const durationMs = Date.now() - t0
 
@@ -1169,7 +1222,7 @@ async function askStream({
       if (error) logger.warn({ event: 'chat_audit_failed', error: error.message })
     })
 
-  const extractedHighlights = await chatHighlights.extract({
+  const { highlights: extractedHighlights, followUps } = await chatHighlights.extract({
     workspaceId,
     userId,
     question: message,
@@ -1189,8 +1242,16 @@ async function askStream({
   // Cahier 22c — VerdictHighlights TOUJOURS en tête : c'est la réponse
   // analyste structurée, elle doit être vue avant les charts/tables.
   const verdictHighlights = toolVerdicts.map((spec) => buildVerdictHighlight(spec))
+  // C1 — plans d'action juste après le verdict : c'est le crochet d'action
+  // principal (l'user matérialise les étapes en tâches d'un clic).
+  const actionPlanHighlights = toolActionPlans.map((p) => ({
+    type: 'action_plan',
+    title: p.goal,
+    planSteps: p.steps,
+  }))
   const highlights = [
     ...verdictHighlights,
+    ...actionPlanHighlights,
     ...dashboardHighlights,
     ...funnelHighlights,
     ...compareHighlights,
@@ -1232,6 +1293,7 @@ async function askStream({
     model: modelName,
     sources: usedSources,
     highlights,
+    followUps,
     conversationId: conversation?.id || null,
     messageId: assistantMessageId,
     modeDowngraded: modeDowngraded || undefined,

@@ -8,14 +8,14 @@
 const { getServiceRoleClient } = require('../../lib/supabase')
 
 /**
- * @returns {Promise<{ email: string, orgName: string|null } | null>}
+ * @returns {Promise<{ email: string, orgName: string|null, locale: 'fr'|'en' } | null>}
  */
 async function getWorkspaceRecipient(workspaceId) {
   const supabase = getServiceRoleClient()
   const [{ data: ws }, { data: settings }] = await Promise.all([
     supabase
       .from('workspaces')
-      .select('name, organizations!inner(email, name)')
+      .select('name, locale, organizations!inner(email, name)')
       .eq('id', workspaceId)
       .maybeSingle(),
     supabase
@@ -28,7 +28,9 @@ async function getWorkspaceRecipient(workspaceId) {
   const email = settings?.email_override || fallbackEmail
   if (!email) return null
   const orgName = ws?.organizations?.name || ws?.name || null
-  return { email, orgName }
+  // Locale des emails (migration 042) — défaut fr si colonne absente/nulle.
+  const locale = ws?.locale === 'en' ? 'en' : 'fr'
+  return { email, orgName, locale }
 }
 
 module.exports = { getWorkspaceRecipient }

@@ -15,7 +15,6 @@ export type Entitlements = {
   features: {
     canGenerateReports: boolean
     canUseDeepChat: boolean
-    // Lot V2.3 — flags pour le gating de l'action shelf chat (cahier 22b §5).
     canPinToDashboard: boolean
     canGenerateSlides: boolean
   }
@@ -24,6 +23,12 @@ export type Entitlements = {
     insightsPerMonth: { current: number; limit: number | null; exceeded: boolean }
     aiTokensPerMonth?: { current: number; limit: number | null; exceeded: boolean }
   }
+  gracePeriod?: {
+    active: boolean
+    expired: boolean
+    deadlineAt: string | null
+    daysLeft: number
+  } | null
 }
 
 export function useEntitlements() {

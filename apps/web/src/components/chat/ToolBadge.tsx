@@ -24,6 +24,14 @@ function labelKey(toolName: string): StringKey | null {
     compare_metrics: 'chat.tool.running.compare_metrics',
     compute_funnel: 'chat.tool.running.compute_funnel',
     build_dashboard_preview: 'chat.tool.running.build_dashboard_preview',
+    query_ga4: 'chat.tool.running.query_ga4',
+    query_meta_ads: 'chat.tool.running.query_meta_ads',
+    query_stripe: 'chat.tool.running.query_stripe',
+    query_shopify: 'chat.tool.running.query_shopify',
+    query_search_console: 'chat.tool.running.query_search_console',
+    analyze_performance: 'chat.tool.running.analyze',
+    analyze_journey: 'chat.tool.running.analyze',
+    analyze_benchmark: 'chat.tool.running.analyze',
   }
   return map[toolName] || null
 }

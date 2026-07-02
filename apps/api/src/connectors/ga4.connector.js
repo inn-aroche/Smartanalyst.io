@@ -12,6 +12,7 @@ const vault = require('../lib/vault')
 const { mapToCanonical } = require('./canonical-metrics-mapping')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
 const { getServiceRoleClient } = require('../lib/supabase')
+const { fetchWithRetry } = require('../lib/fetch-retry')
 
 const GA4_API_BASE = 'https://analyticsdata.googleapis.com/v1beta'
 
@@ -69,14 +70,18 @@ class GA4Connector extends BaseConnector {
       dimensions: [{ name: 'date' }],
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    const response = await fetchWithRetry(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    })
+      { label: 'ga4:runReport' },
+    )
 
     if (!response.ok) {
       const text = await response.text()

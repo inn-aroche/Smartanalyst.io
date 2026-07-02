@@ -517,6 +517,24 @@ function ConnectorCard({
           </button>
         ) : isConnected ? (
           <div className="flex items-center gap-2">
+            {/* Reconnexion one-click : relance directement le flow OAuth (ou
+                rouvre la saisie de clé) SANS déconnecter — le parcours de
+                panne le plus fréquent (token expiré) n'était pas couvert. */}
+            {(connected?.status === 'expired' || connected?.status === 'error') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null)
+                  handleConnect()
+                }}
+                disabled={connectMutation.isPending}
+                className="sa-btn sa-btn-primary !py-1.5 !text-xs"
+              >
+                {connectMutation.isPending
+                  ? t('connectors.action.opening')
+                  : t('connectors.action.reconnect')}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -562,7 +580,9 @@ function ConnectorCard({
         )}
       </div>
 
-      {apiKeyOpen && !isConnected && (
+      {/* Rendu aussi quand connecté : la reconnexion API key passe par le
+          même upsert (workspace_id, source, account_id) côté backend. */}
+      {apiKeyOpen && (
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -595,7 +615,7 @@ function ConnectorCard({
         </form>
       )}
 
-      {subdomainOpen && !isConnected && (
+      {subdomainOpen && (
         <form
           onSubmit={(e) => {
             e.preventDefault()

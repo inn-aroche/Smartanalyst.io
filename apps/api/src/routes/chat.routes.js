@@ -16,6 +16,34 @@ const chatPptx = require('../services/ai/chat-pptx.service')
 
 const router = express.Router()
 
+// Compteur de streams SSE ouverts par user (en mémoire, par worker PM2).
+// Limite : 3 streams simultanés. Au-delà → 429 pour éviter l'épuisement
+// mémoire (chaque stream SSE maintient une socket HTTP ouverte).
+// Note : en-mémoire = pas partagé entre workers PM2. La vraie limite effective
+// est donc MAX_SSE_STREAMS × nombre de workers. Acceptable pour le MVP.
+const MAX_SSE_STREAMS = 3
+const activeStreams = new Map()
+
+function sseStreamLimit(req, res, next) {
+  const userId = req.user?.id || req.ip
+  const current = activeStreams.get(userId) || 0
+  if (current >= MAX_SSE_STREAMS) {
+    return res.status(429).json({
+      error: {
+        code: 'TOO_MANY_STREAMS',
+        message: `Trop de sessions de chat ouvertes (max ${MAX_SSE_STREAMS}). Ferme un autre onglet.`,
+      },
+    })
+  }
+  activeStreams.set(userId, current + 1)
+  req.on('close', () => {
+    const n = (activeStreams.get(userId) || 1) - 1
+    if (n <= 0) activeStreams.delete(userId)
+    else activeStreams.set(userId, n)
+  })
+  next()
+}
+
 // Per-IP throttle so a runaway client can't burn through the Gemini quota.
 const askLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -155,6 +183,7 @@ router.post(
   '/stream',
   jwtMiddleware,
   askLimiter,
+  sseStreamLimit,
   [
     body('message').isString().bail().trim().isLength({ min: 1, max: 2000 }),
     body('workspaceId').optional().isUUID(),
@@ -309,6 +338,77 @@ router.get(
       }
       const messages = await chatConversations.listMessages(conversation.id)
       res.json({ conversation, messages })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Renomme un fil (titre édité dans la sidebar).
+router.patch(
+  '/conversations/:id',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('conversation id invalide.'),
+    body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+    body('title').isString().bail().trim().isLength({ min: 1, max: 120 }),
+  ],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const result = await chatConversations.renameConversation(
+        req.params.id,
+        req.workspaceId,
+        req.body.title,
+      )
+      if (!result.renamed) {
+        return next(
+          new UserFacingError('Conversation introuvable.', {
+            statusCode: 404,
+            code: 'CONVERSATION_NOT_FOUND',
+          }),
+        )
+      }
+      res.json({ renamed: true, title: result.title })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Feedback 👍/👎 sur une réponse assistant (boucle qualité IA, cahier §6).
+// rating=null retire le vote. Appartenance workspace vérifiée via la
+// jointure conversation (getMessageWithWorkspace).
+router.post(
+  '/messages/:id/feedback',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('message id invalide.'),
+    body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+    body('rating')
+      .optional({ nullable: true })
+      .isIn(['up', 'down'])
+      .withMessage('rating doit être up, down ou null.'),
+  ],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const msg = await chatConversations.getMessageWithWorkspace(req.params.id)
+      if (!msg) {
+        return next(
+          new UserFacingError('Message introuvable.', {
+            statusCode: 404,
+            code: 'MESSAGE_NOT_FOUND',
+          }),
+        )
+      }
+      if (msg.workspaceId !== req.workspaceId) {
+        return next(new UserFacingError('Accès refusé.', { statusCode: 403, code: 'WS_MISMATCH' }))
+      }
+      await chatConversations.setMessageFeedback(req.params.id, req.body.rating ?? null)
+      res.json({ ok: true })
     } catch (err) {
       next(err)
     }

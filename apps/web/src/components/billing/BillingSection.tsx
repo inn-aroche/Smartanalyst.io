@@ -2,6 +2,7 @@
 // + §4.8). Affiche le plan actuel + quotas utilisés + bouton "Manage" (Customer
 // Portal Stripe) ou "Upgrade" (Checkout) selon le plan.
 
+import { useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { apiFetch, ApiError } from '@/lib/api'
@@ -14,11 +15,20 @@ type Entitlements = {
   features: {
     canGenerateReports: boolean
     canUseDeepChat: boolean
+    canPinToDashboard: boolean
+    canGenerateSlides: boolean
   }
   quotas: {
     connectors: { current: number; limit: number | null; exceeded: boolean }
     insightsPerMonth: { current: number; limit: number | null; exceeded: boolean }
+    aiTokensPerMonth?: { current: number; limit: number | null; exceeded: boolean }
   }
+  gracePeriod?: {
+    active: boolean
+    expired: boolean
+    deadlineAt: string | null
+    daysLeft: number
+  } | null
 }
 
 export default function BillingSection() {
@@ -57,6 +67,15 @@ export default function BillingSection() {
     },
   })
 
+  // Hooks toujours avant les early returns (Rules of Hooks) — sinon crash
+  // « Rendered more hooks » au passage loading → loaded.
+  const grace = subQ.data?.gracePeriod
+  const graceActive = Boolean(grace?.active || grace?.expired)
+  const graceExpired = Boolean(grace?.expired)
+  useEffect(() => {
+    if (graceActive) track('grace_period_warning_shown', { expired: graceExpired })
+  }, [graceActive, graceExpired])
+
   if (subQ.isLoading) {
     return (
       <div className="sa-card animate-pulse">
@@ -74,6 +93,7 @@ export default function BillingSection() {
   }
 
   const ent = subQ.data
+
   const isPro = ent.plan === 'pro' || ent.plan === 'starter' || ent.plan === 'agency'
   const planLabel =
     ent.plan === 'pro'
@@ -86,6 +106,54 @@ export default function BillingSection() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Bandeau grâce / paiement échoué */}
+      {ent.gracePeriod?.active && (
+        <div className="sa-card border-brand-red/30 bg-brand-red/5">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex-shrink-0 text-brand-red">⚠</div>
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold text-brand-red">
+                {t('billing.grace.title')}
+              </div>
+              <p className="mt-1 text-[12.5px] leading-snug text-text-2">
+                {t('billing.grace.body').replace('{days}', String(ent.gracePeriod.daysLeft))}
+              </p>
+              <button
+                type="button"
+                onClick={() => portal.mutate()}
+                disabled={portal.isPending}
+                className="sa-btn sa-btn-primary mt-2 !text-[12px]"
+              >
+                {t('billing.grace.cta')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {ent.gracePeriod?.expired && (
+        <div className="sa-card border-brand-red/30 bg-brand-red/5">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex-shrink-0 text-brand-red">⚠</div>
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold text-brand-red">
+                {t('billing.grace.expiredTitle')}
+              </div>
+              <p className="mt-1 text-[12.5px] leading-snug text-text-2">
+                {t('billing.grace.expiredBody')}
+              </p>
+              <button
+                type="button"
+                onClick={() => portal.mutate()}
+                disabled={portal.isPending}
+                className="sa-btn sa-btn-primary mt-2 !text-[12px]"
+              >
+                {t('billing.grace.cta')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Plan actuel */}
       <div className="sa-card">
         <div className="flex items-start justify-between gap-4">

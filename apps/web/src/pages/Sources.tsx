@@ -442,14 +442,18 @@ function FileRow({ f, onDelete }: { f: SaFile; onDelete: () => void }) {
       >
         {t('sources.askAbout')}
       </button>
+      {/* Vraie icône poubelle + confirmation : l'ancien « ⋯ » ressemblait à
+          un menu et supprimait le fichier sans prévenir (piège destructif). */}
       <button
         type="button"
-        onClick={onDelete}
+        onClick={() => {
+          if (window.confirm(t('sources.file.deleteConfirm'))) onDelete()
+        }}
         title={t('common.delete')}
         aria-label={t('common.delete')}
-        className="text-text-3 hover:text-brand-red"
+        className="rounded p-1 text-text-3 transition-colors hover:bg-brand-red/10 hover:text-brand-red"
       >
-        <span className="text-lg">⋯</span>
+        <span className="text-base leading-none">🗑</span>
       </button>
     </div>
   )

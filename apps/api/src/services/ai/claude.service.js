@@ -3,9 +3,11 @@
 // chat.service.askStream puisse router selon le mode sans connaître le
 // provider.
 //
-// Modèle par défaut : Claude Sonnet 4.6 (claude-sonnet-4-6) pour les
-// analyses approfondies — meilleur reasoning que Haiku au prix d'une latence
-// 2-3x supérieure. Surcharge via `AI_SMART_MODEL`.
+// Modèle par défaut : Claude Sonnet 5 (claude-sonnet-5) pour les analyses
+// approfondies — qualité proche d'Opus au prix Sonnet. Surcharge via
+// `AI_SMART_MODEL`. Particularités Sonnet 5 : temperature/top_p/top_k
+// non-défaut sont rejetés (400), le thinking adaptatif est actif par défaut
+// et compte dans le budget max_tokens (d'où le passage 2048 → 8192).
 //
 // Function-calling : porté à Claude (Anthropic Messages API "tools").
 // Format différent de Gemini (JSON Schema input_schema vs FunctionDeclaration) —
@@ -87,11 +89,46 @@ function normalizeSchema(schema) {
   return out
 }
 
+// Types d'images acceptés par les content blocks image Anthropic.
+const ANTHROPIC_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+
+/**
+ * Convertit une part Gemini `inlineData` (base64) en content block Anthropic.
+ * Images → block image ; PDF → block document ; CSV → document texte
+ * (décodé) ; autres types (xls/xlsx…) → note texte pour que le modèle
+ * puisse le signaler à l'utilisateur au lieu d'ignorer silencieusement.
+ */
+function inlineDataToBlock(inlineData) {
+  const { mimeType, data } = inlineData || {}
+  if (!mimeType || !data) return null
+  if (ANTHROPIC_IMAGE_MIMES.has(mimeType)) {
+    return { type: 'image', source: { type: 'base64', media_type: mimeType, data } }
+  }
+  if (mimeType === 'application/pdf') {
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } }
+  }
+  if (mimeType === 'text/csv') {
+    let decoded = ''
+    try {
+      decoded = Buffer.from(data, 'base64').toString('utf8')
+    } catch {
+      return null
+    }
+    return { type: 'document', source: { type: 'text', media_type: 'text/plain', data: decoded } }
+  }
+  // Type non supporté par Anthropic (ex: xlsx binaire) — on informe le modèle.
+  return {
+    type: 'text',
+    text: `[Attached file of type ${mimeType} could not be included in this mode — tell the user to convert it to CSV or PDF.]`,
+  }
+}
+
 /**
  * Convertit l'historique format Gemini en format Anthropic.
  * Gère :
  *   - role: 'user'|'model' → 'user'|'assistant'
  *   - parts texte
+ *   - parts inlineData (fichiers joints) → blocks image/document
  *   - parts functionCall → content blocks tool_use (pour rejouer un tour précédent)
  *   - parts functionResponse → content blocks tool_result (idem)
  */
@@ -104,6 +141,9 @@ function toAnthropicMessages(geminiContents) {
     for (const p of c.parts || []) {
       if (typeof p.text === 'string' && p.text) {
         blocks.push({ type: 'text', text: p.text })
+      } else if (p.inlineData) {
+        const block = inlineDataToBlock(p.inlineData)
+        if (block) blocks.push(block)
       } else if (p.functionCall) {
         // Tour précédent où le model a demandé un tool — on le rejoue en
         // tant que tool_use block côté assistant.
@@ -148,7 +188,10 @@ async function generateStream({
   userMessage,
   contents,
   tools,
-  temperature = 0.4,
+  // Accepté pour compat avec le contrat Gemini mais JAMAIS envoyé :
+  // Sonnet 5 rejette les paramètres de sampling non-défaut (400).
+  // eslint-disable-next-line no-unused-vars
+  temperature,
   onDelta,
 }) {
   ensureConfigured()
@@ -159,12 +202,15 @@ async function generateStream({
     ? toAnthropicMessages(contents)
     : [{ role: 'user', content: userMessage || ' ' }]
 
+  // max_tokens couvre thinking adaptatif + texte + tool calls sur Sonnet 5.
+  // Prompt caching : le breakpoint sur le system (rendu APRÈS les tools)
+  // cache tools + system ensemble — gros gain sur la boucle multi-tours du
+  // mode approfondi (le même préfixe est renvoyé à chaque round).
   const requestBody = {
     model,
-    system: systemPrompt,
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     messages,
-    temperature,
-    max_tokens: 2048,
+    max_tokens: 8192,
   }
   const anthropicTools = toAnthropicTools(tools)
   if (anthropicTools) requestBody.tools = anthropicTools
@@ -274,8 +320,66 @@ async function generateStream({
   }
 }
 
+/**
+ * Sortie structurée Claude — même contrat que gemini.generateStructured :
+ * renvoie `{ json, usage }` validé contre le responseSchema fourni (JSON
+ * Schema minuscules). Implémentation : tool unique forcé via tool_choice —
+ * le modèle DOIT appeler le tool, dont l'input est notre objet structuré.
+ *
+ * @param {object} params
+ * @param {string} params.systemPrompt
+ * @param {string} params.userMessage
+ * @param {object} params.responseSchema  - JSON Schema (type object)
+ * @param {number} [params.maxOutputTokens=1024]
+ * @returns {Promise<{ json: object|null, usage: { inputTokens, outputTokens, model } }>}
+ */
+async function generateStructured({
+  systemPrompt,
+  userMessage,
+  responseSchema,
+  // Ignoré volontairement (compat contrat Gemini) — Sonnet 5 rejette les
+  // paramètres de sampling non-défaut.
+  // eslint-disable-next-line no-unused-vars
+  temperature,
+  maxOutputTokens = 1024,
+}) {
+  ensureConfigured()
+  const client = getAnthropic()
+  const model = process.env.AI_SMART_MODEL || SMART_MODEL
+
+  try {
+    const res = await client.messages.create({
+      model,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+      // Marge pour le thinking adaptatif (compté dans max_tokens sur Sonnet 5).
+      max_tokens: Math.max(maxOutputTokens, 512) + 2048,
+      tools: [
+        {
+          name: 'emit_structured_output',
+          description: 'Emit the final structured answer. Always call this tool exactly once.',
+          input_schema: normalizeSchema(responseSchema),
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'emit_structured_output' },
+    })
+    const toolUse = (res.content || []).find((b) => b.type === 'tool_use')
+    return {
+      json: toolUse?.input ?? null,
+      usage: {
+        inputTokens: res.usage?.input_tokens || 0,
+        outputTokens: res.usage?.output_tokens || 0,
+        model,
+      },
+    }
+  } catch (err) {
+    throw classifyAnthropicError(err)
+  }
+}
+
 module.exports = {
   generateStream,
+  generateStructured,
   ClaudeNotConfiguredError,
   ClaudeCreditDepletedError,
 }

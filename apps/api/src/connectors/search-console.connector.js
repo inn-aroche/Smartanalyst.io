@@ -14,6 +14,7 @@ const vault = require('../lib/vault')
 const { mapToCanonical } = require('./canonical-metrics-mapping')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
 const { getServiceRoleClient } = require('../lib/supabase')
+const { fetchWithRetry } = require('../lib/fetch-retry')
 
 const GSC_API_BASE = 'https://searchconsole.googleapis.com/webmasters/v3'
 
@@ -50,14 +51,18 @@ class SearchConsoleConnector extends BaseConnector {
       rowLimit: 5000,
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    const response = await fetchWithRetry(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    })
+      { label: 'gsc:searchAnalytics' },
+    )
 
     if (!response.ok) {
       const text = await response.text()

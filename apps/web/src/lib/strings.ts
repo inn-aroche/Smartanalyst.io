@@ -603,6 +603,28 @@ const en = {
   'chat.tool.running.compare_metrics': 'Comparing the two sources…',
   'chat.tool.running.compute_funnel': 'Computing funnel…',
   'chat.tool.running.build_dashboard_preview': 'Building dashboard preview…',
+  'chat.tool.running.query_ga4': 'Querying Google Analytics live…',
+  'chat.tool.running.query_meta_ads': 'Querying Meta Ads live…',
+  'chat.tool.running.query_stripe': 'Querying Stripe live…',
+  'chat.tool.running.query_shopify': 'Querying Shopify live…',
+  'chat.tool.running.query_search_console': 'Querying Search Console live…',
+  'chat.tool.running.analyze': 'Running analyst verdict…',
+  'chat.plan.title': 'Analysis plan',
+  'chat.actionPlan.badge': 'Action plan',
+  'chat.actionPlan.add': 'Add to my tasks',
+  'chat.actionPlan.added': 'Added to your tasks',
+  'chat.actionPlan.viewTasks': 'View my tasks',
+  'chat.actionPlan.failed': 'Could not add the tasks. Try again.',
+  'chat.actionPlan.impact': 'Impact',
+  'chat.actionPlan.effort': 'Effort',
+  'chat.actionPlan.prio.critical': 'Critical',
+  'chat.actionPlan.prio.high': 'High',
+  'chat.actionPlan.prio.medium': 'Medium',
+  'chat.actionPlan.prio.low': 'Low',
+  'chat.history.rename': 'Rename',
+  'chat.history.renamePrompt': 'New conversation title:',
+  'chat.history.delete': 'Delete',
+  'chat.history.deleteConfirm': 'Delete this conversation? This cannot be undone.',
   // ━━━ Chat V2.1 — action shelf (cahier 22b §3.4) ━━━
   'chat.shelf.excel': 'Excel',
   'chat.shelf.excel.aria': 'Export answer as Excel',
@@ -900,6 +922,8 @@ const en = {
   'connectors.action.disconnecting': 'Disconnecting…',
   'connectors.action.notifyMe': 'Notify me',
   'connectors.action.sync': 'Sync now',
+  'connectors.action.reconnect': 'Reconnect',
+  'sources.file.deleteConfirm': 'Delete this file? This cannot be undone.',
   'connectors.action.syncing': 'Syncing…',
   'connectors.confirmDisconnect': 'Disconnect {{name}}?',
   'connectors.err.startOauth': 'Could not start the OAuth flow',
@@ -1153,6 +1177,7 @@ const en = {
   'palette.action.inviteMember': 'Invite a member',
   // ━━━ Reports analyst note + templates (Lot 4) ━━━
   'reports.gen.template': 'Template',
+  'reports.gen.template.standard': 'Standard — full overview',
   'reports.gen.template.executive': 'Executive — score, top alerts and KPIs',
   'reports.gen.template.detail': 'Detail — KPIs by source + previous comparison',
   'reports.gen.template.agency': 'Agency — full white-label, brand colors',
@@ -1160,6 +1185,29 @@ const en = {
   'reports.gen.aiNote.hint':
     'Adds a 3-line commentary at the top of the report ("the take of the month").',
   'reports.analystNote.heading': 'The analyst’s take',
+  // ━━━ Reports wizard (V2 — sources / period / context) ━━━
+  'reports.wizard.step1': 'Sources',
+  'reports.wizard.step2': 'Period',
+  'reports.wizard.step3': 'Context',
+  'reports.wizard.sourcesTitle': 'Which sources should the report cover?',
+  'reports.wizard.sourcesAll': 'All sources are included by default — untick what you don’t want.',
+  'reports.wizard.sourcesEmpty': 'Connect a data source first to generate a report.',
+  'reports.wizard.sourcesEmptyCta': 'Connect a source',
+  'reports.wizard.periodTitle': 'Which period?',
+  'reports.wizard.preset.thisMonth': 'This month',
+  'reports.wizard.preset.lastMonth': 'Last month',
+  'reports.wizard.preset.last30': 'Last 30 days',
+  'reports.wizard.preset.thisQuarter': 'This quarter',
+  'reports.wizard.preset.custom': 'Custom',
+  'reports.wizard.periodInvalid': 'The start date must be before the end date.',
+  'reports.wizard.contextTitle': 'Anything the analysis should know? (optional)',
+  'reports.wizard.contextPlaceholder':
+    'e.g. “We ran a -20% promo from the 10th to the 15th” · “Focus on SEO” · “New site launched mid-month”',
+  'reports.wizard.contextHint':
+    'The AI weaves this context into its reading of the numbers and its recommendations.',
+  'reports.wizard.modeLabel': 'Analysis',
+  'reports.wizard.next': 'Next',
+  'reports.wizard.back': 'Back',
   // ━━━ Billing (cahier §3 Lot 3) ━━━
   'billing.currentPlan': 'Current plan',
   'billing.active': 'Active',
@@ -1182,6 +1230,13 @@ const en = {
   'billing.error.noCustomer': 'No subscription to manage yet — upgrade first.',
   'billing.error.planUnavailable': 'This plan is currently unavailable.',
   'billing.error.generic': 'Billing request failed. Try again.',
+  'billing.grace.title': 'Payment failed',
+  'billing.grace.body':
+    'Your last payment did not go through. Update your payment method within {days} days to keep your current plan.',
+  'billing.grace.expiredTitle': 'Plan suspended',
+  'billing.grace.expiredBody':
+    'Your payment method could not be charged and the grace period has ended. Your plan has been downgraded to Free. Update your payment method to reactivate.',
+  'billing.grace.cta': 'Update payment method',
   // ━━━ UpgradePrompt ━━━
   'upgrade.title': 'Pro feature',
   'upgrade.cta': 'Upgrade to Pro',
@@ -1357,6 +1412,12 @@ const en = {
   'audit.error.generic': 'Something went wrong running the audit. Try again.',
   'audit.finalUrl': 'Final URL after redirects',
   'audit.httpStatus': 'HTTP status',
+  // ━━━ ErrorBoundary ━━━
+  'error.boundary.badge': 'Unexpected error',
+  'error.boundary.title': 'Something went wrong.',
+  'error.boundary.body': 'The issue has been noted. Refresh the page or go home to continue.',
+  'error.boundary.refresh': 'Refresh',
+  'error.boundary.home': 'Go home',
 } as const
 
 const fr: Record<keyof typeof en, string> = {
@@ -1969,6 +2030,28 @@ const fr: Record<keyof typeof en, string> = {
   'chat.tool.running.compare_metrics': 'Comparaison des deux sources…',
   'chat.tool.running.compute_funnel': 'Calcul du funnel…',
   'chat.tool.running.build_dashboard_preview': 'Construction du dashboard…',
+  'chat.tool.running.query_ga4': 'Interrogation Google Analytics en direct…',
+  'chat.tool.running.query_meta_ads': 'Interrogation Meta Ads en direct…',
+  'chat.tool.running.query_stripe': 'Interrogation Stripe en direct…',
+  'chat.tool.running.query_shopify': 'Interrogation Shopify en direct…',
+  'chat.tool.running.query_search_console': 'Interrogation Search Console en direct…',
+  'chat.tool.running.analyze': 'Verdict analyste en cours…',
+  'chat.plan.title': "Plan d'analyse",
+  'chat.actionPlan.badge': "Plan d'action",
+  'chat.actionPlan.add': 'Ajouter à mes tâches',
+  'chat.actionPlan.added': 'Ajouté à tes tâches',
+  'chat.actionPlan.viewTasks': 'Voir mes tâches',
+  'chat.actionPlan.failed': "Impossible d'ajouter les tâches. Réessaie.",
+  'chat.actionPlan.impact': 'Impact',
+  'chat.actionPlan.effort': 'Effort',
+  'chat.actionPlan.prio.critical': 'Critique',
+  'chat.actionPlan.prio.high': 'Haute',
+  'chat.actionPlan.prio.medium': 'Moyenne',
+  'chat.actionPlan.prio.low': 'Basse',
+  'chat.history.rename': 'Renommer',
+  'chat.history.renamePrompt': 'Nouveau titre de la conversation :',
+  'chat.history.delete': 'Supprimer',
+  'chat.history.deleteConfirm': 'Supprimer cette conversation ? Action irréversible.',
   // ━━━ Chat V2.1 — action shelf (cahier 22b §3.4) ━━━
   'chat.shelf.excel': 'Excel',
   'chat.shelf.excel.aria': 'Exporter la réponse en Excel',
@@ -2273,6 +2356,8 @@ const fr: Record<keyof typeof en, string> = {
   'connectors.action.disconnecting': 'Déconnexion…',
   'connectors.action.notifyMe': 'Me prévenir',
   'connectors.action.sync': 'Synchroniser',
+  'connectors.action.reconnect': 'Reconnecter',
+  'sources.file.deleteConfirm': 'Supprimer ce fichier ? Action irréversible.',
   'connectors.action.syncing': 'Synchronisation…',
   'connectors.confirmDisconnect': 'Déconnecter {{name}} ?',
   'connectors.err.startOauth': 'Impossible de démarrer le flow OAuth',
@@ -2524,6 +2609,7 @@ const fr: Record<keyof typeof en, string> = {
   'palette.action.inviteMember': 'Inviter un membre',
   // ━━━ Rapports — mot de l'analyste + templates (Lot 4) ━━━
   'reports.gen.template': 'Modèle',
+  'reports.gen.template.standard': 'Standard — vue d’ensemble complète',
   'reports.gen.template.executive': 'Exécutif — score, top alertes et KPIs',
   'reports.gen.template.detail': 'Détail — KPIs par source + comparaison',
   'reports.gen.template.agency': 'Agence — white-label complet, couleurs marque',
@@ -2531,6 +2617,30 @@ const fr: Record<keyof typeof en, string> = {
   'reports.gen.aiNote.hint':
     'Ajoute un commentaire de 3 lignes en haut du rapport (« le mot du mois »).',
   'reports.analystNote.heading': "Le mot de l'analyste",
+  // ━━━ Rapports — wizard (V2 — sources / période / contexte) ━━━
+  'reports.wizard.step1': 'Sources',
+  'reports.wizard.step2': 'Période',
+  'reports.wizard.step3': 'Contexte',
+  'reports.wizard.sourcesTitle': 'Quelles sources le rapport doit-il couvrir ?',
+  'reports.wizard.sourcesAll':
+    'Toutes les sources sont incluses par défaut — décoche ce que tu ne veux pas.',
+  'reports.wizard.sourcesEmpty': 'Connecte d’abord une source de données pour générer un rapport.',
+  'reports.wizard.sourcesEmptyCta': 'Connecter une source',
+  'reports.wizard.periodTitle': 'Sur quelle période ?',
+  'reports.wizard.preset.thisMonth': 'Mois en cours',
+  'reports.wizard.preset.lastMonth': 'Mois dernier',
+  'reports.wizard.preset.last30': '30 derniers jours',
+  'reports.wizard.preset.thisQuarter': 'Trimestre en cours',
+  'reports.wizard.preset.custom': 'Personnalisé',
+  'reports.wizard.periodInvalid': 'La date de début doit précéder la date de fin.',
+  'reports.wizard.contextTitle': 'Un contexte à donner à l’analyse ? (optionnel)',
+  'reports.wizard.contextPlaceholder':
+    'ex : « Promo -20 % du 10 au 15 » · « Focus SEO » · « Nouveau site lancé mi-mois »',
+  'reports.wizard.contextHint':
+    'L’IA intègre ce contexte dans sa lecture des chiffres et ses recommandations.',
+  'reports.wizard.modeLabel': 'Analyse',
+  'reports.wizard.next': 'Suivant',
+  'reports.wizard.back': 'Retour',
   // ━━━ Billing (cahier §3 Lot 3) ━━━
   'billing.currentPlan': 'Plan actuel',
   'billing.active': 'Actif',
@@ -2553,6 +2663,13 @@ const fr: Record<keyof typeof en, string> = {
   'billing.error.noCustomer': "Pas encore d'abonnement à gérer — passe Pro d'abord.",
   'billing.error.planUnavailable': "Ce plan n'est pas disponible pour le moment.",
   'billing.error.generic': 'Requête de facturation échouée. Réessaie.',
+  'billing.grace.title': 'Échec de paiement',
+  'billing.grace.body':
+    "Ton dernier paiement n'a pas abouti. Mets à jour ton moyen de paiement dans les {days} jours pour conserver ton plan actuel.",
+  'billing.grace.expiredTitle': 'Plan suspendu',
+  'billing.grace.expiredBody':
+    "Ton moyen de paiement n'a pas pu être débité et la période de grâce est terminée. Ton plan a été rétrogradé en Free. Mets à jour ton moyen de paiement pour réactiver.",
+  'billing.grace.cta': 'Mettre à jour le paiement',
   // ━━━ UpgradePrompt ━━━
   'upgrade.title': 'Fonctionnalité Pro',
   'upgrade.cta': 'Passer au plan Pro',
@@ -2729,6 +2846,13 @@ const fr: Record<keyof typeof en, string> = {
   'audit.error.generic': 'Quelque chose a planté pendant l’audit. Réessaie.',
   'audit.finalUrl': 'URL finale après redirections',
   'audit.httpStatus': 'Code HTTP',
+  // ━━━ ErrorBoundary ━━━
+  'error.boundary.badge': 'Erreur inattendue',
+  'error.boundary.title': "Quelque chose s'est mal passé.",
+  'error.boundary.body':
+    "Le problème a été noté. Rafraîchis la page ou reviens à l'accueil pour continuer.",
+  'error.boundary.refresh': 'Rafraîchir',
+  'error.boundary.home': "Retour à l'accueil",
 }
 
 export const STRINGS = { en, fr }

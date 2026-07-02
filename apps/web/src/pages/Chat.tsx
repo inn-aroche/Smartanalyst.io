@@ -18,6 +18,7 @@ import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
 import { useEntitlements } from '@/lib/use-entitlements'
 import { renderMarkdown } from '@/lib/markdown'
+import { SOURCE_LABELS } from '@/lib/sources'
 import { track } from '@/lib/tracking'
 
 type SaFile = {
@@ -55,6 +56,12 @@ type Message =
       // /chat/messages/:id/export.xlsx. null pendant le streaming, recu au
       // 'done' depuis le backend.
       serverMessageId?: string | null
+      // Mode approfondi — plan d'investigation annoncé par l'assistant
+      // (event SSE `plan`), rendu en checklist au-dessus de la réponse.
+      plan?: string[]
+      // C1 — questions de suivi suggérées (2e passe highlights). Rendues en
+      // chips cliquables sous la dernière réponse uniquement.
+      followUps?: string[]
     }
   | { id: string; role: 'assistant'; pending: true }
 
@@ -80,16 +87,7 @@ function nextId() {
   return Math.random().toString(36).slice(2, 10)
 }
 
-// Libelles affiches dans le picker SourceFilter. Pour les connecteurs non
-// mappes ici on retombe sur la cle brute (ex: 'shopify').
-const SOURCE_LABELS: Record<string, string> = {
-  ga4: 'Google Analytics',
-  meta_ads: 'Meta Ads',
-  google_ads: 'Google Ads',
-  stripe: 'Stripe',
-  search_console: 'Search Console',
-  smarttag: 'SmartTag',
-}
+// Libelles des sources : partages avec le wizard de rapports (lib/sources.ts).
 
 // localStorage key — la conversation en cours, par workspace, pour qu'un
 // refresh / retour sur /chat reprenne là où on en était. On stocke par
@@ -285,9 +283,12 @@ export default function ChatPage() {
       m.role === 'assistant' && 'pending' in m && m.pending === true,
   )
 
-  async function send(text: string) {
+  // `modeOverride` : régénération dans un mode donné SANS modifier le toggle
+  // global persistant (fix effet de bord du « Rejouer »).
+  async function send(text: string, modeOverride?: 'fast' | 'deep') {
     const trimmed = text.trim()
     if (!trimmed || pending) return
+    const effMode = modeOverride ?? mode
 
     lastInputRef.current = trimmed
     setError(null)
@@ -308,6 +309,8 @@ export default function ChatPage() {
     // des chunks, on finalise au 'done' avec sources + highlights.
     let accumulated = ''
     let errored = false
+    // Mode approfondi — plan d'investigation reçu via l'event SSE `plan`.
+    let plan: string[] | undefined
     const controller = new AbortController()
     abortRef.current = controller
     // Reset les badges tool a chaque nouvelle requete.
@@ -319,7 +322,7 @@ export default function ChatPage() {
           message: trimmed,
           workspaceId,
           locale,
-          mode,
+          mode: effMode,
           fileIds: attachedFileId ? [attachedFileId] : undefined,
           ...(conversationId ? { conversationId } : {}),
           ...(selectedSources.length > 0 ? { sources: selectedSources } : {}),
@@ -340,6 +343,22 @@ export default function ChatPage() {
             const name = typeof payload?.name === 'string' ? payload.name : null
             const status = payload?.status === 'done' ? 'done' : 'running'
             if (name) setToolEvents((evs) => [...evs, { name, status }])
+          } else if (ev.event === 'plan') {
+            // Mode approfondi — checklist d'investigation annoncée par
+            // l'assistant avant d'exécuter ses tools.
+            const steps = Array.isArray(payload?.steps)
+              ? (payload.steps as unknown[]).filter((s): s is string => typeof s === 'string')
+              : []
+            if (steps.length > 0) {
+              plan = steps
+              setMessages((m) =>
+                m.map((msg) =>
+                  msg.id === pendingMsg.id
+                    ? { id: msg.id, role: 'assistant', text: accumulated, streaming: true, plan }
+                    : msg,
+                ),
+              )
+            }
           } else if (ev.event === 'delta') {
             const delta = typeof payload?.text === 'string' ? payload.text : ''
             if (!delta) return
@@ -347,7 +366,7 @@ export default function ChatPage() {
             setMessages((m) =>
               m.map((msg) =>
                 msg.id === pendingMsg.id
-                  ? { id: msg.id, role: 'assistant', text: accumulated, streaming: true }
+                  ? { id: msg.id, role: 'assistant', text: accumulated, streaming: true, plan }
                   : msg,
               ),
             )
@@ -355,6 +374,9 @@ export default function ChatPage() {
             const answer = (payload?.answer as string) || accumulated
             const sources = payload?.sources as Source[] | undefined
             const highlights = payload?.highlights as Highlight[] | undefined
+            const followUps = Array.isArray(payload?.followUps)
+              ? (payload.followUps as unknown[]).filter((s): s is string => typeof s === 'string')
+              : undefined
             const cid = payload?.conversationId as string | null | undefined
             const serverMessageId = (payload?.messageId as string | null | undefined) ?? null
             if (payload?.modeDowngraded) setModeDowngraded(true)
@@ -378,6 +400,8 @@ export default function ChatPage() {
                       highlights,
                       streaming: false,
                       serverMessageId,
+                      plan,
+                      followUps,
                     }
                   : msg,
               ),
@@ -387,7 +411,26 @@ export default function ChatPage() {
             const code = (payload?.code as string) || 'INTERNAL'
             const message = (payload?.message as string) || ''
             const fakeErr = Object.assign(new ApiError(message, 500, payload), { code })
-            setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
+            // Erreur mi-stream : on PRÉSERVE le texte déjà reçu (500 mots
+            // streamés ne doivent pas disparaître) — la bulle reste, le
+            // bandeau d'erreur explique la coupure.
+            if (accumulated) {
+              setMessages((m) =>
+                m.map((msg) =>
+                  msg.id === pendingMsg.id
+                    ? {
+                        id: msg.id,
+                        role: 'assistant',
+                        text: accumulated + ' …',
+                        streaming: false,
+                        plan,
+                      }
+                    : msg,
+                ),
+              )
+            } else {
+              setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
+            }
             setError(mapErrorToMessage(fakeErr, t))
             // Measurement plan §6 — qualité IA.
             track('chat_error_shown', { code })
@@ -417,7 +460,25 @@ export default function ChatPage() {
           ),
         )
       } else if (!errored) {
-        setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
+        // Coupure réseau mi-stream : même traitement que l'event error — on
+        // garde le texte partiel si on en a reçu.
+        if (accumulated) {
+          setMessages((m) =>
+            m.map((msg) =>
+              msg.id === pendingMsg.id
+                ? {
+                    id: msg.id,
+                    role: 'assistant',
+                    text: accumulated + ' …',
+                    streaming: false,
+                    plan,
+                  }
+                : msg,
+            ),
+          )
+        } else {
+          setMessages((m) => m.filter((msg) => msg.id !== pendingMsg.id))
+        }
         setError(mapErrorToMessage(err, t))
         // Measurement plan §6 — qualité IA.
         const errCode = err instanceof ApiError ? (err.code ?? String(err.status)) : 'NETWORK'
@@ -503,13 +564,26 @@ export default function ChatPage() {
   }
 
   function recordFeedback(messageId: string, value: 'up' | 'down') {
+    const next = feedback[messageId] === value ? null : value
     setFeedback((m) => ({
       ...m,
-      [messageId]: m[messageId] === value ? (undefined as never) : value,
+      [messageId]: (next ?? undefined) as never,
     }))
     // Event qualité IA (cahier §6) — signal d'hallucination quand thumbs down.
     if (value === 'down') {
       track('insight_dismissed_as_wrong', { source: 'chat', message_id: messageId })
+    }
+    // Persistance (C1 — boucle qualité IA exploitable) : fire-and-forget si
+    // le message a un ID serveur (les bulles en cours de stream n'en ont pas).
+    const msg = messages.find((m) => m.id === messageId)
+    const serverMessageId = msg && 'serverMessageId' in msg ? (msg.serverMessageId ?? null) : null
+    if (workspaceId && serverMessageId) {
+      void apiFetch(`/api/v1/chat/messages/${serverMessageId}/feedback`, {
+        method: 'POST',
+        body: { workspaceId, rating: next },
+      }).catch(() => {
+        // Best-effort : l'échec de persistance ne casse pas l'UI locale.
+      })
     }
   }
 
@@ -578,7 +652,7 @@ export default function ChatPage() {
               />
             ) : (
               <div className="flex flex-col gap-5">
-                {messages.map((m) => (
+                {messages.map((m, mi) => (
                   <MessageBubble
                     key={m.id}
                     message={m}
@@ -588,20 +662,21 @@ export default function ChatPage() {
                     isPro={isPro}
                     workspaceId={workspaceId}
                     conversationId={conversationId}
+                    isLast={mi === messages.length - 1}
+                    onFollowUp={(q) => void send(q)}
                     onRerun={(newMode) => {
                       // Trouve le dernier message user juste avant la reponse
                       // assistant en question — on reprend la meme question
-                      // avec le mode oppose.
+                      // avec le mode demandé, SANS toucher au toggle global
+                      // (fix effet de bord : rejouer ne change plus le mode
+                      // persistant de l'utilisateur).
                       const idx = messages.findIndex((x) => x.id === m.id)
                       const prevUser = [...messages.slice(0, idx)]
                         .reverse()
                         .find((x) => x.role === 'user') as
                         | { id: string; role: 'user'; text: string }
                         | undefined
-                      if (prevUser) {
-                        setModeAndPersist(newMode)
-                        void send(prevUser.text)
-                      }
+                      if (prevUser) void send(prevUser.text, newMode)
                     }}
                     onPin={(args) => void handlePin(args)}
                   />
@@ -698,6 +773,8 @@ function MessageBubble({
   conversationId,
   onRerun,
   onPin,
+  isLast = false,
+  onFollowUp,
 }: {
   message: Message
   feedback?: 'up' | 'down'
@@ -714,6 +791,9 @@ function MessageBubble({
     spec: Record<string, unknown>
     sourceMessageId: string | null
   }) => void
+  /** C1 — chips de suivi rendues uniquement sous la dernière réponse. */
+  isLast?: boolean
+  onFollowUp?: (question: string) => void
 }) {
   const t = useT()
   if (message.role === 'user') {
@@ -747,6 +827,8 @@ function MessageBubble({
   const sources = 'sources' in message ? message.sources || [] : []
   const highlights = 'highlights' in message ? message.highlights || [] : []
   const streaming = 'streaming' in message ? Boolean(message.streaming) : false
+  const plan = 'plan' in message ? message.plan : undefined
+  const followUps = 'followUps' in message ? message.followUps : undefined
   const byId = new Map(sources.map((s) => [s.id, s]))
 
   return (
@@ -756,6 +838,7 @@ function MessageBubble({
         <div className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-text-3">
           {t('chat.assistant')}
         </div>
+        {plan && plan.length > 0 && <AnalysisPlan steps={plan} running={streaming} />}
         <div className="rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm text-text-1">
           {renderMarkdown(text, (id, key) => renderCitation(id, key, byId))}
           {streaming && <StreamCursor />}
@@ -765,6 +848,7 @@ function MessageBubble({
         <HighlightStack
           highlights={highlights}
           canPin={Boolean(isPro)}
+          workspaceId={workspaceId}
           onPin={
             onPin
               ? (args) =>
@@ -794,6 +878,22 @@ function MessageBubble({
               }
             />
             <FeedbackButtons feedback={feedback} onFeedback={onFeedback} />
+            {/* C1 — questions de suivi suggérées, uniquement sous la dernière
+                réponse (les anciennes seraient du bruit). */}
+            {isLast && onFollowUp && followUps && followUps.length > 0 && (
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {followUps.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => onFollowUp(q)}
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-text-2 transition-colors hover:border-brand-blue-deep/40 hover:bg-brand-blue-dim/30 hover:text-text-1"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
         {sources.length > 0 && (
@@ -864,6 +964,35 @@ function AssistantAvatar() {
       className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[9px] bg-brand-grad font-head text-sm font-bold text-white shadow-sm"
     >
       ✦
+    </div>
+  )
+}
+
+/**
+ * Checklist du plan d'investigation (mode approfondi). Affichée au-dessus de
+ * la réponse dès l'event SSE `plan` — l'user voit que l'assistant enquête,
+ * pas qu'il mouline. `running` anime la puce tant que le stream est actif.
+ */
+function AnalysisPlan({ steps, running }: { steps: string[]; running: boolean }) {
+  const t = useT()
+  return (
+    <div className="mb-2 rounded-[12px] border border-brand-blue-deep/20 bg-brand-blue-dim/40 px-3.5 py-2.5">
+      <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-brand-blue-deep">
+        {running ? (
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand-blue-deep" />
+        ) : (
+          <span aria-hidden="true">✓</span>
+        )}
+        {t('chat.plan.title')}
+      </div>
+      <ol className="mt-1.5 flex flex-col gap-1">
+        {steps.map((s, i) => (
+          <li key={i} className="flex items-baseline gap-2 text-[12.5px] leading-snug text-text-2">
+            <span className="font-mono text-[10.5px] text-brand-blue-deep">{i + 1}.</span>
+            {s}
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }
@@ -994,6 +1123,7 @@ function ConversationSidebar({
 }) {
   const t = useT()
   const { locale } = useLocale()
+  const queryClient = useQueryClient()
   // Mobile : drawer ouvert/fermé. Desktop : toujours visible (md:block).
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -1008,6 +1138,34 @@ function ConversationSidebar({
   })
 
   const conversations = q.data?.conversations ?? []
+
+  async function handleDelete(c: ConvSummary) {
+    if (!window.confirm(t('chat.history.deleteConfirm'))) return
+    try {
+      await apiFetch(`/api/v1/chat/conversations/${c.id}?workspaceId=${workspaceId}`, {
+        method: 'DELETE',
+      })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'conversations', workspaceId] })
+      // Si on supprime le fil ouvert, on repart sur une conversation neuve.
+      if (c.id === currentId) onNew()
+    } catch {
+      // Best-effort : la liste sera resynchronisée au prochain refetch.
+    }
+  }
+
+  async function handleRename(c: ConvSummary) {
+    const title = window.prompt(t('chat.history.renamePrompt'), c.title)
+    if (!title || !title.trim() || title.trim() === c.title) return
+    try {
+      await apiFetch(`/api/v1/chat/conversations/${c.id}`, {
+        method: 'PATCH',
+        body: { workspaceId, title: title.trim() },
+      })
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'conversations', workspaceId] })
+    } catch {
+      // Best-effort.
+    }
+  }
 
   // Le panneau lui-même : utilisé pour desktop ET mobile drawer.
   const panel = (
@@ -1035,7 +1193,7 @@ function ConversationSidebar({
         {!q.isLoading && conversations.length > 0 && (
           <ul role="listbox" className="py-1">
             {conversations.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} className="group relative">
                 <button
                   type="button"
                   onClick={() => {
@@ -1044,7 +1202,7 @@ function ConversationSidebar({
                   }}
                   aria-selected={c.id === currentId}
                   className={[
-                    'flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition-colors',
+                    'flex w-full flex-col items-start gap-0.5 px-3 py-2 pr-14 text-left transition-colors',
                     c.id === currentId
                       ? 'bg-brand-blue-dim text-text-1'
                       : 'text-text-2 hover:bg-card hover:text-text-1',
@@ -1055,6 +1213,27 @@ function ConversationSidebar({
                     {formatRelative(c.updated_at, locale)}
                   </span>
                 </button>
+                {/* Actions au survol : renommer / supprimer (C1). */}
+                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => void handleRename(c)}
+                    aria-label={t('chat.history.rename')}
+                    title={t('chat.history.rename')}
+                    className="rounded p-1 text-text-3 hover:bg-bg-3 hover:text-text-1"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(c)}
+                    aria-label={t('chat.history.delete')}
+                    title={t('chat.history.delete')}
+                    className="rounded p-1 text-text-3 hover:bg-brand-red/10 hover:text-brand-red"
+                  >
+                    🗑
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

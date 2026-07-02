@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { apiFetch } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { type Locale, useLocale, useT } from '@/lib/i18n'
 
 const LOCALES: { code: Locale; flag: string; key: 'locale.english' | 'locale.french' }[] = [
@@ -18,6 +20,21 @@ export default function LocaleSwitcher({ variant = 'compact', align = 'right' }:
   const t = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
+  const { state } = useAuth()
+  const workspaceId = state.workspaces[0]?.id
+
+  // Synchronise la locale côté serveur (migration 042) — les emails
+  // transactionnels (digest, alertes, briefs) suivent la langue choisie.
+  // Fire-and-forget : la locale UI reste locale-first (localStorage).
+  function persistLocale(next: Locale) {
+    if (!workspaceId) return
+    void apiFetch('/api/v1/workspaces', {
+      method: 'PATCH',
+      body: { workspaceId, locale: next },
+    }).catch(() => {
+      // Best-effort — resynchronisé au prochain changement.
+    })
+  }
 
   useEffect(() => {
     if (!open) return
@@ -60,6 +77,7 @@ export default function LocaleSwitcher({ variant = 'compact', align = 'right' }:
               aria-selected={l.code === locale}
               onClick={() => {
                 setLocale(l.code)
+                persistLocale(l.code)
                 setOpen(false)
               }}
               className={[

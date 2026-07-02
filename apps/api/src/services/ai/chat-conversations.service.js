@@ -157,6 +157,40 @@ async function appendMessage({
 }
 
 /**
+ * Renomme une conversation (titre édité par l'user dans la sidebar).
+ */
+async function renameConversation(conversationId, workspaceId, title) {
+  const cleaned = String(title || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 120)
+  if (!cleaned) return { renamed: false }
+  const supabase = getServiceRoleClient()
+  const { error, count } = await supabase
+    .from('chat_conversations')
+    .update({ title: cleaned }, { count: 'exact' })
+    .eq('id', conversationId)
+    .eq('workspace_id', workspaceId)
+  if (error) throw error
+  return { renamed: (count || 0) > 0, title: cleaned }
+}
+
+/**
+ * Enregistre le feedback 👍/👎 sur une réponse assistant. L'appartenance
+ * workspace est vérifiée via getMessageWithWorkspace (jointure conversation)
+ * côté route — ici on écrit simplement. rating=null pour retirer le vote.
+ */
+async function setMessageFeedback(messageId, rating) {
+  const supabase = getServiceRoleClient()
+  const { error } = await supabase
+    .from('chat_messages')
+    .update({ feedback: rating === 'up' || rating === 'down' ? rating : null })
+    .eq('id', messageId)
+  if (error) throw error
+  return { ok: true }
+}
+
+/**
  * Supprime une conversation (et ses messages, ON DELETE CASCADE).
  */
 async function deleteConversation(conversationId, workspaceId) {

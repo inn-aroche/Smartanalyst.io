@@ -7,6 +7,11 @@ const { NotFoundError, UserFacingError } = require('../../lib/error-handler')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
 
 const INSIGHT_STATUSES = new Set(['open', 'snoozed', 'resolved', 'dismissed'])
+
+// Rang de sévérité pour le tri : la colonne est du text, un ORDER BY SQL
+// donnerait l'ordre alphabétique (medium > low > high > critical) — faux.
+// On trie donc côté serveur applicatif avec ce rang explicite.
+const SEVERITY_RANK = { critical: 3, high: 2, medium: 1, low: 0 }
 // Cycle de vie tâches (brief V2 §3.4) :
 //   proposed (IA suggère) → todo (user valide) → done | archived
 //   proposed → archived (écartée sans validation)
@@ -44,17 +49,32 @@ async function listInsights(workspaceId, { status = 'open', limit = 20 } = {}) {
   // Auto-reopen des snoozes expirés avant le listing.
   await reopenExpiredSnoozes(workspaceId)
   const supabase = getServiceRoleClient()
+  // On sur-fetch (cap 200) puis on trie par rang de sévérité en JS : le tri
+  // SQL sur la colonne text serait alphabétique et éjecterait les critical
+  // du top N. Volumes réels par workspace : dizaines, pas milliers.
+  const fetchCap = Math.min(Math.max(limit * 5, 50), 200)
   let q = supabase
     .from('insights')
     .select('*')
     .eq('workspace_id', workspaceId)
-    .order('severity', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(limit)
-  if (status && status !== 'all') q = q.eq('status', status)
-  const { data: insights, error } = await q
+    .limit(fetchCap)
+  // 'treated' = resolved + dismissed : l'onglet « Traités » de la Veille.
+  // (Rien ne posait 'resolved' historiquement — les insights écartés
+  // devenaient invisibles à vie.)
+  if (status === 'treated') q = q.in('status', ['resolved', 'dismissed'])
+  else if (status && status !== 'all') q = q.eq('status', status)
+  const { data: rows, error } = await q
   if (error) throw error
-  if (!insights || insights.length === 0) return []
+  if (!rows || rows.length === 0) return []
+
+  const insights = rows
+    .sort(
+      (a, b) =>
+        (SEVERITY_RANK[b.severity] ?? -1) - (SEVERITY_RANK[a.severity] ?? -1) ||
+        new Date(b.created_at) - new Date(a.created_at),
+    )
+    .slice(0, limit)
 
   const ids = insights.map((i) => i.id)
   const { data: actions, error: aErr } = await supabase
