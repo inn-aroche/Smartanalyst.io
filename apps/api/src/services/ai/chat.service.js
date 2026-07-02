@@ -696,7 +696,7 @@ async function ask({
   // 2e passe : extrait 0-3 highlights visuels (KPI cards / callouts) à partir
   // de la réponse prose. Best-effort, latence ~500ms-1s. Si KO, on continue
   // sans highlights — le chat texte reste pleinement utilisable.
-  const highlights = await chatHighlights.extract({
+  const { highlights } = await chatHighlights.extract({
     workspaceId,
     userId,
     question: message,
@@ -1009,22 +1009,30 @@ async function askStream({
   // interactif « Ajouter à mes tâches » côté UI.
   const toolActionPlans = []
   let finalText = ''
+  // Textes de TOUS les tours (pas seulement le dernier) : le modèle commente
+  // souvent avant un tool call — ce texte est streamé au client, il doit
+  // aussi survivre dans la réponse finale persistée (fix « texte écrasé »).
+  const textParts = []
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
     let out
+    // Séparateur visuel entre le texte de deux tours successifs, émis avec
+    // le premier delta du tour (pas de ligne vide orpheline sinon).
+    let separatorEmitted = false
     try {
-      // Seul le DERNIER tour (sans plus de tool-call) est utile à streamer
-      // pour l'user. Les tours intermédiaires (functionCall → toolResponse)
-      // n'émettent typiquement aucun texte ; on les exécute en non-streaming
-      // pour éviter une SSE qui ouvre/ferme à vide. Stratégie : on tente le
-      // streaming sur chaque tour ; les chunks vides sont ignorés.
       const streamFn = useClaude ? claudeService.generateStream : generateStream
       out = await streamFn({
         systemPrompt,
         contents: history,
         tools: chatTools.DECLARATIONS,
         temperature: 0.4,
-        onDelta: (delta) => emit({ type: 'delta', text: delta }),
+        onDelta: (delta) => {
+          if (!separatorEmitted && textParts.length > 0) {
+            separatorEmitted = true
+            emit({ type: 'delta', text: '\n\n' })
+          }
+          emit({ type: 'delta', text: delta })
+        },
       })
     } catch (err) {
       // Erreurs Anthropic non classifiées : on les laisse remonter au
@@ -1044,8 +1052,9 @@ async function askStream({
       durationMs: out.usage?.durationMs,
     })
 
+    if (out.text && out.text.trim()) textParts.push(out.text.trim())
+
     if (out.functionCalls.length === 0 || round === MAX_TOOL_ROUNDS) {
-      finalText = out.text
       break
     }
 
@@ -1163,6 +1172,7 @@ async function askStream({
     history.push({ role: 'user', parts: responses })
   }
 
+  finalText = textParts.join('\n\n')
   const text = finalText
   const durationMs = Date.now() - t0
 
@@ -1212,7 +1222,7 @@ async function askStream({
       if (error) logger.warn({ event: 'chat_audit_failed', error: error.message })
     })
 
-  const extractedHighlights = await chatHighlights.extract({
+  const { highlights: extractedHighlights, followUps } = await chatHighlights.extract({
     workspaceId,
     userId,
     question: message,
@@ -1283,6 +1293,7 @@ async function askStream({
     model: modelName,
     sources: usedSources,
     highlights,
+    followUps,
     conversationId: conversation?.id || null,
     messageId: assistantMessageId,
     modeDowngraded: modeDowngraded || undefined,

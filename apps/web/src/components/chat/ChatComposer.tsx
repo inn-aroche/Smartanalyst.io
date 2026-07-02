@@ -80,8 +80,9 @@ export default function ChatComposer({
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Cmd/Ctrl + Enter = envoi. Shift+Enter = saut de ligne (default).
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    // Entrée = envoi (standard ChatGPT/Claude) ; Shift+Entrée = saut de
+    // ligne. Cmd/Ctrl+Entrée reste couvert par la même branche.
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e as unknown as FormEvent)
     }

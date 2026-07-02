@@ -115,7 +115,7 @@ function load({ streamOutputs }) {
     id: HIGHLIGHTS_PATH,
     filename: HIGHLIGHTS_PATH,
     loaded: true,
-    exports: { extract: async () => [] },
+    exports: { extract: async () => ({ highlights: [], followUps: [] }) },
   }
 
   require.cache[AI_USAGE_PATH] = {

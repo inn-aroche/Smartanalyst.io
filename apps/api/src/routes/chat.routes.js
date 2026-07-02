@@ -344,6 +344,77 @@ router.get(
   },
 )
 
+// Renomme un fil (titre édité dans la sidebar).
+router.patch(
+  '/conversations/:id',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('conversation id invalide.'),
+    body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+    body('title').isString().bail().trim().isLength({ min: 1, max: 120 }),
+  ],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const result = await chatConversations.renameConversation(
+        req.params.id,
+        req.workspaceId,
+        req.body.title,
+      )
+      if (!result.renamed) {
+        return next(
+          new UserFacingError('Conversation introuvable.', {
+            statusCode: 404,
+            code: 'CONVERSATION_NOT_FOUND',
+          }),
+        )
+      }
+      res.json({ renamed: true, title: result.title })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Feedback 👍/👎 sur une réponse assistant (boucle qualité IA, cahier §6).
+// rating=null retire le vote. Appartenance workspace vérifiée via la
+// jointure conversation (getMessageWithWorkspace).
+router.post(
+  '/messages/:id/feedback',
+  jwtMiddleware,
+  [
+    param('id').isUUID().withMessage('message id invalide.'),
+    body('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
+    body('rating')
+      .optional({ nullable: true })
+      .isIn(['up', 'down'])
+      .withMessage('rating doit être up, down ou null.'),
+  ],
+  runValidation,
+  workspaceScope,
+  async (req, res, next) => {
+    try {
+      const msg = await chatConversations.getMessageWithWorkspace(req.params.id)
+      if (!msg) {
+        return next(
+          new UserFacingError('Message introuvable.', {
+            statusCode: 404,
+            code: 'MESSAGE_NOT_FOUND',
+          }),
+        )
+      }
+      if (msg.workspaceId !== req.workspaceId) {
+        return next(new UserFacingError('Accès refusé.', { statusCode: 403, code: 'WS_MISMATCH' }))
+      }
+      await chatConversations.setMessageFeedback(req.params.id, req.body.rating ?? null)
+      res.json({ ok: true })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
 // Supprime un fil (cascade sur messages).
 router.delete(
   '/conversations/:id',

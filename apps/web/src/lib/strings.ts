@@ -621,6 +621,10 @@ const en = {
   'chat.actionPlan.prio.high': 'High',
   'chat.actionPlan.prio.medium': 'Medium',
   'chat.actionPlan.prio.low': 'Low',
+  'chat.history.rename': 'Rename',
+  'chat.history.renamePrompt': 'New conversation title:',
+  'chat.history.delete': 'Delete',
+  'chat.history.deleteConfirm': 'Delete this conversation? This cannot be undone.',
   // ━━━ Chat V2.1 — action shelf (cahier 22b §3.4) ━━━
   'chat.shelf.excel': 'Excel',
   'chat.shelf.excel.aria': 'Export answer as Excel',
@@ -2042,6 +2046,10 @@ const fr: Record<keyof typeof en, string> = {
   'chat.actionPlan.prio.high': 'Haute',
   'chat.actionPlan.prio.medium': 'Moyenne',
   'chat.actionPlan.prio.low': 'Basse',
+  'chat.history.rename': 'Renommer',
+  'chat.history.renamePrompt': 'Nouveau titre de la conversation :',
+  'chat.history.delete': 'Supprimer',
+  'chat.history.deleteConfirm': 'Supprimer cette conversation ? Action irréversible.',
   // ━━━ Chat V2.1 — action shelf (cahier 22b §3.4) ━━━
   'chat.shelf.excel': 'Excel',
   'chat.shelf.excel.aria': 'Exporter la réponse en Excel',

@@ -78,6 +78,13 @@ const RESPONSE_SCHEMA = {
         required: ['type', 'title', 'tone'],
       },
     },
+    followUps: {
+      type: 'ARRAY',
+      maxItems: 3,
+      items: { type: 'STRING' },
+      description:
+        "2-3 questions de suivi courtes (< 70 caractères) que l'utilisateur voudra probablement poser ensuite, dans SA langue, directement liées aux données discutées.",
+    },
   },
   required: ['highlights'],
 }
@@ -97,7 +104,8 @@ Rules:
 - metricKey: only if the underlying number maps to a known canonical metric_key from the sources. Empty otherwise.
 - sourceIds: the [N] citation numbers from the prose that support this highlight, if any.
 - Do NOT invent numbers. Only use numbers that appear verbatim in the prose.
-- If the prose has no measurable fact, return an empty highlights array.`
+- If the prose has no measurable fact, return an empty highlights array.
+- followUps: 2-3 short follow-up questions (< 70 chars each, in English) the user is likely to ask next — natural continuations of THIS analysis (drill-down, comparison, action). Empty array if the answer was purely conversational.`
   }
   return `Tu es un assistant qui transforme la réponse écrite d'un analyste marketing en 0 à 3 highlights visuels pour une UI de chat. L'utilisateur a déjà lu la prose ; les highlights ne doivent faire ressortir QUE les chiffres / signaux les plus importants.
 
@@ -112,7 +120,8 @@ Règles :
 - metricKey : uniquement si le chiffre sous-jacent matche une metric_key canonique des sources. Vide sinon.
 - sourceIds : les numéros [N] de la prose qui appuient ce highlight, si présents.
 - N'invente PAS de chiffres. Utilise uniquement les chiffres qui apparaissent textuellement dans la prose.
-- Si la prose n'a aucun fait mesurable, renvoie un tableau highlights vide.`
+- Si la prose n'a aucun fait mesurable, renvoie un tableau highlights vide.
+- followUps : 2-3 questions de suivi courtes (< 70 caractères, en français) que l'utilisateur voudra probablement poser ensuite — des continuations naturelles de CETTE analyse (creuser, comparer, agir). Tableau vide si la réponse était purement conversationnelle.`
 }
 
 function buildUserMessage({ question, answer, sources, locale }) {
@@ -185,10 +194,11 @@ async function fetchSparkline(workspaceId, metricKey) {
  * @param {string} params.answer
  * @param {Array}  [params.sources]
  * @param {string} [params.locale='fr']
- * @returns {Promise<Array>}
+ * @returns {Promise<{ highlights: Array, followUps: string[] }>}
  */
 async function extract({ workspaceId, userId, question, answer, sources = [], locale = 'fr' }) {
-  if (!answer || answer.trim().length < 20) return []
+  const empty = { highlights: [], followUps: [] }
+  if (!answer || answer.trim().length < 20) return empty
 
   try {
     const { json, modelName, usage } = await generateStructured({
@@ -210,8 +220,16 @@ async function extract({ workspaceId, userId, question, answer, sources = [], lo
       durationMs: usage?.durationMs,
     })
 
+    // Questions de suivi (C1) — normalisées avant retour.
+    const followUps = Array.isArray(json?.followUps)
+      ? json.followUps
+          .filter((q) => typeof q === 'string' && q.trim().length > 0)
+          .map((q) => q.trim().slice(0, 120))
+          .slice(0, 3)
+      : []
+
     const list = Array.isArray(json?.highlights) ? json.highlights.slice(0, MAX_HIGHLIGHTS) : []
-    if (list.length === 0) return []
+    if (list.length === 0) return { highlights: [], followUps }
 
     // Enrichit chaque highlight KPI avec une mini-sparkline si on a la metric_key.
     const enriched = await Promise.all(
@@ -237,13 +255,13 @@ async function extract({ workspaceId, userId, question, answer, sources = [], lo
         return normalized
       }),
     )
-    return enriched
+    return { highlights: enriched, followUps }
   } catch (err) {
     logger.warn(
       { event: 'chat_highlights_failed', error: err.message },
       'Highlights extraction failed — falling back to text-only response',
     )
-    return []
+    return empty
   }
 }
 

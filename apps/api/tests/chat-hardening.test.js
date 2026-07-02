@@ -79,7 +79,8 @@ function load({ rows = [], generateOnceImpl, highlightsImpl } = {}) {
     id: HIGHLIGHTS_PATH,
     filename: HIGHLIGHTS_PATH,
     loaded: true,
-    exports: { extract: highlightsImpl || (async () => []) },
+    // Nouveau contrat extract (C1) : { highlights, followUps }.
+    exports: { extract: highlightsImpl || (async () => ({ highlights: [], followUps: [] })) },
   }
   // No-op pour la persistance — non testée ici.
   require.cache[CONV_PATH] = {
@@ -141,7 +142,7 @@ test('ask : workspace avec data → appelle Gemini normalement + highlights extr
         date: new Date().toISOString().slice(0, 10),
       },
     ],
-    highlightsImpl: async () => highlights,
+    highlightsImpl: async () => ({ highlights, followUps: [] }),
   })
   const r = await svc.ask({ userId: 'u', workspaceId: 'ws-1', message: 'allo', locale: 'fr' })
   assert.equal(getGenerateCount(), 1)
