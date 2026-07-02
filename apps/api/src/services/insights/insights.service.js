@@ -59,7 +59,11 @@ async function listInsights(workspaceId, { status = 'open', limit = 20 } = {}) {
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
     .limit(fetchCap)
-  if (status && status !== 'all') q = q.eq('status', status)
+  // 'treated' = resolved + dismissed : l'onglet « Traités » de la Veille.
+  // (Rien ne posait 'resolved' historiquement — les insights écartés
+  // devenaient invisibles à vie.)
+  if (status === 'treated') q = q.in('status', ['resolved', 'dismissed'])
+  else if (status && status !== 'all') q = q.eq('status', status)
   const { data: rows, error } = await q
   if (error) throw error
   if (!rows || rows.length === 0) return []

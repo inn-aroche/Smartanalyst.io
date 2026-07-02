@@ -31,6 +31,8 @@ router.patch(
     body('logo_url')
       .optional({ nullable: true })
       .isURL({ require_tld: false, protocols: ['https'] }),
+    // C3 — langue des emails transactionnels (synchronisée depuis Réglages).
+    body('locale').optional().isIn(['fr', 'en']),
   ],
   runValidation,
   workspaceScope,
@@ -40,6 +42,7 @@ router.patch(
       const patch = {}
       if ('brand_color' in req.body) patch.brand_color = req.body.brand_color
       if ('logo_url' in req.body) patch.logo_url = req.body.logo_url
+      if ('locale' in req.body) patch.locale = req.body.locale
       if (Object.keys(patch).length === 0) {
         return next(
           new UserFacingError('Aucun champ modifiable fourni.', {

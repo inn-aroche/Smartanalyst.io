@@ -81,10 +81,12 @@ export default function VeillePage() {
     staleTime: 60_000,
   })
   const resolvedQ = useQuery({
-    queryKey: ['insights', 'list', wsId, 'resolved'],
+    queryKey: ['insights', 'list', wsId, 'treated'],
     enabled: !!wsId && filter === 'resolved',
     queryFn: () =>
-      apiFetch<{ insights: Insight[] }>(`/api/v1/insights?workspaceId=${wsId}&status=resolved`),
+      // 'treated' = resolved + dismissed : sans ça l'onglet était vide à vie
+      // (aucune UI ne pose 'resolved') et les insights écartés disparaissaient.
+      apiFetch<{ insights: Insight[] }>(`/api/v1/insights?workspaceId=${wsId}&status=treated`),
     staleTime: 60_000,
   })
   // Détection workspace vide : on pioche has_data depuis health-score (déjà

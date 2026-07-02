@@ -14,6 +14,27 @@ const escapeHtml = emailTemplate.escapeHtml
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// Strings EN/FR du brief (ADR-0003 — international dès J1). La locale vient
+// du workspace (migration 042).
+const BRIEF_STRINGS = {
+  fr: {
+    subject: (title) => `Brief : ${title}`,
+    priority: 'Priorité',
+    impact: 'Impact',
+    effort: 'Effort',
+    confidence: 'Confiance',
+    footer: (name) => `Brief envoyé ${name ? `par ${name} ` : ''}depuis SmartAnalyst.`,
+  },
+  en: {
+    subject: (title) => `Brief: ${title}`,
+    priority: 'Priority',
+    impact: 'Impact',
+    effort: 'Effort',
+    confidence: 'Confidence',
+    footer: (name) => `Brief sent ${name ? `by ${name} ` : ''}from SmartAnalyst.`,
+  },
+}
+
 /**
  * Compose le HTML + text d'un brief de tâche.
  * Volontairement sobre (système, pas de marketing) — c'est un brief opérationnel.
@@ -22,12 +43,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  * @param {object} [opts]
  * @param {string} [opts.senderName] - nom du sender (pour signer)
  * @param {string} [opts.note]       - mot perso ajouté en haut
+ * @param {'fr'|'en'} [opts.locale='fr']
  * @returns {{ subject, html, text }}
  */
-function composeBrief(task, { senderName, note } = {}) {
-  const trim = (s, n = 4000) => (typeof s === 'string' ? s.slice(0, n) : '')
+function composeBrief(task, { senderName, note, locale = 'fr' } = {}) {
+  const s = BRIEF_STRINGS[locale === 'en' ? 'en' : 'fr']
+  const trim = (str, n = 4000) => (typeof str === 'string' ? str.slice(0, n) : '')
   const safeTitle = trim(task.title, 200)
-  const subject = `Brief : ${safeTitle}`
+  const subject = s.subject(safeTitle)
   const greetingName = (senderName || '').trim()
   const senderTag = greetingName ? `${greetingName} (via SmartAnalyst)` : 'via SmartAnalyst'
 
@@ -40,10 +63,10 @@ function composeBrief(task, { senderName, note } = {}) {
     ? `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.65;color:#14142A">${escapeHtml(trim(task.description, 2000))}</p>`
     : ''
   const metaTable = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="font-size:13px;color:#5C5C78;border-collapse:collapse;margin:0">
-    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Priorité</td><td style="padding:3px 0;color:#14142A"><strong>${escapeHtml(String(task.priority || '—'))}</strong></td></tr>
-    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Impact</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.impact || '—'))}</td></tr>
-    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Effort</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.effort || '—'))}</td></tr>
-    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">Confiance</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.confidence || '—'))}</td></tr>
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">${s.priority}</td><td style="padding:3px 0;color:#14142A"><strong>${escapeHtml(String(task.priority || '—'))}</strong></td></tr>
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">${s.impact}</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.impact || '—'))}</td></tr>
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">${s.effort}</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.effort || '—'))}</td></tr>
+    <tr><td style="padding:3px 14px 3px 0;color:#5C5C78">${s.confidence}</td><td style="padding:3px 0;color:#14142A">${escapeHtml(String(task.confidence || '—'))}</td></tr>
   </table>`
 
   const body = `${noteBlock}${descBlock}${metaTable}`
@@ -52,12 +75,12 @@ function composeBrief(task, { senderName, note } = {}) {
     preview: safeTitle,
     title: safeTitle,
     body,
-    footer: `Brief envoyé ${greetingName ? `par ${greetingName} ` : ''}depuis SmartAnalyst.`,
+    footer: s.footer(greetingName),
   })
 
   // text/plain : on ajoute les meta task explicitement (le strip HTML ne
   // rend pas bien la table).
-  const textWithMeta = `${text}\n\n— ${senderTag}\nPriorité : ${task.priority || '—'} · Impact : ${task.impact || '—'} · Effort : ${task.effort || '—'} · Confiance : ${task.confidence || '—'}`
+  const textWithMeta = `${text}\n\n— ${senderTag}\n${s.priority} : ${task.priority || '—'} · ${s.impact} : ${task.impact || '—'} · ${s.effort} : ${task.effort || '—'} · ${s.confidence} : ${task.confidence || '—'}`
 
   return { subject, html, text: textWithMeta }
 }
@@ -73,7 +96,19 @@ async function sendTaskBrief({ workspaceId, userId, task, recipient, note, sende
       code: 'INVALID_RECIPIENT',
     })
   }
-  const { subject, html, text } = composeBrief(task, { senderName, note })
+  // Locale du workspace (migration 042) — best-effort, défaut fr.
+  let locale = 'fr'
+  try {
+    const { data: ws } = await getServiceRoleClient()
+      .from('workspaces')
+      .select('locale')
+      .eq('id', workspaceId)
+      .maybeSingle()
+    if (ws?.locale === 'en') locale = 'en'
+  } catch {
+    // défaut fr
+  }
+  const { subject, html, text } = composeBrief(task, { senderName, note, locale })
   const result = await sendEmail({ to: recipient, subject, html, text })
 
   // Audit (best-effort)

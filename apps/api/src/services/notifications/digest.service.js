@@ -18,15 +18,66 @@ function appUrl() {
   return (process.env.APP_URL || 'https://app.smartanalyst.io').replace(/\/$/, '')
 }
 
+// Strings des emails transactionnels — EN/FR (ADR-0003 « international dès
+// J1 »). La locale vient du workspace (migration 042) via recipient.js.
+const EMAIL_STRINGS = {
+  fr: {
+    hello: (name) => (name ? `Bonjour ${name},` : 'Bonjour,'),
+    digestSubject: (n) => `Ton brief de la semaine — ${n} point${n > 1 ? 's' : ''} à voir`,
+    digestPreview: (n) => `${n} point${n > 1 ? 's' : ''} à voir cette semaine.`,
+    digestIntro: 'Voici ce qui mérite ton attention cette semaine.',
+    digestCta: 'Ouvrir SmartAnalyst',
+    digestFooter:
+      'Tu reçois ce mail car la veille hebdo est active. Tu peux la régler dans Réglages → Notifications.',
+    alertSubject: (title) => `🔴 Alerte : ${title}`,
+    alertKicker: 'Alerte critique',
+    alertCta: 'Voir le détail',
+    alertFooter:
+      'Tu reçois ce mail car les alertes critiques sont activées. Tu peux les régler dans Réglages → Notifications.',
+    reportSubject: (title) => `Ton rapport — ${title}`,
+    reportPreview: (title) => `Le rapport "${title}" est prêt.`,
+    reportBody: (title) =>
+      `Le rapport <strong style="color:#14142A">${title}</strong> est prêt. Tu peux le consulter en ligne ou l'imprimer en PDF en un clic.`,
+    reportCta: 'Voir mon rapport',
+    reportFooter:
+      'Tu reçois ce mail car la génération automatique de rapports est active sur ton workspace.',
+  },
+  en: {
+    hello: (name) => (name ? `Hi ${name},` : 'Hi,'),
+    digestSubject: (n) => `Your weekly brief — ${n} thing${n > 1 ? 's' : ''} to look at`,
+    digestPreview: (n) => `${n} thing${n > 1 ? 's' : ''} to look at this week.`,
+    digestIntro: 'Here is what deserves your attention this week.',
+    digestCta: 'Open SmartAnalyst',
+    digestFooter:
+      'You receive this email because the weekly digest is on. Manage it in Settings → Notifications.',
+    alertSubject: (title) => `🔴 Alert: ${title}`,
+    alertKicker: 'Critical alert',
+    alertCta: 'See details',
+    alertFooter:
+      'You receive this email because critical alerts are on. Manage them in Settings → Notifications.',
+    reportSubject: (title) => `Your report — ${title}`,
+    reportPreview: (title) => `The report "${title}" is ready.`,
+    reportBody: (title) =>
+      `The report <strong style="color:#14142A">${title}</strong> is ready. View it online or print it as a PDF in one click.`,
+    reportCta: 'View my report',
+    reportFooter:
+      'You receive this email because automatic report generation is active on your workspace.',
+  },
+}
+
+function strs(locale) {
+  return EMAIL_STRINGS[locale === 'en' ? 'en' : 'fr']
+}
+
 /**
  * Compose le digest hebdo à partir d'insights ouverts.
  * @returns {{ subject, html, text } | null} null si rien à dire.
  */
-function composeWeeklyDigest(insights, { orgName } = {}) {
+function composeWeeklyDigest(insights, { orgName, locale = 'fr' } = {}) {
   if (!insights || insights.length === 0) return null
+  const s = strs(locale)
   const top = insights.slice(0, 5)
-  const hello = orgName ? `Bonjour ${orgName},` : 'Bonjour,'
-  const subject = `Ton brief de la semaine — ${top.length} point${top.length > 1 ? 's' : ''} à voir`
+  const subject = s.digestSubject(top.length)
 
   const items = top
     .map((i) => {
@@ -41,13 +92,12 @@ function composeWeeklyDigest(insights, { orgName } = {}) {
   const body = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 12px 0">${items}</table>`
 
   const { html, text } = emailTemplate.renderEmail({
-    preview: `${top.length} point${top.length > 1 ? 's' : ''} à voir cette semaine.`,
-    title: hello,
-    intro: 'Voici ce qui mérite ton attention cette semaine.',
+    preview: s.digestPreview(top.length),
+    title: s.hello(orgName),
+    intro: s.digestIntro,
     body,
-    cta: { label: 'Ouvrir SmartAnalyst', href: `${appUrl()}/veille` },
-    footer:
-      'Tu reçois ce mail car la veille hebdo est active. Tu peux la régler dans Réglages → Notifications.',
+    cta: { label: s.digestCta, href: `${appUrl()}/veille` },
+    footer: s.digestFooter,
   })
 
   return { subject, html, text }
@@ -56,21 +106,20 @@ function composeWeeklyDigest(insights, { orgName } = {}) {
 /**
  * Compose une alerte critique unitaire.
  */
-function composeCriticalAlert(insight, { orgName } = {}) {
-  const hello = orgName ? `Bonjour ${orgName},` : 'Bonjour,'
-  const subject = `🔴 Alerte : ${insight.title}`
+function composeCriticalAlert(insight, { orgName, locale = 'fr' } = {}) {
+  const s = strs(locale)
+  const subject = s.alertSubject(insight.title)
   const body = `<div style="border-left:3px solid #E0495C;background:#FDF3F5;padding:14px 16px;border-radius:8px;margin:0 0 12px 0">
-    <div style="font-size:11px;font-weight:600;color:#E0495C;letter-spacing:0.06em;text-transform:uppercase;margin:0 0 6px 0">Alerte critique</div>
+    <div style="font-size:11px;font-weight:600;color:#E0495C;letter-spacing:0.06em;text-transform:uppercase;margin:0 0 6px 0">${s.alertKicker}</div>
     <div style="font-size:16px;font-weight:700;color:#14142A;line-height:1.4">${escapeHtml(insight.title)}</div>
     <p style="margin:8px 0 0 0;font-size:14px;line-height:1.55;color:#5C5C78">${escapeHtml(insight.summary)}</p>
   </div>`
   const { html, text } = emailTemplate.renderEmail({
     preview: insight.title,
-    title: hello,
+    title: s.hello(orgName),
     body,
-    cta: { label: 'Voir le détail', href: `${appUrl()}/veille` },
-    footer:
-      'Tu reçois ce mail car les alertes critiques sont activées. Tu peux les régler dans Réglages → Notifications.',
+    cta: { label: s.alertCta, href: `${appUrl()}/veille` },
+    footer: s.alertFooter,
   })
   return { subject, html, text }
 }
@@ -88,7 +137,10 @@ async function sendWeeklyDigest(workspaceId) {
   if (!recipient) return { sent: false, reason: 'no_recipient' }
 
   const insights = await insightsService.listInsights(workspaceId, { status: 'open', limit: 5 })
-  const composed = composeWeeklyDigest(insights, { orgName: recipient.orgName })
+  const composed = composeWeeklyDigest(insights, {
+    orgName: recipient.orgName,
+    locale: recipient.locale,
+  })
   if (!composed) return { sent: false, reason: 'no_insights' }
 
   const result = await sendEmail({ to: recipient.email, ...composed })
@@ -122,7 +174,10 @@ async function sendCriticalAlert(workspaceId, insight) {
 
   const recipient = await getWorkspaceRecipient(workspaceId)
   if (!recipient) return { sent: false, reason: 'no_recipient' }
-  const composed = composeCriticalAlert(insight, { orgName: recipient.orgName })
+  const composed = composeCriticalAlert(insight, {
+    orgName: recipient.orgName,
+    locale: recipient.locale,
+  })
   const result = await sendEmail({ to: recipient.email, ...composed })
   if (!result.ok) {
     logger.warn(
@@ -142,18 +197,17 @@ async function sendCriticalAlert(workspaceId, insight) {
  * Notifie le destinataire d'un workspace qu'un nouveau rapport est dispo.
  * Best-effort : pas de throw, on log et on continue côté caller.
  */
-function composeReportReady(report, { orgName } = {}) {
-  const hello = orgName ? `Bonjour ${orgName},` : 'Bonjour,'
+function composeReportReady(report, { orgName, locale = 'fr' } = {}) {
+  const s = strs(locale)
   const url = `${appUrl()}/rapports`
-  const subject = `Ton rapport — ${report.title}`
-  const body = `<p style="margin:0;font-size:14.5px;line-height:1.6;color:#5C5C78">Le rapport <strong style="color:#14142A">${escapeHtml(report.title)}</strong> est prêt. Tu peux le consulter en ligne ou l'imprimer en PDF en un clic.</p>`
+  const subject = s.reportSubject(report.title)
+  const body = `<p style="margin:0;font-size:14.5px;line-height:1.6;color:#5C5C78">${s.reportBody(escapeHtml(report.title))}</p>`
   const { html, text } = emailTemplate.renderEmail({
-    preview: `Le rapport "${report.title}" est prêt.`,
-    title: hello,
+    preview: s.reportPreview(report.title),
+    title: s.hello(orgName),
     body,
-    cta: { label: 'Voir mon rapport', href: url },
-    footer:
-      'Tu reçois ce mail car la génération automatique de rapports est active sur ton workspace.',
+    cta: { label: s.reportCta, href: url },
+    footer: s.reportFooter,
   })
   return { subject, html, text }
 }
@@ -161,7 +215,10 @@ function composeReportReady(report, { orgName } = {}) {
 async function sendReportReady(workspaceId, report) {
   const recipient = await getWorkspaceRecipient(workspaceId)
   if (!recipient) return { sent: false, reason: 'no_recipient' }
-  const composed = composeReportReady(report, { orgName: recipient.orgName })
+  const composed = composeReportReady(report, {
+    orgName: recipient.orgName,
+    locale: recipient.locale,
+  })
   const result = await sendEmail({ to: recipient.email, ...composed })
   if (!result.ok) {
     logger.warn(

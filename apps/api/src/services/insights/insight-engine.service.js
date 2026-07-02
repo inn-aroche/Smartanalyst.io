@@ -140,6 +140,47 @@ async function storeInsight(workspaceId, insight, rawModelOutput) {
 }
 
 /**
+ * Notifie (une fois par mois) que le quota d'insights est atteint. Le cron
+ * post-sync tourne tous les jours : sans idempotence, l'user serait spammé.
+ * Type 'system' + meta.kind (le CHECK de la table ne connaît pas de type
+ * dédié) ; texte localisé selon workspaces.locale.
+ */
+async function notifyInsightQuotaReached(workspaceId, quota) {
+  const supabase = getServiceRoleClient()
+  const monthStart = new Date()
+  monthStart.setUTCDate(1)
+  monthStart.setUTCHours(0, 0, 0, 0)
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('type', 'system')
+    .contains('meta', { kind: 'insight_quota_reached' })
+    .gte('created_at', monthStart.toISOString())
+    .limit(1)
+    .maybeSingle()
+  if (existing) return
+
+  const { data: ws } = await supabase
+    .from('workspaces')
+    .select('locale')
+    .eq('id', workspaceId)
+    .maybeSingle()
+  const en = ws?.locale === 'en'
+  await notificationCenter.createNotification({
+    workspaceId,
+    type: 'system',
+    severity: 'warning',
+    title: en ? 'Your monitoring is paused' : 'Ta veille est en pause',
+    body: en
+      ? `Monthly insight limit reached (${quota.current}/${quota.limit}). Upgrade to keep detection running.`
+      : `Limite mensuelle d'insights atteinte (${quota.current}/${quota.limit}). Passe au plan supérieur pour garder la détection active.`,
+    link: '/settings?tab=billing',
+    meta: { kind: 'insight_quota_reached', current: quota.current, limit: quota.limit },
+  })
+}
+
+/**
  * Génère les insights pour un workspace. Point d'entrée appelé post-sync.
  * @returns {Promise<{ generated: number, dropped: number, skipped: boolean }>}
  */
@@ -160,6 +201,17 @@ async function generateForWorkspace(workspaceId) {
       },
       'Insight engine: monthly insight quota reached, skipping',
     )
+    // Rend le blocage VISIBLE in-app (meilleur moment de conversion
+    // Free→Pro) — le skip était silencieux, la veille « mourait » sans
+    // signal. Une seule notification par mois (idempotence).
+    try {
+      await notifyInsightQuotaReached(workspaceId, quota)
+    } catch (err) {
+      logger.warn(
+        { event: 'insight_quota_notify_failed', workspaceId, error: err.message },
+        'Could not create quota notification',
+      )
+    }
     return { generated: 0, dropped: 0, skipped: true, reason: 'quota_exceeded' }
   }
 

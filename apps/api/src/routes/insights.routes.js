@@ -21,7 +21,8 @@ router.get(
   '/',
   [
     query('workspaceId').isUUID().withMessage('workspaceId UUID requis.'),
-    query('status').optional().isIn(['open', 'snoozed', 'resolved', 'dismissed', 'all']),
+    // 'treated' = resolved + dismissed (onglet « Traités » de la Veille).
+    query('status').optional().isIn(['open', 'snoozed', 'resolved', 'dismissed', 'treated', 'all']),
     query('limit')
       .optional()
       .isInt({ min: 1, max: 100 })
