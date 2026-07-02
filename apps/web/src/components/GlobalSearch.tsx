@@ -186,6 +186,86 @@ export default function GlobalSearch() {
   const filteredActions =
     q2.length === 0 ? actionItems : actionItems.filter((i) => t(i.key).toLowerCase().includes(q2))
 
+  // Liste plate de tous les items visibles, dans l'ordre de rendu — support
+  // de la navigation clavier (flèches + Entrée) attendue d'une palette.
+  type FlatItem = {
+    id: string
+    section: 'go' | 'actions' | 'conversations' | 'insights' | 'reports'
+    title: string
+    subtitle?: string
+    icon?: string
+    run: () => void
+  }
+  const flatItems = useMemo<FlatItem[]>(() => {
+    const items: FlatItem[] = []
+    for (const i of filteredNav) {
+      items.push({
+        id: `nav:${i.key}`,
+        section: 'go',
+        title: t(i.key),
+        icon: i.icon,
+        run: () => go(i.to),
+      })
+    }
+    for (const i of filteredActions) {
+      items.push({
+        id: `act:${i.key}`,
+        section: 'actions',
+        title: t(i.key),
+        icon: i.icon,
+        run: () => doAction(i.action, i.to),
+      })
+    }
+    if (debouncedQ.length >= 2 && results.data) {
+      for (const c of results.data.conversations) {
+        items.push({
+          id: `conv:${c.id}`,
+          section: 'conversations',
+          title: c.title || t('search.untitled'),
+          run: () => go(`/chat?conv=${c.id}`),
+        })
+      }
+      for (const i of results.data.insights) {
+        items.push({
+          id: `ins:${i.id}`,
+          section: 'insights',
+          title: i.title,
+          subtitle: i.summary,
+          run: () => go(`/veille?insight=${i.id}`),
+        })
+      }
+      for (const r of results.data.reports) {
+        items.push({
+          id: `rep:${r.id}`,
+          section: 'reports',
+          title: r.title || t('search.untitled'),
+          run: () => go(`/rapports?id=${r.id}`),
+        })
+      }
+    }
+    return items
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredNav, filteredActions, results.data, debouncedQ, t])
+
+  // Sélection clavier — reset quand la liste change (nouvelle query).
+  const [sel, setSel] = useState(0)
+  useEffect(() => {
+    setSel(0)
+  }, [q, results.data])
+
+  function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSel((v) => Math.min(v + 1, flatItems.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSel((v) => Math.max(v - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      flatItems[sel]?.run()
+    }
+  }
+
   if (!open) return null
   const hasDataResults =
     (results.data?.conversations.length || 0) +
@@ -193,6 +273,9 @@ export default function GlobalSearch() {
       (results.data?.reports.length || 0) >
     0
   const hasNavOrActions = filteredNav.length > 0 || filteredActions.length > 0
+
+  // Index global de chaque item pour le highlight — rendu par section.
+  const indexOf = (id: string) => flatItems.findIndex((it) => it.id === id)
   return (
     <div
       className="fixed inset-0 z-[2200] flex items-start justify-center bg-black/40 px-4 pt-[12vh]"
@@ -212,6 +295,7 @@ export default function GlobalSearch() {
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onKeyDown={onInputKeyDown}
             placeholder={t('search.placeholder')}
             className="flex-1 border-none bg-transparent text-base text-text-1 outline-none placeholder:text-text-3"
             aria-label={t('search.placeholder')}
@@ -226,7 +310,13 @@ export default function GlobalSearch() {
             {filteredNav.length > 0 && (
               <Section title={t('palette.section.go')}>
                 {filteredNav.map((i) => (
-                  <ResultRow key={i.key} title={t(i.key)} icon={i.icon} onClick={() => go(i.to)} />
+                  <ResultRow
+                    key={i.key}
+                    title={t(i.key)}
+                    icon={i.icon}
+                    active={indexOf(`nav:${i.key}`) === sel}
+                    onClick={() => go(i.to)}
+                  />
                 ))}
               </Section>
             )}
@@ -237,6 +327,7 @@ export default function GlobalSearch() {
                     key={i.key}
                     title={t(i.key)}
                     icon={i.icon}
+                    active={indexOf(`act:${i.key}`) === sel}
                     onClick={() => doAction(i.action, i.to)}
                   />
                 ))}
@@ -260,6 +351,7 @@ export default function GlobalSearch() {
                         <ResultRow
                           key={c.id}
                           title={c.title || t('search.untitled')}
+                          active={indexOf(`conv:${c.id}`) === sel}
                           onClick={() => go(`/chat?conv=${c.id}`)}
                         />
                       ))}
@@ -272,7 +364,8 @@ export default function GlobalSearch() {
                           key={i.id}
                           title={i.title}
                           subtitle={i.summary}
-                          onClick={() => go(`/veille`)}
+                          active={indexOf(`ins:${i.id}`) === sel}
+                          onClick={() => go(`/veille?insight=${i.id}`)}
                         />
                       ))}
                     </Section>
@@ -283,7 +376,8 @@ export default function GlobalSearch() {
                         <ResultRow
                           key={r.id}
                           title={r.title || t('search.untitled')}
-                          onClick={() => go(`/reports?id=${r.id}`)}
+                          active={indexOf(`rep:${r.id}`) === sel}
+                          onClick={() => go(`/rapports?id=${r.id}`)}
                         />
                       ))}
                     </Section>
@@ -322,19 +416,28 @@ function ResultRow({
   title,
   subtitle,
   icon,
+  active = false,
   onClick,
 }: {
   title: string
   subtitle?: string
   icon?: string
+  active?: boolean
   onClick: () => void
 }) {
+  // Garde l'item sélectionné au clavier visible pendant le scroll.
+  const ref = useRef<HTMLLIElement>(null)
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: 'nearest' })
+  }, [active])
   return (
-    <li>
+    <li ref={ref} aria-selected={active}>
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center gap-3 rounded px-3 py-2 text-left transition-colors hover:bg-card-hover"
+        className={`flex w-full items-center gap-3 rounded px-3 py-2 text-left transition-colors hover:bg-card-hover ${
+          active ? 'bg-card-hover ring-1 ring-inset ring-border' : ''
+        }`}
       >
         {icon && (
           <span aria-hidden="true" className="text-base leading-none">

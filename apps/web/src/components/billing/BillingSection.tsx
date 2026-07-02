@@ -67,6 +67,15 @@ export default function BillingSection() {
     },
   })
 
+  // Hooks toujours avant les early returns (Rules of Hooks) — sinon crash
+  // « Rendered more hooks » au passage loading → loaded.
+  const grace = subQ.data?.gracePeriod
+  const graceActive = Boolean(grace?.active || grace?.expired)
+  const graceExpired = Boolean(grace?.expired)
+  useEffect(() => {
+    if (graceActive) track('grace_period_warning_shown', { expired: graceExpired })
+  }, [graceActive, graceExpired])
+
   if (subQ.isLoading) {
     return (
       <div className="sa-card animate-pulse">
@@ -84,11 +93,6 @@ export default function BillingSection() {
   }
 
   const ent = subQ.data
-  const graceActive = ent.gracePeriod?.active || ent.gracePeriod?.expired || false
-  useEffect(() => {
-    if (graceActive)
-      track('grace_period_warning_shown', { expired: ent.gracePeriod?.expired ?? false })
-  }, [graceActive])
 
   const isPro = ent.plan === 'pro' || ent.plan === 'starter' || ent.plan === 'agency'
   const planLabel =
