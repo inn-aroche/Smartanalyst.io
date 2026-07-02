@@ -56,6 +56,10 @@ export type TrackEvent =
   | 'chat_quickcard_clicked'
   | 'chat_action_taken'
   | 'chat_export_generated'
+  // ── Rapports (cahier §4.6 — wizard) ───────────────────────────────────
+  | 'report_create_opened'
+  | 'report_generated'
+  | 'report_downloaded'
 
 type EventProps = Record<string, string | number | boolean | null | undefined>
 

@@ -18,6 +18,7 @@ import { useAuth } from '@/lib/auth'
 import { useLocale, useT } from '@/lib/i18n'
 import { useEntitlements } from '@/lib/use-entitlements'
 import { renderMarkdown } from '@/lib/markdown'
+import { SOURCE_LABELS } from '@/lib/sources'
 import { track } from '@/lib/tracking'
 
 type SaFile = {
@@ -80,16 +81,7 @@ function nextId() {
   return Math.random().toString(36).slice(2, 10)
 }
 
-// Libelles affiches dans le picker SourceFilter. Pour les connecteurs non
-// mappes ici on retombe sur la cle brute (ex: 'shopify').
-const SOURCE_LABELS: Record<string, string> = {
-  ga4: 'Google Analytics',
-  meta_ads: 'Meta Ads',
-  google_ads: 'Google Ads',
-  stripe: 'Stripe',
-  search_console: 'Search Console',
-  smarttag: 'SmartTag',
-}
+// Libelles des sources : partages avec le wizard de rapports (lib/sources.ts).
 
 // localStorage key — la conversation en cours, par workspace, pour qu'un
 // refresh / retour sur /chat reprenne là où on en était. On stocke par

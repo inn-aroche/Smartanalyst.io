@@ -50,6 +50,10 @@ router.post(
     // Lot 4 : templates + mot de l'analyste IA.
     body('template').optional().isIn(['standard', 'executive', 'detail', 'agency']),
     body('aiNote').optional().isBoolean(),
+    // Wizard V2 : contexte business libre (analysé par l'IA) + mode
+    // Rapide/Approfondi (jamais de nom de provider côté client).
+    body('context').optional({ nullable: true }).isString().isLength({ max: 2000 }),
+    body('mode').optional().isIn(['fast', 'deep']),
   ],
   runValidation,
   workspaceScope,
@@ -71,8 +75,10 @@ router.post(
         compareToPreviousPeriod: !!req.body.compareToPreviousPeriod,
         template: req.body.template || 'standard',
         aiNote: !!req.body.aiNote,
+        context: req.body.context || null,
+        mode: req.body.mode || 'fast',
       })
-      res.status(201).json({ id: result.id })
+      res.status(201).json({ id: result.id, reused: !!result.reused })
     } catch (err) {
       next(err)
     }

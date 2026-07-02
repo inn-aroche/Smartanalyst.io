@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import AppLayout, { Topbar, useToast } from '@/components/AppLayout'
 import UpgradePrompt from '@/components/billing/UpgradePrompt'
@@ -16,6 +16,8 @@ import { useAuth } from '@/lib/auth'
 import { useEntitlements } from '@/lib/use-entitlements'
 import { useEscapeKey } from '@/lib/use-escape-key'
 import { useLocale, useT } from '@/lib/i18n'
+import { sourceLabel } from '@/lib/sources'
+import { track } from '@/lib/tracking'
 
 type ReportRow = {
   id: string
@@ -45,6 +47,8 @@ export default function ReportsPage() {
   const wsId = workspace?.id ?? ''
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [genOpen, setGenOpen] = useState(false)
+  const [initialAiNote, setInitialAiNote] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Ecoute la palette : "Générer un rapport" ouvre le modal direct.
   useEffect(() => {
@@ -55,6 +59,28 @@ export default function ReportsPage() {
     window.addEventListener('sa-palette:action', onAction)
     return () => window.removeEventListener('sa-palette:action', onAction)
   }, [])
+
+  // Deep-links : ?gen=1&aiNote=1 (crochet « Rapport » du chat, ActionShelf)
+  // et ?id=<uuid> (résultat de la recherche globale). Consommés une fois puis
+  // nettoyés de l'URL.
+  useEffect(() => {
+    const gen = searchParams.get('gen')
+    const id = searchParams.get('id')
+    const ai = searchParams.get('aiNote')
+    if (!gen && !id && !ai) return
+    if (id) setSelectedId(id)
+    if (gen === '1') {
+      setInitialAiNote(ai === '1')
+      setGenOpen(true)
+    }
+    setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Measurement plan §6 — ouverture du wizard.
+  useEffect(() => {
+    if (genOpen) track('report_create_opened')
+  }, [genOpen])
 
   // Gating (cahier §3 Lot 3) : sur plan Free, la génération de rapports
   // n'est pas incluse → on remplace le bouton "+ Générer" par un UpgradePrompt
@@ -161,12 +187,17 @@ export default function ReportsPage() {
       </div>
 
       {genOpen && (
-        <ReportGenModal
+        <ReportWizardModal
           wsId={wsId}
-          onClose={() => setGenOpen(false)}
+          initialAiNote={initialAiNote}
+          onClose={() => {
+            setGenOpen(false)
+            setInitialAiNote(false)
+          }}
           onCreated={(id) => {
             setSelectedId(id)
             setGenOpen(false)
+            setInitialAiNote(false)
           }}
         />
       )}
@@ -244,6 +275,7 @@ function ReportPreview({ workspaceId, reportId }: { workspaceId: string; reportI
     // Ouvrir l'iframe dans une fenêtre dédiée pour print en plein écran.
     const html = q.data?.html
     if (!html) return
+    track('report_downloaded')
     const w = window.open('', '_blank')
     if (!w) {
       toast.push(t('reports.printBlocked'))
@@ -295,7 +327,7 @@ function ReportPreview({ workspaceId, reportId }: { workspaceId: string; reportI
   )
 }
 
-// ─── Modale de génération ───────────────────────────────────────────────
+// ─── Wizard de génération (V2 — 1. sources · 2. période · 3. contexte) ──
 
 type ConnectorRow = {
   id: string
@@ -303,37 +335,52 @@ type ConnectorRow = {
   status: 'active' | 'expired' | 'error' | 'disconnected'
 }
 
-function ReportGenModal({
+type PeriodPreset = 'thisMonth' | 'lastMonth' | 'last30' | 'thisQuarter' | 'custom'
+const PERIOD_PRESETS: PeriodPreset[] = ['thisMonth', 'lastMonth', 'last30', 'thisQuarter', 'custom']
+
+function ReportWizardModal({
   wsId,
+  initialAiNote = false,
   onClose,
   onCreated,
 }: {
   wsId: string
+  initialAiNote?: boolean
   onClose: () => void
   onCreated: (id: string) => void
 }) {
   const t = useT()
+  const navigate = useNavigate()
   useEscapeKey(onClose)
   const queryClient = useQueryClient()
   const toast = useToast()
-  const now = useMemo(() => new Date(), [])
-  // Défaut = mois en cours
-  const [periodStart, setPeriodStart] = useState(firstOfMonth(now))
-  const [periodEnd, setPeriodEnd] = useState(lastOfMonth(now))
-  const [kind, setKind] = useState<'monthly' | 'quarterly' | 'custom'>('monthly')
-  const [whiteLabel, setWhiteLabel] = useState(false)
-  // Personnalisation : sources (vide = toutes), segmentation, comparaison N-1.
-  const [selectedSources, setSelectedSources] = useState<string[]>([])
-  const [segmentBy, setSegmentBy] = useState<'none' | 'source'>('none')
-  const [compareToPrev, setCompareToPrev] = useState(false)
+  const entitlementsQ = useEntitlements()
+  // Toggle Rapide/Approfondi — même gating que le chat (jamais de nom de
+  // provider côté UI, ADR-04).
+  const canDeep = entitlementsQ.data?.features.canUseDeepChat === true
+
+  const [step, setStep] = useState(0)
+  // Étape 1 — sources. null = pas encore initialisé : toutes cochées par
+  // défaut dès que les connecteurs sont chargés.
+  const [selectedSources, setSelectedSources] = useState<string[] | null>(null)
+  // Étape 2 — période (presets + custom, dates locales — pas de toISOString
+  // qui décale d'un jour en UTC+).
+  const [preset, setPreset] = useState<PeriodPreset>('thisMonth')
+  const [periodStart, setPeriodStart] = useState(() => presetRange('thisMonth').start)
+  const [periodEnd, setPeriodEnd] = useState(() => presetRange('thisMonth').end)
+  // Étape 3 — contexte libre + IA + mode.
+  const [context, setContext] = useState('')
+  const [aiNote, setAiNote] = useState(initialAiNote)
+  const [mode, setMode] = useState<'fast' | 'deep'>('fast')
+  // Avancé (replié) : template, white-label, segmentation, comparaison.
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  // Template + mot de l'analyste IA (cahier §3 Lot 4).
   const [template, setTemplate] = useState<'standard' | 'executive' | 'detail' | 'agency'>(
     'standard',
   )
-  const [aiNote, setAiNote] = useState(false)
+  const [whiteLabel, setWhiteLabel] = useState(false)
+  const [segmentBy, setSegmentBy] = useState<'none' | 'source'>('none')
+  const [compareToPrev, setCompareToPrev] = useState(false)
 
-  // Liste des connecteurs actifs pour le multi-select sources.
   const connectorsQ = useQuery({
     queryKey: ['connectors', 'list', wsId],
     enabled: !!wsId,
@@ -348,6 +395,31 @@ function ReportGenModal({
         .map((c) => c.source),
     [connectorsQ.data],
   )
+  // Défaut = tout inclus (l'user décoche ce qu'il ne veut pas).
+  useEffect(() => {
+    if (selectedSources === null && availableSources.length > 0) {
+      setSelectedSources(availableSources)
+    }
+  }, [availableSources, selectedSources])
+  const sources = selectedSources ?? []
+
+  function applyPreset(p: PeriodPreset) {
+    setPreset(p)
+    if (p !== 'custom') {
+      const r = presetRange(p)
+      setPeriodStart(r.start)
+      setPeriodEnd(r.end)
+    }
+  }
+
+  const periodValid = periodStart <= periodEnd
+  // kind dérivé du preset — plus de doublon kind/template dans l'UI.
+  const kind: 'monthly' | 'quarterly' | 'custom' =
+    preset === 'thisMonth' || preset === 'lastMonth'
+      ? 'monthly'
+      : preset === 'thisQuarter'
+        ? 'quarterly'
+        : 'custom'
 
   const mutation = useMutation({
     mutationFn: async () =>
@@ -359,16 +431,25 @@ function ReportGenModal({
           periodEnd,
           kind,
           whiteLabel,
-          // Si l'user n'a rien coché côté sources, on omet → backend = "toutes"
-          ...(selectedSources.length > 0 ? { sources: selectedSources } : {}),
+          // Sous-ensemble strict uniquement — tout coché = on omet (backend
+          // = « toutes »), pour ne pas figer la liste dans generation_params.
+          ...(sources.length > 0 && sources.length < availableSources.length ? { sources } : {}),
           ...(segmentBy === 'source' ? { segmentBy: 'source' } : {}),
           compareToPreviousPeriod: compareToPrev,
           template,
           aiNote,
+          ...(context.trim() ? { context: context.trim() } : {}),
+          mode,
         },
       }),
     onSuccess: (res) => {
       void queryClient.invalidateQueries({ queryKey: ['reports', 'list', wsId] })
+      track('report_generated', {
+        mode,
+        has_context: Boolean(context.trim()),
+        preset,
+        template,
+      })
       toast.push(t('reports.toast.generated'))
       onCreated(res.id)
     },
@@ -378,10 +459,20 @@ function ReportGenModal({
   })
 
   function toggleSource(src: string) {
-    setSelectedSources((prev) =>
-      prev.includes(src) ? prev.filter((s) => s !== src) : [...prev, src],
-    )
+    setSelectedSources((prev) => {
+      const cur = prev ?? availableSources
+      return cur.includes(src) ? cur.filter((s) => s !== src) : [...cur, src]
+    })
   }
+
+  const stepLabels = [
+    t('reports.wizard.step1'),
+    t('reports.wizard.step2'),
+    t('reports.wizard.step3'),
+  ]
+  const nextDisabled =
+    (step === 0 && (availableSources.length === 0 || sources.length === 0)) ||
+    (step === 1 && !periodValid)
 
   return (
     <div
@@ -390,165 +481,309 @@ function ReportGenModal({
       aria-modal="true"
       aria-label={t('reports.gen.title')}
     >
-      <div className="w-full max-w-[460px] rounded-brief border border-border bg-card shadow-float">
-        <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
-          <div className="font-head text-base font-bold text-text-1">{t('reports.gen.title')}</div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('common.close')}
-            className="text-text-3 hover:text-text-1"
-          >
-            ✕
-          </button>
+      <div className="w-full max-w-[500px] rounded-brief border border-border bg-card shadow-float">
+        <header className="border-b border-border px-5 py-3.5">
+          <div className="flex items-center justify-between">
+            <div className="font-head text-base font-bold text-text-1">
+              {t('reports.gen.title')}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('common.close')}
+              className="text-text-3 hover:text-text-1"
+            >
+              ✕
+            </button>
+          </div>
+          {/* Indicateur d'étapes */}
+          <div className="mt-3 flex items-center gap-2">
+            {stepLabels.map((label, i) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => i < step && setStep(i)}
+                disabled={i > step}
+                className={[
+                  'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-colors',
+                  i === step
+                    ? 'bg-brand-blue-dim text-brand-blue-deep'
+                    : i < step
+                      ? 'text-text-2 hover:text-text-1'
+                      : 'text-text-3',
+                ].join(' ')}
+              >
+                <span className="font-mono">{i + 1}</span> {label}
+              </button>
+            ))}
+          </div>
         </header>
-        <div className="flex flex-col gap-3.5 p-5">
-          <div>
-            <div className="sa-label">{t('reports.gen.kind')}</div>
-            <select
-              value={kind}
-              onChange={(e) => setKind(e.target.value as typeof kind)}
-              className="sa-input !py-2.5"
-            >
-              <option value="monthly">{t('reports.kind.monthly')}</option>
-              <option value="quarterly">{t('reports.kind.quarterly')}</option>
-              <option value="custom">{t('reports.kind.custom')}</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="sa-label">{t('reports.gen.start')}</div>
-              <input
-                type="date"
-                value={periodStart}
-                onChange={(e) => setPeriodStart(e.target.value)}
-                className="sa-input !py-2.5"
-              />
-            </div>
-            <div>
-              <div className="sa-label">{t('reports.gen.end')}</div>
-              <input
-                type="date"
-                value={periodEnd}
-                onChange={(e) => setPeriodEnd(e.target.value)}
-                className="sa-input !py-2.5"
-              />
-            </div>
-          </div>
-          <div>
-            <div className="sa-label">{t('reports.gen.template')}</div>
-            <select
-              value={template}
-              onChange={(e) => setTemplate(e.target.value as typeof template)}
-              className="sa-input !py-2.5"
-            >
-              <option value="standard">{t('reports.kind.monthly')}</option>
-              <option value="executive">{t('reports.gen.template.executive')}</option>
-              <option value="detail">{t('reports.gen.template.detail')}</option>
-              <option value="agency">{t('reports.gen.template.agency')}</option>
-            </select>
-          </div>
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-border bg-bg-2 px-3 py-2.5">
-            <input
-              type="checkbox"
-              checked={aiNote}
-              onChange={(e) => setAiNote(e.target.checked)}
-              className="mt-0.5 accent-brand-blue-deep"
-            />
-            <div>
-              <div className="text-sm text-text-1">{t('reports.gen.aiNote')}</div>
-              <div className="mt-0.5 text-[11.5px] text-text-3">{t('reports.gen.aiNote.hint')}</div>
-            </div>
-          </label>
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-[10px] border border-border bg-bg-2 px-3 py-2.5">
-            <input
-              type="checkbox"
-              checked={whiteLabel || template === 'agency'}
-              disabled={template === 'agency'}
-              onChange={(e) => setWhiteLabel(e.target.checked)}
-              className="accent-brand-blue-deep"
-            />
-            <span className="text-sm text-text-1">{t('reports.gen.whiteLabel')}</span>
-          </label>
 
-          {/* Section avancée : repliée par défaut pour ne pas effrayer un
-              user qui veut juste un rapport rapide. Click → déroule sources
-              + segmentation + comparaison. */}
-          <button
-            type="button"
-            onClick={() => setAdvancedOpen((v) => !v)}
-            className="-mb-2 mt-1 flex items-center justify-between text-left text-[12.5px] font-semibold text-text-2 hover:text-text-1"
-          >
-            <span>{t('reports.gen.advanced')}</span>
-            <span className="font-mono text-[11px]">{advancedOpen ? '−' : '+'}</span>
-          </button>
-          {advancedOpen && (
-            <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-2 p-3.5">
-              <div>
-                <div className="sa-label">{t('reports.gen.sources')}</div>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {availableSources.length === 0 ? (
-                    <span className="text-[12px] text-text-3">{t('reports.gen.sourcesNone')}</span>
-                  ) : (
-                    availableSources.map((s) => {
-                      const checked = selectedSources.includes(s)
+        <div className="flex min-h-[240px] flex-col gap-3.5 p-5">
+          {/* ─── Étape 1 : sources ─── */}
+          {step === 0 && (
+            <>
+              <div className="text-sm font-semibold text-text-1">
+                {t('reports.wizard.sourcesTitle')}
+              </div>
+              {connectorsQ.isLoading ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-8 w-28 animate-pulse rounded-full bg-bg-3" />
+                  ))}
+                </div>
+              ) : availableSources.length === 0 ? (
+                <div className="rounded-[10px] border border-dashed border-border bg-bg-2 p-5 text-center">
+                  <div className="text-sm text-text-2">{t('reports.wizard.sourcesEmpty')}</div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/connectors')}
+                    className="sa-btn sa-btn-primary mt-3 !text-sm"
+                  >
+                    {t('reports.wizard.sourcesEmptyCta')}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableSources.map((s) => {
+                      const checked = sources.includes(s)
                       return (
                         <button
                           key={s}
                           type="button"
                           onClick={() => toggleSource(s)}
                           className={[
-                            'rounded-full border px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors',
+                            'rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors',
                             checked
                               ? 'border-brand-blue-deep bg-brand-blue-dim text-brand-blue-deep'
                               : 'border-border bg-card text-text-3 hover:border-border-bright hover:text-text-1',
                           ].join(' ')}
                           aria-pressed={checked}
                         >
-                          {s}
+                          {checked ? '✓ ' : ''}
+                          {sourceLabel(s)}
                         </button>
                       )
-                    })
-                  )}
+                    })}
+                  </div>
+                  <div className="text-[11.5px] text-text-3">{t('reports.wizard.sourcesAll')}</div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* ─── Étape 2 : période ─── */}
+          {step === 1 && (
+            <>
+              <div className="text-sm font-semibold text-text-1">
+                {t('reports.wizard.periodTitle')}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {PERIOD_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className={[
+                      'rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors',
+                      preset === p
+                        ? 'border-brand-blue-deep bg-brand-blue-dim text-brand-blue-deep'
+                        : 'border-border bg-card text-text-3 hover:border-border-bright hover:text-text-1',
+                    ].join(' ')}
+                    aria-pressed={preset === p}
+                  >
+                    {t(`reports.wizard.preset.${p}` as never)}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="sa-label">{t('reports.gen.start')}</div>
+                  <input
+                    type="date"
+                    value={periodStart}
+                    onChange={(e) => {
+                      setPeriodStart(e.target.value)
+                      setPreset('custom')
+                    }}
+                    className="sa-input !py-2.5"
+                  />
                 </div>
-                <div className="mt-1.5 text-[11px] text-text-3">{t('reports.gen.sourcesHint')}</div>
+                <div>
+                  <div className="sa-label">{t('reports.gen.end')}</div>
+                  <input
+                    type="date"
+                    value={periodEnd}
+                    onChange={(e) => {
+                      setPeriodEnd(e.target.value)
+                      setPreset('custom')
+                    }}
+                    className="sa-input !py-2.5"
+                  />
+                </div>
               </div>
-              <div>
-                <div className="sa-label">{t('reports.gen.segmentBy')}</div>
-                <select
-                  value={segmentBy}
-                  onChange={(e) => setSegmentBy(e.target.value as 'none' | 'source')}
-                  className="sa-input !py-2"
-                >
-                  <option value="none">{t('reports.gen.segmentNone')}</option>
-                  <option value="source">{t('reports.gen.segmentSource')}</option>
-                </select>
+              {!periodValid && (
+                <div className="text-[12px] text-brand-red">
+                  {t('reports.wizard.periodInvalid')}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ─── Étape 3 : contexte + IA + avancé ─── */}
+          {step === 2 && (
+            <>
+              <div className="text-sm font-semibold text-text-1">
+                {t('reports.wizard.contextTitle')}
               </div>
-              <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-border bg-card px-3 py-2">
+              <textarea
+                value={context}
+                onChange={(e) => setContext(e.target.value.slice(0, 1000))}
+                placeholder={t('reports.wizard.contextPlaceholder')}
+                rows={3}
+                className="sa-input resize-none !py-2.5 text-sm"
+              />
+              <div className="-mt-2 flex items-center justify-between">
+                <span className="text-[11.5px] text-text-3">{t('reports.wizard.contextHint')}</span>
+                <span className="font-mono text-[10.5px] text-text-3">{context.length}/1000</span>
+              </div>
+
+              {/* Toggle Rapide/Approfondi — libellés only, jamais le provider. */}
+              <div className="flex items-center gap-2.5">
+                <span className="sa-label !mb-0">{t('reports.wizard.modeLabel')}</span>
+                <div className="flex overflow-hidden rounded-full border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setMode('fast')}
+                    className={`px-3 py-1 text-[12px] font-medium transition-colors ${
+                      mode === 'fast'
+                        ? 'bg-brand-blue-dim text-brand-blue-deep'
+                        : 'bg-card text-text-3 hover:text-text-1'
+                    }`}
+                    aria-pressed={mode === 'fast'}
+                  >
+                    ⚡ {t('chat.mode.fast')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => canDeep && setMode('deep')}
+                    disabled={!canDeep}
+                    className={`px-3 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      mode === 'deep'
+                        ? 'bg-brand-blue-dim text-brand-blue-deep'
+                        : 'bg-card text-text-3 hover:text-text-1'
+                    }`}
+                    aria-pressed={mode === 'deep'}
+                  >
+                    🧠 {t('chat.mode.deep')}
+                  </button>
+                </div>
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-border bg-bg-2 px-3 py-2.5">
                 <input
                   type="checkbox"
-                  checked={compareToPrev}
-                  onChange={(e) => setCompareToPrev(e.target.checked)}
-                  className="accent-brand-blue-deep"
+                  checked={aiNote || Boolean(context.trim())}
+                  disabled={Boolean(context.trim())}
+                  onChange={(e) => setAiNote(e.target.checked)}
+                  className="mt-0.5 accent-brand-blue-deep"
                 />
-                <span className="text-[13px] text-text-1">{t('reports.gen.compare')}</span>
+                <div>
+                  <div className="text-sm text-text-1">{t('reports.gen.aiNote')}</div>
+                  <div className="mt-0.5 text-[11.5px] text-text-3">
+                    {t('reports.gen.aiNote.hint')}
+                  </div>
+                </div>
               </label>
-            </div>
+
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen((v) => !v)}
+                className="-mb-1 flex items-center justify-between text-left text-[12.5px] font-semibold text-text-2 hover:text-text-1"
+              >
+                <span>{t('reports.gen.advanced')}</span>
+                <span className="font-mono text-[11px]">{advancedOpen ? '−' : '+'}</span>
+              </button>
+              {advancedOpen && (
+                <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-2 p-3.5">
+                  <div>
+                    <div className="sa-label">{t('reports.gen.template')}</div>
+                    <select
+                      value={template}
+                      onChange={(e) => setTemplate(e.target.value as typeof template)}
+                      className="sa-input !py-2"
+                    >
+                      <option value="standard">{t('reports.gen.template.standard')}</option>
+                      <option value="executive">{t('reports.gen.template.executive')}</option>
+                      <option value="detail">{t('reports.gen.template.detail')}</option>
+                      <option value="agency">{t('reports.gen.template.agency')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="sa-label">{t('reports.gen.segmentBy')}</div>
+                    <select
+                      value={segmentBy}
+                      onChange={(e) => setSegmentBy(e.target.value as 'none' | 'source')}
+                      className="sa-input !py-2"
+                    >
+                      <option value="none">{t('reports.gen.segmentNone')}</option>
+                      <option value="source">{t('reports.gen.segmentSource')}</option>
+                    </select>
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-border bg-card px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={compareToPrev}
+                      onChange={(e) => setCompareToPrev(e.target.checked)}
+                      className="accent-brand-blue-deep"
+                    />
+                    <span className="text-[13px] text-text-1">{t('reports.gen.compare')}</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-border bg-card px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={whiteLabel || template === 'agency'}
+                      disabled={template === 'agency'}
+                      onChange={(e) => setWhiteLabel(e.target.checked)}
+                      className="accent-brand-blue-deep"
+                    />
+                    <span className="text-[13px] text-text-1">{t('reports.gen.whiteLabel')}</span>
+                  </label>
+                </div>
+              )}
+            </>
           )}
         </div>
+
         <footer className="flex items-center gap-2.5 border-t border-border bg-bg-2 px-5 py-3">
-          <button type="button" onClick={onClose} className="sa-btn !text-sm">
-            {t('common.back')}
-          </button>
-          <div className="flex-1" />
           <button
             type="button"
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="sa-btn sa-btn-primary !text-sm disabled:opacity-50"
+            onClick={() => (step === 0 ? onClose() : setStep(step - 1))}
+            className="sa-btn !text-sm"
           >
-            {mutation.isPending ? t('reports.gen.generating') : t('reports.gen.cta')}
+            {step === 0 ? t('common.close') : t('reports.wizard.back')}
           </button>
+          <div className="flex-1" />
+          {step < 2 ? (
+            <button
+              type="button"
+              onClick={() => setStep(step + 1)}
+              disabled={nextDisabled}
+              className="sa-btn sa-btn-primary !text-sm disabled:opacity-50"
+            >
+              {t('reports.wizard.next')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending || !periodValid}
+              className="sa-btn sa-btn-primary !text-sm disabled:opacity-50"
+            >
+              {mutation.isPending ? t('reports.gen.generating') : t('reports.gen.cta')}
+            </button>
+          )}
         </footer>
       </div>
     </div>
@@ -557,11 +792,46 @@ function ReportGenModal({
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
-function firstOfMonth(d: Date): string {
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
+/**
+ * Formate une date en YYYY-MM-DD LOCAL — surtout pas toISOString() qui
+ * convertit en UTC et décale d'un jour pour les fuseaux UTC+ (le bug
+ * historique du « mois en cours » qui commençait le 30 du mois précédent).
+ */
+function fmtLocalDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
-function lastOfMonth(d: Date): string {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)
+
+function presetRange(p: PeriodPreset): { start: string; end: string } {
+  const now = new Date()
+  switch (p) {
+    case 'lastMonth':
+      return {
+        start: fmtLocalDate(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+        end: fmtLocalDate(new Date(now.getFullYear(), now.getMonth(), 0)),
+      }
+    case 'last30':
+      return {
+        start: fmtLocalDate(new Date(now.getTime() - 29 * 86_400_000)),
+        end: fmtLocalDate(now),
+      }
+    case 'thisQuarter': {
+      const q = Math.floor(now.getMonth() / 3)
+      return {
+        start: fmtLocalDate(new Date(now.getFullYear(), q * 3, 1)),
+        end: fmtLocalDate(new Date(now.getFullYear(), q * 3 + 3, 0)),
+      }
+    }
+    case 'thisMonth':
+    case 'custom':
+    default:
+      return {
+        start: fmtLocalDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+        end: fmtLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+      }
+  }
 }
 function formatRange(start: string, end: string, locale: string): string {
   const loc = locale === 'en' ? 'en-GB' : 'fr-FR'

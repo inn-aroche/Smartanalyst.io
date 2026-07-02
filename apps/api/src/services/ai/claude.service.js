@@ -317,8 +317,66 @@ async function generateStream({
   }
 }
 
+/**
+ * Sortie structurée Claude — même contrat que gemini.generateStructured :
+ * renvoie `{ json, usage }` validé contre le responseSchema fourni (JSON
+ * Schema minuscules). Implémentation : tool unique forcé via tool_choice —
+ * le modèle DOIT appeler le tool, dont l'input est notre objet structuré.
+ *
+ * @param {object} params
+ * @param {string} params.systemPrompt
+ * @param {string} params.userMessage
+ * @param {object} params.responseSchema  - JSON Schema (type object)
+ * @param {number} [params.maxOutputTokens=1024]
+ * @returns {Promise<{ json: object|null, usage: { inputTokens, outputTokens, model } }>}
+ */
+async function generateStructured({
+  systemPrompt,
+  userMessage,
+  responseSchema,
+  // Ignoré volontairement (compat contrat Gemini) — Sonnet 5 rejette les
+  // paramètres de sampling non-défaut.
+  // eslint-disable-next-line no-unused-vars
+  temperature,
+  maxOutputTokens = 1024,
+}) {
+  ensureConfigured()
+  const client = getAnthropic()
+  const model = process.env.AI_SMART_MODEL || SMART_MODEL
+
+  try {
+    const res = await client.messages.create({
+      model,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+      // Marge pour le thinking adaptatif (compté dans max_tokens sur Sonnet 5).
+      max_tokens: Math.max(maxOutputTokens, 512) + 2048,
+      tools: [
+        {
+          name: 'emit_structured_output',
+          description: 'Emit the final structured answer. Always call this tool exactly once.',
+          input_schema: normalizeSchema(responseSchema),
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'emit_structured_output' },
+    })
+    const toolUse = (res.content || []).find((b) => b.type === 'tool_use')
+    return {
+      json: toolUse?.input ?? null,
+      usage: {
+        inputTokens: res.usage?.input_tokens || 0,
+        outputTokens: res.usage?.output_tokens || 0,
+        model,
+      },
+    }
+  } catch (err) {
+    throw classifyAnthropicError(err)
+  }
+}
+
 module.exports = {
   generateStream,
+  generateStructured,
   ClaudeNotConfiguredError,
   ClaudeCreditDepletedError,
 }

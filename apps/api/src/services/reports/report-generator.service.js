@@ -11,10 +11,13 @@
 
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
+const { UserFacingError } = require('../../lib/error-handler')
 const canonicalMetrics = require('../metrics/canonical-metrics.service')
 const insightsService = require('../insights/insights.service')
 const healthScore = require('../health/health-score.service')
 const gemini = require('../ai/gemini.service')
+const claude = require('../ai/claude.service')
+const entitlements = require('../billing/entitlements.service')
 
 function escapeHtml(s) {
   if (s == null) return ''
@@ -375,6 +378,10 @@ function renderHtml({
   revenueSeries,
   period,
   analystNote,
+  // Synthèse structurée IA (wizard V2) — si présente, elle prime sur
+  // analystNote pour le mot de l'analyste et ajoute lecture des chiffres +
+  // recommandations.
+  aiSections = null,
   whiteLabel,
   selectedSources,
   segmentBy,
@@ -459,7 +466,7 @@ function renderHtml({
       <div class="score-ring">${scoreNum == null ? '—' : scoreNum}</div>
       <div style="flex:1">
         ${scoreDelta != null ? `<div style="font-size:13px;color:${scoreDelta >= 0 ? '#1FA873' : '#E0495C'};margin-bottom:6px;font-weight:500">${scoreDelta >= 0 ? '+' : ''}${scoreDelta} pts vs période précédente</div>` : ''}
-        <p class="analyst">${escapeHtml(analystNote || defaultAnalystNote(scoreNum, topInsights.length))}</p>
+        <p class="analyst">${escapeHtml(aiSections?.executiveSummary || analystNote || defaultAnalystNote(scoreNum, topInsights.length))}</p>
       </div>
     </div>
   </div>
@@ -473,6 +480,7 @@ function renderHtml({
     <div class="kpis">
       ${kpis.map((k) => renderKpiCard(k, kpisPrev, segmentBy)).join('')}
     </div>
+    ${renderKpiComments(aiSections)}
     ${showRevenueChart && revenueSeries.length >= 2 ? `<div class="chart"><div style="font-size:11px;color:#5C5C78;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Évolution du chiffre d’affaires</div>${renderSparkline(revenueSeries, 700, 90)}</div>` : ''}
   </div>`
       : ''
@@ -504,12 +512,55 @@ function renderHtml({
       : ''
   }
 
+  ${renderRecommendations(aiSections)}
+
   <div class="footer">
     Généré par SmartAnalyst le ${fmtDate(new Date().toISOString())}
   </div>
 </div>
 </body>
 </html>`
+}
+
+/**
+ * « Lecture des chiffres » — commentaires IA par KPI, rendus sous la grille.
+ */
+function renderKpiComments(aiSections) {
+  const comments = aiSections?.kpiComments
+  if (!Array.isArray(comments) || comments.length === 0) return ''
+  const items = comments
+    .map((c) => {
+      const label = KPI_LABELS[c.key] || c.key
+      return `<li style="margin:6px 0;font-size:13.5px;line-height:1.55;color:#5C5C78"><strong style="color:#14142A;font-weight:600">${escapeHtml(label)}</strong> — ${escapeHtml(c.comment)}</li>`
+    })
+    .join('')
+  return `<div style="margin-top:16px">
+    <div style="font-size:11px;color:#5C5C78;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Lecture des chiffres</div>
+    <ul style="list-style:none;padding:0;margin:0">${items}</ul>
+  </div>`
+}
+
+/**
+ * Section « Recommandations » — liste numérotée des actions proposées par l'IA.
+ */
+function renderRecommendations(aiSections) {
+  const recos = aiSections?.recommendations
+  if (!Array.isArray(recos) || recos.length === 0) return ''
+  const items = recos
+    .map(
+      (
+        r,
+        i,
+      ) => `<li style="display:flex;gap:12px;padding:12px 0;border-top:${i === 0 ? 'none' : '1px solid rgba(18,18,38,0.07)'}">
+        <span style="flex-shrink:0;width:24px;height:24px;border-radius:8px;background:#5C8FFF22;color:#3D6BE0;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">${i + 1}</span>
+        <span style="font-size:13.5px;line-height:1.55;color:#14142A">${escapeHtml(r)}</span>
+      </li>`,
+    )
+    .join('')
+  return `<div class="section">
+    <h2>Recommandations</h2>
+    <ul style="list-style:none;padding:0;margin:0">${items}</ul>
+  </div>`
 }
 
 /**
@@ -570,6 +621,123 @@ Ecris le mot de l'analyste pour le rapport mensuel.`
   return typeof json?.note === 'string' && json.note.trim().length > 0 ? json.note.trim() : null
 }
 
+/**
+ * Synthèse structurée multi-sections (wizard V2) — remplace la note de 80
+ * mots quand l'IA est activée. Routing provider selon le mode choisi :
+ * 'deep' → Claude (Sonnet, via claude.service), sinon Gemini. Le provider
+ * n'est JAMAIS exposé à l'utilisateur (toggle Rapide/Approfondi, ADR-04).
+ *
+ * Le `context` (texte libre du wizard) est injecté dans le prompt : l'IA
+ * doit relier les événements business déclarés (promo, lancement…) aux
+ * variations observées dans les chiffres.
+ *
+ * @returns {Promise<null | {
+ *   executiveSummary: string,
+ *   kpiComments: Array<{ key: string, comment: string }>,
+ *   recommendations: string[],
+ * }>}
+ */
+async function generateAnalystSections({
+  workspaceName,
+  period,
+  score,
+  kpis,
+  kpisPrev,
+  topInsights,
+  context,
+  mode = 'fast',
+}) {
+  const kpiLines = (kpis || [])
+    .slice(0, 6)
+    .map((k) => {
+      const prev = (kpisPrev || []).find((p) => p.key === k.key)
+      const delta = prev ? computeDeltaPct(k.value, prev.value) : null
+      const deltaStr =
+        delta != null && Number.isFinite(delta)
+          ? ` (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}% vs N-1)`
+          : ''
+      return `- ${k.key}: ${k.value == null ? 'n/a' : fmtNumber(k.value)}${deltaStr}`
+    })
+    .join('\n')
+  const insightLines = (topInsights || [])
+    .slice(0, 5)
+    .map((i) => `- [${i.severity || 'medium'}] ${i.title}`)
+    .join('\n')
+  const scoreStr =
+    score?.has_data && typeof score.score === 'number' ? `${score.score}/100` : 'non calcule'
+
+  const systemPrompt = `Tu es un analyste marketing senior. Tu rédiges en français, ton factuel et direct, sans emojis ni baratin. Tu t'appuies UNIQUEMENT sur les chiffres fournis — n'invente jamais de donnée. Si un contexte business est fourni (promo, lancement, saisonnalité…), relie-le explicitement aux variations observées. Les recommandations doivent être actionnables et spécifiques, pas génériques.`
+  const userMessage = `Workspace : ${workspaceName}
+Période : ${period.start} -> ${period.end}
+Score global : ${scoreStr}
+KPIs :
+${kpiLines || '- aucun'}
+Alertes ouvertes :
+${insightLines || '- aucune'}
+${context && context.trim() ? `\nContexte business fourni par l'utilisateur :\n"""\n${context.trim()}\n"""\n` : ''}
+Rédige la synthèse du rapport : executive summary (3-5 phrases), un commentaire par KPI notable (utilise exactement la clé du KPI, max 6, ignore les KPIs sans donnée), et 2 à 4 recommandations.`
+
+  const responseSchema = {
+    type: 'object',
+    properties: {
+      executiveSummary: {
+        type: 'string',
+        description: 'Synthèse de 3 à 5 phrases, chiffre marquant cité si disponible.',
+      },
+      kpiComments: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            key: { type: 'string', description: 'Clé exacte du KPI (ex: revenue_ecommerce).' },
+            comment: { type: 'string', description: '1-2 phrases sur ce KPI.' },
+          },
+          required: ['key', 'comment'],
+        },
+      },
+      recommendations: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '2 à 4 recommandations actionnables.',
+      },
+    },
+    required: ['executiveSummary', 'recommendations'],
+  }
+
+  const useClaude = mode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
+  const provider = useClaude ? claude : gemini
+  const { json } = await provider.generateStructured({
+    systemPrompt,
+    userMessage,
+    responseSchema,
+    temperature: 0.4,
+    maxOutputTokens: 1000,
+  })
+
+  if (!json || typeof json.executiveSummary !== 'string' || !json.executiveSummary.trim()) {
+    return null
+  }
+  const knownKeys = new Set((kpis || []).map((k) => k.key))
+  return {
+    executiveSummary: json.executiveSummary.trim(),
+    kpiComments: Array.isArray(json.kpiComments)
+      ? json.kpiComments
+          .filter(
+            (c) =>
+              c &&
+              typeof c.key === 'string' &&
+              knownKeys.has(c.key) &&
+              typeof c.comment === 'string' &&
+              c.comment.trim(),
+          )
+          .slice(0, 6)
+      : [],
+    recommendations: Array.isArray(json.recommendations)
+      ? json.recommendations.filter((r) => typeof r === 'string' && r.trim()).slice(0, 4)
+      : [],
+  }
+}
+
 function defaultAnalystNote(score, insightCount) {
   if (score == null) {
     return 'Pas encore assez de données pour un commentaire chiffré — je prendrai la parole dès que les sources auront un mois de recul.'
@@ -601,6 +769,9 @@ async function generate({
   compareToPreviousPeriod = false,
   template = 'standard',
   aiNote = false,
+  // Wizard V2 : contexte business libre + mode Rapide/Approfondi.
+  context = null,
+  mode = 'fast',
 }) {
   // Les templates "agency" et "detail" surchargent certaines options par
   // commodite : agency = white_label forcé, detail = compare + segmentBy auto.
@@ -610,6 +781,81 @@ async function generate({
     if (!compareToPreviousPeriod) compareToPreviousPeriod = true
   }
   const supabase = getServiceRoleClient()
+
+  // Validation des sources contre les connecteurs réels du workspace —
+  // évite qu'un client passe des strings libres qui videraient le rapport.
+  if (Array.isArray(sources) && sources.length > 0) {
+    const { data: conns } = await supabase
+      .from('connectors')
+      .select('source')
+      .eq('workspace_id', workspaceId)
+    const known = new Set((conns || []).map((c) => c.source))
+    const filtered = sources.filter((s) => known.has(s))
+    if (filtered.length === 0) {
+      throw new UserFacingError('Aucune des sources demandées n’est connectée à ce workspace.', {
+        statusCode: 400,
+        code: 'REPORT_SOURCES_INVALID',
+      })
+    }
+    sources = filtered
+  }
+
+  // Mode Approfondi gated par le plan (même feature que le chat deep) —
+  // downgrade silencieux vers Rapide, comme côté chat.
+  let effectiveMode = mode
+  if (mode === 'deep') {
+    try {
+      const plan = await entitlements.getWorkspacePlan(workspaceId)
+      if (!entitlements.canUseFeature(plan, 'deep_chat')) effectiveMode = 'fast'
+    } catch {
+      effectiveMode = 'fast'
+    }
+  }
+
+  // Contexte fourni → l'IA est activée d'office (c'est sa raison d'être).
+  const cleanContext = typeof context === 'string' && context.trim() ? context.trim() : null
+  const effectiveAiNote = !!aiNote || Boolean(cleanContext)
+
+  // Paramètres complets — persistés pour idempotence + régénération.
+  const generationParams = {
+    sources: Array.isArray(sources) && sources.length > 0 ? [...sources].sort() : null,
+    segmentBy,
+    compareToPreviousPeriod: !!compareToPreviousPeriod,
+    template,
+    aiNote: effectiveAiNote,
+    mode: effectiveMode,
+    context: cleanContext,
+  }
+
+  // Idempotence on-demand (DoD écritures sensibles) : un rapport identique
+  // (période + kind + params) encore en génération, ou prêt depuis < 10 min,
+  // est réutilisé au lieu d'être régénéré (double-clic, re-submit).
+  try {
+    const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+    const { data: existing } = await supabase
+      .from('reports')
+      .select('id, status, created_at')
+      .eq('workspace_id', workspaceId)
+      .eq('period_start', periodStart)
+      .eq('period_end', periodEnd)
+      .eq('kind', kind)
+      .eq('generation_params', JSON.stringify(generationParams))
+      .in('status', ['generating', 'ready'])
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (existing) {
+      logger.info(
+        { event: 'report_reused', workspaceId, reportId: existing.id },
+        'Identical recent report reused (idempotence)',
+      )
+      return { id: existing.id, html: null, reused: true }
+    }
+  } catch (err) {
+    // Best-effort : une erreur d'idempotence ne doit pas bloquer la génération.
+    logger.warn({ event: 'report_idempotence_check_failed', error: err.message }, 'Skipping')
+  }
 
   // Crée le row en status='generating' pour avoir un id immédiatement.
   const { data: row, error: insErr } = await supabase
@@ -623,6 +869,8 @@ async function generate({
       title: title || defaultTitle(periodStart, periodEnd, kind),
       white_label: !!whiteLabel,
       created_by: userId || null,
+      context: cleanContext,
+      generation_params: generationParams,
     })
     .select('*')
     .single()
@@ -635,27 +883,53 @@ async function generate({
       compareToPreviousPeriod,
     })
 
-    // Mot de l'analyste IA — optionnel, best-effort : si Gemini fail on
-    // retombe sur la version statique de defaultAnalystNote.
+    // Synthèse IA — best-effort en cascade :
+    //   1. sections structurées (executive summary + lecture KPIs + recos),
+    //      provider routé Rapide/Approfondi selon effectiveMode ;
+    //   2. fallback note courte Gemini (comportement historique) ;
+    //   3. fallback statique defaultAnalystNote (rendu par renderHtml).
     let analystNote = row.analyst_note
-    if (aiNote && !analystNote) {
+    let aiSections = null
+    if (effectiveAiNote) {
       try {
-        analystNote = await generateAnalystNote({
+        aiSections = await generateAnalystSections({
           workspaceName: data.workspace?.name || 'votre business',
           period: { start: periodStart, end: periodEnd },
           score: data.score,
           kpis: data.kpis,
           kpisPrev: data.kpisPrev,
           topInsights: data.topInsights,
+          context: cleanContext,
+          mode: effectiveMode,
         })
-        if (analystNote) {
-          await supabase.from('reports').update({ analyst_note: analystNote }).eq('id', row.id)
-        }
       } catch (err) {
         logger.warn(
-          { event: 'report_analyst_note_failed', reportId: row.id, error: err.message },
-          'AI analyst note generation failed — falling back to static',
+          { event: 'report_ai_sections_failed', reportId: row.id, error: err.message },
+          'AI sections generation failed — falling back to short note',
         )
+      }
+      if (aiSections) {
+        analystNote = aiSections.executiveSummary
+        await supabase.from('reports').update({ analyst_note: analystNote }).eq('id', row.id)
+      } else if (!analystNote) {
+        try {
+          analystNote = await generateAnalystNote({
+            workspaceName: data.workspace?.name || 'votre business',
+            period: { start: periodStart, end: periodEnd },
+            score: data.score,
+            kpis: data.kpis,
+            kpisPrev: data.kpisPrev,
+            topInsights: data.topInsights,
+          })
+          if (analystNote) {
+            await supabase.from('reports').update({ analyst_note: analystNote }).eq('id', row.id)
+          }
+        } catch (err) {
+          logger.warn(
+            { event: 'report_analyst_note_failed', reportId: row.id, error: err.message },
+            'AI analyst note generation failed — falling back to static',
+          )
+        }
       }
     }
 
@@ -669,6 +943,7 @@ async function generate({
       revenueSeries: data.revenueSeries,
       period: { start: periodStart, end: periodEnd },
       analystNote,
+      aiSections,
       whiteLabel: row.white_label,
       selectedSources: data.selectedSources,
       segmentBy: data.segmentBy,
@@ -715,7 +990,7 @@ async function listReports(workspaceId, limit = 20) {
   const { data, error } = await supabase
     .from('reports')
     .select(
-      'id, period_start, period_end, kind, status, title, white_label, generated_at, sent_at, created_at',
+      'id, period_start, period_end, kind, status, title, white_label, generated_at, sent_at, created_at, generation_params',
     )
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
@@ -759,4 +1034,5 @@ module.exports = {
   escapeHtml,
   previousRange,
   computeDeltaPct,
+  generateAnalystSections,
 }

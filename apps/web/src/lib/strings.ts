@@ -1153,6 +1153,7 @@ const en = {
   'palette.action.inviteMember': 'Invite a member',
   // ━━━ Reports analyst note + templates (Lot 4) ━━━
   'reports.gen.template': 'Template',
+  'reports.gen.template.standard': 'Standard — full overview',
   'reports.gen.template.executive': 'Executive — score, top alerts and KPIs',
   'reports.gen.template.detail': 'Detail — KPIs by source + previous comparison',
   'reports.gen.template.agency': 'Agency — full white-label, brand colors',
@@ -1160,6 +1161,29 @@ const en = {
   'reports.gen.aiNote.hint':
     'Adds a 3-line commentary at the top of the report ("the take of the month").',
   'reports.analystNote.heading': 'The analyst’s take',
+  // ━━━ Reports wizard (V2 — sources / period / context) ━━━
+  'reports.wizard.step1': 'Sources',
+  'reports.wizard.step2': 'Period',
+  'reports.wizard.step3': 'Context',
+  'reports.wizard.sourcesTitle': 'Which sources should the report cover?',
+  'reports.wizard.sourcesAll': 'All sources are included by default — untick what you don’t want.',
+  'reports.wizard.sourcesEmpty': 'Connect a data source first to generate a report.',
+  'reports.wizard.sourcesEmptyCta': 'Connect a source',
+  'reports.wizard.periodTitle': 'Which period?',
+  'reports.wizard.preset.thisMonth': 'This month',
+  'reports.wizard.preset.lastMonth': 'Last month',
+  'reports.wizard.preset.last30': 'Last 30 days',
+  'reports.wizard.preset.thisQuarter': 'This quarter',
+  'reports.wizard.preset.custom': 'Custom',
+  'reports.wizard.periodInvalid': 'The start date must be before the end date.',
+  'reports.wizard.contextTitle': 'Anything the analysis should know? (optional)',
+  'reports.wizard.contextPlaceholder':
+    'e.g. “We ran a -20% promo from the 10th to the 15th” · “Focus on SEO” · “New site launched mid-month”',
+  'reports.wizard.contextHint':
+    'The AI weaves this context into its reading of the numbers and its recommendations.',
+  'reports.wizard.modeLabel': 'Analysis',
+  'reports.wizard.next': 'Next',
+  'reports.wizard.back': 'Back',
   // ━━━ Billing (cahier §3 Lot 3) ━━━
   'billing.currentPlan': 'Current plan',
   'billing.active': 'Active',
@@ -2537,6 +2561,7 @@ const fr: Record<keyof typeof en, string> = {
   'palette.action.inviteMember': 'Inviter un membre',
   // ━━━ Rapports — mot de l'analyste + templates (Lot 4) ━━━
   'reports.gen.template': 'Modèle',
+  'reports.gen.template.standard': 'Standard — vue d’ensemble complète',
   'reports.gen.template.executive': 'Exécutif — score, top alertes et KPIs',
   'reports.gen.template.detail': 'Détail — KPIs par source + comparaison',
   'reports.gen.template.agency': 'Agence — white-label complet, couleurs marque',
@@ -2544,6 +2569,30 @@ const fr: Record<keyof typeof en, string> = {
   'reports.gen.aiNote.hint':
     'Ajoute un commentaire de 3 lignes en haut du rapport (« le mot du mois »).',
   'reports.analystNote.heading': "Le mot de l'analyste",
+  // ━━━ Rapports — wizard (V2 — sources / période / contexte) ━━━
+  'reports.wizard.step1': 'Sources',
+  'reports.wizard.step2': 'Période',
+  'reports.wizard.step3': 'Contexte',
+  'reports.wizard.sourcesTitle': 'Quelles sources le rapport doit-il couvrir ?',
+  'reports.wizard.sourcesAll':
+    'Toutes les sources sont incluses par défaut — décoche ce que tu ne veux pas.',
+  'reports.wizard.sourcesEmpty': 'Connecte d’abord une source de données pour générer un rapport.',
+  'reports.wizard.sourcesEmptyCta': 'Connecter une source',
+  'reports.wizard.periodTitle': 'Sur quelle période ?',
+  'reports.wizard.preset.thisMonth': 'Mois en cours',
+  'reports.wizard.preset.lastMonth': 'Mois dernier',
+  'reports.wizard.preset.last30': '30 derniers jours',
+  'reports.wizard.preset.thisQuarter': 'Trimestre en cours',
+  'reports.wizard.preset.custom': 'Personnalisé',
+  'reports.wizard.periodInvalid': 'La date de début doit précéder la date de fin.',
+  'reports.wizard.contextTitle': 'Un contexte à donner à l’analyse ? (optionnel)',
+  'reports.wizard.contextPlaceholder':
+    'ex : « Promo -20 % du 10 au 15 » · « Focus SEO » · « Nouveau site lancé mi-mois »',
+  'reports.wizard.contextHint':
+    'L’IA intègre ce contexte dans sa lecture des chiffres et ses recommandations.',
+  'reports.wizard.modeLabel': 'Analyse',
+  'reports.wizard.next': 'Suivant',
+  'reports.wizard.back': 'Retour',
   // ━━━ Billing (cahier §3 Lot 3) ━━━
   'billing.currentPlan': 'Plan actuel',
   'billing.active': 'Actif',
