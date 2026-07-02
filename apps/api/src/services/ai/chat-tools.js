@@ -128,6 +128,46 @@ const DECLARATIONS = [
     },
   },
   {
+    name: 'propose_action_plan',
+    description:
+      "Propose un plan d'action séquencé de 3 à 5 étapes priorisées (SANS les créer — l'utilisateur choisit ensuite lesquelles matérialiser en tâches d'un clic). À utiliser quand ta recommandation implique plusieurs actions coordonnées (redresser un ROAS, préparer une promo, corriger un funnel…). Préfère ce tool à create_action_card dès qu'il y a plus d'une action. Chaque étape : titre actionnable (verbe d'action), priorité, impact et effort estimés (1-5).",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        goal: {
+          type: 'STRING',
+          description: "Objectif du plan en une phrase courte. Ex: 'Redresser le ROAS Meta'.",
+        },
+        steps: {
+          type: 'ARRAY',
+          description: "3 à 5 étapes, dans l'ordre d'exécution recommandé.",
+          items: {
+            type: 'OBJECT',
+            properties: {
+              title: {
+                type: 'STRING',
+                description:
+                  "Titre court, verbe d'action en tête. Ex: 'Couper les 3 adsets à CPA > 40 €'.",
+              },
+              description: {
+                type: 'STRING',
+                description: 'Contexte optionnel (1-2 phrases).',
+              },
+              priority: {
+                type: 'STRING',
+                description: "'critical', 'high', 'medium' (défaut) ou 'low'.",
+              },
+              impact: { type: 'INTEGER', description: 'Impact estimé 1-5.' },
+              effort: { type: 'INTEGER', description: 'Effort estimé 1-5.' },
+            },
+            required: ['title'],
+          },
+        },
+      },
+      required: ['goal', 'steps'],
+    },
+  },
+  {
     name: 'get_traffic_sources',
     description:
       "Récupère le breakdown du trafic GA4 par canal d'acquisition (Organic Search, Paid Social, Direct, Email, Referral…) sur une fenêtre. À utiliser quand l'user demande d'où vient son trafic, quel canal performe, ou pour expliquer un pic/chute de sessions.",
@@ -678,6 +718,28 @@ async function execute({ name, args }, { workspaceId, userId }) {
         channel_count: res.channels.length,
         channels: res.channels,
       }
+    }
+
+    // Normalise et renvoie le plan SANS rien écrire : la matérialisation en
+    // tâches se fait côté UI (choix de l'user, POST /insights/actions) —
+    // idempotence par design, rien n'est créé sans clic explicite.
+    if (name === 'propose_action_plan') {
+      const goal = String(args?.goal || '').trim()
+      const rawSteps = Array.isArray(args?.steps) ? args.steps : []
+      const steps = rawSteps
+        .map((s) => ({
+          title: String(s?.title || '').trim(),
+          description: s?.description ? String(s.description).trim().slice(0, 500) : null,
+          priority: ['critical', 'high', 'medium', 'low'].includes(s?.priority)
+            ? s.priority
+            : 'medium',
+          impact: Number.isInteger(s?.impact) && s.impact >= 1 && s.impact <= 5 ? s.impact : null,
+          effort: Number.isInteger(s?.effort) && s.effort >= 1 && s.effort <= 5 ? s.effort : null,
+        }))
+        .filter((s) => s.title.length >= 3)
+        .slice(0, 5)
+      if (!goal || steps.length < 2) return { error: 'plan_requires_goal_and_2plus_steps' }
+      return { ok: true, kind: 'action_plan', goal, steps }
     }
 
     if (name === 'create_action_card') {

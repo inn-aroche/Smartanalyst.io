@@ -65,9 +65,9 @@ function load({ metrics = [], insights = [], actions = [], health = null, live =
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 20 tools déclarés (+ 5 live query tools + plan)', () => {
+test('DECLARATIONS : 21 tools déclarés (+ 5 live query tools + plans)', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 20)
+  assert.equal(tools.DECLARATIONS.length, 21)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
     'analyze_benchmark',
@@ -84,6 +84,7 @@ test('DECLARATIONS : 20 tools déclarés (+ 5 live query tools + plan)', () => {
     'get_traffic_sources',
     'list_pending_actions',
     'list_top_insights',
+    'propose_action_plan',
     'query_ga4',
     'query_meta_ads',
     'query_search_console',
@@ -91,6 +92,40 @@ test('DECLARATIONS : 20 tools déclarés (+ 5 live query tools + plan)', () => {
     'query_stripe',
     'set_analysis_plan',
   ])
+})
+
+test('execute : propose_action_plan → normalise et renvoie le plan sans écrire', async () => {
+  const tools = load()
+  const r = await tools.execute(
+    {
+      name: 'propose_action_plan',
+      args: {
+        goal: 'Redresser le ROAS Meta',
+        steps: [
+          { title: 'Couper les adsets à CPA > 40 €', priority: 'high', impact: 4, effort: 2 },
+          { title: 'Relancer la créa gagnante', priority: 'nope', impact: 9 },
+          { title: 'x' }, // titre trop court → filtré
+        ],
+      },
+    },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.ok, true)
+  assert.equal(r.goal, 'Redresser le ROAS Meta')
+  assert.equal(r.steps.length, 2)
+  assert.equal(r.steps[0].priority, 'high')
+  assert.equal(r.steps[0].impact, 4)
+  assert.equal(r.steps[1].priority, 'medium') // priorité invalide → défaut
+  assert.equal(r.steps[1].impact, null) // impact hors bornes → null
+})
+
+test('execute : propose_action_plan → erreur si moins de 2 étapes valides', async () => {
+  const tools = load()
+  const r = await tools.execute(
+    { name: 'propose_action_plan', args: { goal: 'But', steps: [{ title: 'Une seule étape' }] } },
+    { workspaceId: 'ws-1' },
+  )
+  assert.equal(r.error, 'plan_requires_goal_and_2plus_steps')
 })
 
 test('execute : set_analysis_plan → no-op ok (intercepté par la couche chat)', async () => {

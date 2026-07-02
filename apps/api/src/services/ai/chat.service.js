@@ -1005,6 +1005,9 @@ async function askStream({
   // Cahier 22c — réponses analystes structurées (analyze_performance).
   // Place toujours le verdict en TÊTE des highlights pour qu'il soit lu en premier.
   const toolVerdicts = []
+  // C1 — plans d'action proposés (propose_action_plan). Rendus en bloc
+  // interactif « Ajouter à mes tâches » côté UI.
+  const toolActionPlans = []
   let finalText = ''
   let modelName = ''
   for (let round = 0; round < MAX_TOOL_ROUNDS + 1; round++) {
@@ -1145,6 +1148,15 @@ async function askStream({
         ) {
           toolVerdicts.push(res)
         }
+        // C1 — auto-capture des plans d'action proposés.
+        if (
+          call.name === 'propose_action_plan' &&
+          res?.ok &&
+          Array.isArray(res.steps) &&
+          res.steps.length >= 2
+        ) {
+          toolActionPlans.push({ goal: res.goal, steps: res.steps })
+        }
         return { functionResponse: { name: call.name, response: { result: res } } }
       }),
     )
@@ -1220,8 +1232,16 @@ async function askStream({
   // Cahier 22c — VerdictHighlights TOUJOURS en tête : c'est la réponse
   // analyste structurée, elle doit être vue avant les charts/tables.
   const verdictHighlights = toolVerdicts.map((spec) => buildVerdictHighlight(spec))
+  // C1 — plans d'action juste après le verdict : c'est le crochet d'action
+  // principal (l'user matérialise les étapes en tâches d'un clic).
+  const actionPlanHighlights = toolActionPlans.map((p) => ({
+    type: 'action_plan',
+    title: p.goal,
+    planSteps: p.steps,
+  }))
   const highlights = [
     ...verdictHighlights,
+    ...actionPlanHighlights,
     ...dashboardHighlights,
     ...funnelHighlights,
     ...compareHighlights,

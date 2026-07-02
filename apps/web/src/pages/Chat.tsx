@@ -781,6 +781,7 @@ function MessageBubble({
         <HighlightStack
           highlights={highlights}
           canPin={Boolean(isPro)}
+          workspaceId={workspaceId}
           onPin={
             onPin
               ? (args) =>

@@ -8,12 +8,33 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import Sparkline from '@/components/charts/Sparkline'
+import { apiFetch } from '@/lib/api'
+import { useT } from '@/lib/i18n'
+import { track } from '@/lib/tracking'
 import VerdictHighlight from './verdict/VerdictHighlight'
 import type { VerdictSpec } from './verdict/types'
 
+export type ActionPlanStep = {
+  title: string
+  description?: string | null
+  priority?: 'critical' | 'high' | 'medium' | 'low'
+  impact?: number | null
+  effort?: number | null
+}
+
 export type Highlight = {
-  // Lot V2.3 — types funnel / dashboard ; Cahier 22c — type `verdict`.
-  type: 'kpi' | 'callout' | 'chart' | 'table' | 'compare' | 'funnel' | 'dashboard' | 'verdict'
+  // Lot V2.3 — types funnel / dashboard ; Cahier 22c — type `verdict` ;
+  // C1 — type `action_plan` (plan séquencé matérialisable en tâches).
+  type:
+    | 'kpi'
+    | 'callout'
+    | 'chart'
+    | 'table'
+    | 'compare'
+    | 'funnel'
+    | 'dashboard'
+    | 'verdict'
+    | 'action_plan'
   title: string
   value?: string | null
   delta?: string | null
@@ -53,18 +74,25 @@ export type Highlight = {
   // Le shape complet est defini dans ./verdict/types.ts. On accepte unknown
   // ici pour eviter une dependance circulaire dans le type Highlight.
   spec?: unknown
+  // Pour type='action_plan' (C1) — étapes du plan proposé par l'assistant.
+  // `title` porte l'objectif du plan. Nommé planSteps pour ne pas entrer en
+  // collision avec `steps` (funnel).
+  planSteps?: ActionPlanStep[] | null
 }
 
 export default function HighlightStack({
   highlights,
   onPin,
   canPin = false,
+  workspaceId = null,
 }: {
   highlights: Highlight[]
   /** Callback Pin to dashboard (cahier 22b §3.4). Optionnel : si absent, pas de bouton. */
   onPin?: (spec: { kind: 'kpi' | 'chart'; spec: Record<string, unknown> }) => void
   /** Plan Pro requis pour Pin — sinon bouton montre un cadenas. */
   canPin?: boolean
+  /** Requis pour matérialiser un action_plan en tâches (POST /insights/actions). */
+  workspaceId?: string | null
 }) {
   if (!highlights || highlights.length === 0) return null
   return (
@@ -74,6 +102,9 @@ export default function HighlightStack({
         // present). Ici on respecte juste l'ordre du backend.
         if (h.type === 'verdict' && h.spec) {
           return <VerdictHighlight key={i} spec={h.spec as VerdictSpec} />
+        }
+        if (h.type === 'action_plan') {
+          return <ActionPlanHighlight key={i} h={h} workspaceId={workspaceId} />
         }
         if (h.type === 'dashboard')
           return <DashboardHighlight key={i} h={h} onPin={onPin} canPin={canPin} />
@@ -85,6 +116,135 @@ export default function HighlightStack({
         if (h.type === 'kpi') return <KpiHighlight key={i} h={h} onPin={onPin} canPin={canPin} />
         return <CalloutHighlight key={i} h={h} />
       })}
+    </div>
+  )
+}
+
+// ─── Action plan (C1 — crochet d'action principal) ───────────────────────
+// Plan séquencé proposé par l'assistant : l'user coche les étapes puis les
+// matérialise en tâches d'un clic. AUCUNE écriture tant qu'il n'a pas cliqué
+// (idempotence par design).
+
+const PLAN_PRIORITY_STYLE: Record<string, string> = {
+  critical: 'bg-brand-red/10 text-brand-red',
+  high: 'bg-brand-red/10 text-brand-red',
+  medium: 'bg-brand-amber/10 text-brand-amber',
+  low: 'bg-brand-blue-dim text-brand-blue-deep',
+}
+
+function ActionPlanHighlight({ h, workspaceId }: { h: Highlight; workspaceId?: string | null }) {
+  const t = useT()
+  const steps = h.planSteps ?? []
+  const [checked, setChecked] = useState<boolean[]>(() => steps.map(() => true))
+  const [state, setState] = useState<'idle' | 'pending' | 'done' | 'error'>('idle')
+  if (steps.length === 0) return null
+  const selectedCount = checked.filter(Boolean).length
+
+  async function addTasks() {
+    if (!workspaceId || selectedCount === 0 || state === 'pending' || state === 'done') return
+    setState('pending')
+    try {
+      for (let i = 0; i < steps.length; i++) {
+        if (!checked[i]) continue
+        await apiFetch('/api/v1/insights/actions', {
+          method: 'POST',
+          body: {
+            workspaceId,
+            title: steps[i].title,
+            ...(steps[i].description ? { description: steps[i].description } : {}),
+            priority: steps[i].priority || 'medium',
+            ...(steps[i].impact ? { impact: steps[i].impact } : {}),
+            ...(steps[i].effort ? { effort: steps[i].effort } : {}),
+            source: 'chat',
+          },
+        })
+      }
+      track('chat_action_taken', { tool: 'propose_action_plan', steps: selectedCount })
+      setState('done')
+    } catch {
+      setState('error')
+    }
+  }
+
+  return (
+    <div className="rounded-brief border border-brand-blue-deep/25 bg-card p-4 shadow-card">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-brand-blue-deep">
+        {t('chat.actionPlan.badge')}
+      </div>
+      <div className="mt-1 text-[14px] font-semibold text-text-1">{h.title}</div>
+      <ol className="mt-3 flex flex-col gap-2">
+        {steps.map((s, i) => (
+          <li
+            key={i}
+            className="flex items-start gap-2.5 rounded-[10px] border border-border bg-bg-2 px-3 py-2.5"
+          >
+            <input
+              type="checkbox"
+              checked={checked[i]}
+              disabled={state === 'done' || state === 'pending'}
+              onChange={() => setChecked((c) => c.map((v, j) => (j === i ? !v : v)))}
+              className="mt-0.5 accent-brand-blue-deep"
+              aria-label={s.title}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[13px] font-medium text-text-1">
+                  <span className="mr-1.5 font-mono text-[10.5px] text-text-3">{i + 1}.</span>
+                  {s.title}
+                </span>
+                {s.priority && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider ${
+                      PLAN_PRIORITY_STYLE[s.priority] || PLAN_PRIORITY_STYLE.medium
+                    }`}
+                  >
+                    {t(`chat.actionPlan.prio.${s.priority}` as never)}
+                  </span>
+                )}
+                {(s.impact || s.effort) && (
+                  <span className="font-mono text-[10px] text-text-3">
+                    {s.impact ? `${t('chat.actionPlan.impact')} ${s.impact}/5` : ''}
+                    {s.impact && s.effort ? ' · ' : ''}
+                    {s.effort ? `${t('chat.actionPlan.effort')} ${s.effort}/5` : ''}
+                  </span>
+                )}
+              </div>
+              {s.description && (
+                <p className="mt-0.5 text-[12px] leading-snug text-text-2">{s.description}</p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 flex items-center gap-2.5">
+        {state === 'done' ? (
+          <>
+            <span className="text-[12.5px] font-medium text-brand-green">
+              ✓ {t('chat.actionPlan.added')}
+            </span>
+            <Link
+              to="/tasks"
+              className="text-[12.5px] text-brand-blue-deep underline underline-offset-2"
+            >
+              {t('chat.actionPlan.viewTasks')}
+            </Link>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => void addTasks()}
+              disabled={selectedCount === 0 || state === 'pending' || !workspaceId}
+              className="sa-btn sa-btn-primary !py-1.5 !text-xs disabled:opacity-50"
+            >
+              {state === 'pending' ? '…' : `${t('chat.actionPlan.add')} (${selectedCount})`}
+            </button>
+            {state === 'error' && (
+              <span className="text-[12px] text-brand-red">{t('chat.actionPlan.failed')}</span>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
