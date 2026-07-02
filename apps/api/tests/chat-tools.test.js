@@ -65,9 +65,9 @@ function load({ metrics = [], insights = [], actions = [], health = null, live =
   return require(TOOLS_PATH)
 }
 
-test('DECLARATIONS : 19 tools déclarés (+ 5 live query tools)', () => {
+test('DECLARATIONS : 20 tools déclarés (+ 5 live query tools + plan)', () => {
   const tools = load()
-  assert.equal(tools.DECLARATIONS.length, 19)
+  assert.equal(tools.DECLARATIONS.length, 20)
   const names = tools.DECLARATIONS.map((d) => d.name).sort()
   assert.deepEqual(names, [
     'analyze_benchmark',
@@ -89,7 +89,17 @@ test('DECLARATIONS : 19 tools déclarés (+ 5 live query tools)', () => {
     'query_search_console',
     'query_shopify',
     'query_stripe',
+    'set_analysis_plan',
   ])
+})
+
+test('execute : set_analysis_plan → no-op ok (intercepté par la couche chat)', async () => {
+  const tools = load()
+  const r = await tools.execute(
+    { name: 'set_analysis_plan', args: { steps: ['a', 'b'] } },
+    { workspaceId: 'ws-1' },
+  )
+  assert.deepEqual(r, { ok: true })
 })
 
 test('execute : no workspaceId → error', async () => {

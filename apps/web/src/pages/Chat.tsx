@@ -56,6 +56,9 @@ type Message =
       // /chat/messages/:id/export.xlsx. null pendant le streaming, recu au
       // 'done' depuis le backend.
       serverMessageId?: string | null
+      // Mode approfondi — plan d'investigation annoncé par l'assistant
+      // (event SSE `plan`), rendu en checklist au-dessus de la réponse.
+      plan?: string[]
     }
   | { id: string; role: 'assistant'; pending: true }
 
@@ -300,6 +303,8 @@ export default function ChatPage() {
     // des chunks, on finalise au 'done' avec sources + highlights.
     let accumulated = ''
     let errored = false
+    // Mode approfondi — plan d'investigation reçu via l'event SSE `plan`.
+    let plan: string[] | undefined
     const controller = new AbortController()
     abortRef.current = controller
     // Reset les badges tool a chaque nouvelle requete.
@@ -332,6 +337,22 @@ export default function ChatPage() {
             const name = typeof payload?.name === 'string' ? payload.name : null
             const status = payload?.status === 'done' ? 'done' : 'running'
             if (name) setToolEvents((evs) => [...evs, { name, status }])
+          } else if (ev.event === 'plan') {
+            // Mode approfondi — checklist d'investigation annoncée par
+            // l'assistant avant d'exécuter ses tools.
+            const steps = Array.isArray(payload?.steps)
+              ? (payload.steps as unknown[]).filter((s): s is string => typeof s === 'string')
+              : []
+            if (steps.length > 0) {
+              plan = steps
+              setMessages((m) =>
+                m.map((msg) =>
+                  msg.id === pendingMsg.id
+                    ? { id: msg.id, role: 'assistant', text: accumulated, streaming: true, plan }
+                    : msg,
+                ),
+              )
+            }
           } else if (ev.event === 'delta') {
             const delta = typeof payload?.text === 'string' ? payload.text : ''
             if (!delta) return
@@ -339,7 +360,7 @@ export default function ChatPage() {
             setMessages((m) =>
               m.map((msg) =>
                 msg.id === pendingMsg.id
-                  ? { id: msg.id, role: 'assistant', text: accumulated, streaming: true }
+                  ? { id: msg.id, role: 'assistant', text: accumulated, streaming: true, plan }
                   : msg,
               ),
             )
@@ -370,6 +391,7 @@ export default function ChatPage() {
                       highlights,
                       streaming: false,
                       serverMessageId,
+                      plan,
                     }
                   : msg,
               ),
@@ -739,6 +761,7 @@ function MessageBubble({
   const sources = 'sources' in message ? message.sources || [] : []
   const highlights = 'highlights' in message ? message.highlights || [] : []
   const streaming = 'streaming' in message ? Boolean(message.streaming) : false
+  const plan = 'plan' in message ? message.plan : undefined
   const byId = new Map(sources.map((s) => [s.id, s]))
 
   return (
@@ -748,6 +771,7 @@ function MessageBubble({
         <div className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-text-3">
           {t('chat.assistant')}
         </div>
+        {plan && plan.length > 0 && <AnalysisPlan steps={plan} running={streaming} />}
         <div className="rounded-2xl rounded-bl-md border border-border bg-bg-2 px-4 py-3 text-sm text-text-1">
           {renderMarkdown(text, (id, key) => renderCitation(id, key, byId))}
           {streaming && <StreamCursor />}
@@ -856,6 +880,35 @@ function AssistantAvatar() {
       className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[9px] bg-brand-grad font-head text-sm font-bold text-white shadow-sm"
     >
       ✦
+    </div>
+  )
+}
+
+/**
+ * Checklist du plan d'investigation (mode approfondi). Affichée au-dessus de
+ * la réponse dès l'event SSE `plan` — l'user voit que l'assistant enquête,
+ * pas qu'il mouline. `running` anime la puce tant que le stream est actif.
+ */
+function AnalysisPlan({ steps, running }: { steps: string[]; running: boolean }) {
+  const t = useT()
+  return (
+    <div className="mb-2 rounded-[12px] border border-brand-blue-deep/20 bg-brand-blue-dim/40 px-3.5 py-2.5">
+      <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-brand-blue-deep">
+        {running ? (
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand-blue-deep" />
+        ) : (
+          <span aria-hidden="true">✓</span>
+        )}
+        {t('chat.plan.title')}
+      </div>
+      <ol className="mt-1.5 flex flex-col gap-1">
+        {steps.map((s, i) => (
+          <li key={i} className="flex items-baseline gap-2 text-[12.5px] leading-snug text-text-2">
+            <span className="font-mono text-[10.5px] text-brand-blue-deep">{i + 1}.</span>
+            {s}
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }

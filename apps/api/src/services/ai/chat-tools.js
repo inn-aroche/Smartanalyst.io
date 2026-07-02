@@ -30,6 +30,22 @@ const { logger } = require('../../lib/logger')
 // valeur en usage réel.
 const DECLARATIONS = [
   {
+    name: 'set_analysis_plan',
+    description:
+      "Annonce le plan d'investigation à l'utilisateur AVANT de commencer une analyse multi-étapes (mode approfondi). À appeler EN PREMIER, une seule fois, quand la question nécessite de croiser plusieurs sources ou de tester des hypothèses. 2 à 5 étapes courtes et concrètes (ex: « Vérifier le spend Meta sur 30 j »).",
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        steps: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+          description: "Les étapes du plan, dans l'ordre d'exécution (2 à 5).",
+        },
+      },
+      required: ['steps'],
+    },
+  },
+  {
     name: 'get_health_score',
     description:
       "Récupère le score de santé global du workspace (0-100) avec breakdown par dimension (revenue, paid, organic, conversion, tracking). À utiliser quand l'user demande comment va son business globalement.",
@@ -564,6 +580,12 @@ async function execute({ name, args }, { workspaceId, userId }) {
   if (!workspaceId) return { error: 'no_workspace' }
 
   try {
+    // No-op côté data : la couche chat intercepte l'appel pour émettre
+    // l'event SSE `plan` (checklist visible pendant l'analyse approfondie).
+    if (name === 'set_analysis_plan') {
+      return { ok: true }
+    }
+
     if (name === 'get_health_score') {
       const r = await healthScore.getScore(workspaceId)
       return {

@@ -203,9 +203,12 @@ async function generateStream({
     : [{ role: 'user', content: userMessage || ' ' }]
 
   // max_tokens couvre thinking adaptatif + texte + tool calls sur Sonnet 5.
+  // Prompt caching : le breakpoint sur le system (rendu APRÈS les tools)
+  // cache tools + system ensemble — gros gain sur la boucle multi-tours du
+  // mode approfondi (le même préfixe est renvoyé à chaque round).
   const requestBody = {
     model,
-    system: systemPrompt,
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     messages,
     max_tokens: 8192,
   }

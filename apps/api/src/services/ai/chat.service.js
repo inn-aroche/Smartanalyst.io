@@ -968,7 +968,28 @@ async function askStream({
     }
   }
   const useClaude = effectiveMode === 'deep' && Boolean(process.env.ANTHROPIC_API_KEY)
-  const MAX_TOOL_ROUNDS = 3
+  // Mode approfondi = vraie enquête multi-étapes : jusqu'à 8 tours de tools
+  // (croiser les sources, tester des hypothèses) vs 3 en rapide. Le coût est
+  // borné par le budget tokens mensuel (checkBudget en amont).
+  const MAX_TOOL_ROUNDS = effectiveMode === 'deep' ? 8 : 3
+
+  // Directives d'enquête spécifiques au mode approfondi — le mode ne doit
+  // pas être « le même prompt avec un autre modèle » mais une vraie
+  // investigation d'analyste (croisement de sources, hypothèses testées).
+  if (effectiveMode === 'deep') {
+    systemPrompt +=
+      locale === 'en'
+        ? `\n\nDEEP ANALYSIS MODE — investigate like a senior analyst:
+1. If the question requires multi-step investigation, FIRST call set_analysis_plan with 2-5 short concrete steps, then execute them.
+2. Cross-check several sources (analytics × ads × payments) before concluding — a drop in one metric must be explained by evidence, not guessed.
+3. Form hypotheses and test them with tools (live queries, series, funnels). Discard what the data contradicts.
+4. Conclude with: what happened, why (verified numbers cited), and what to do next. If the data is insufficient, say exactly what's missing.`
+        : `\n\nMODE APPROFONDI — enquête comme un analyste senior :
+1. Si la question demande une investigation multi-étapes, appelle D'ABORD set_analysis_plan avec 2 à 5 étapes courtes et concrètes, puis exécute-les.
+2. Croise plusieurs sources (analytics × ads × paiements) avant de conclure — une baisse doit être expliquée par des preuves, pas devinée.
+3. Formule des hypothèses et teste-les avec les tools (requêtes live, séries, funnels). Écarte ce que les données contredisent.
+4. Conclus avec : ce qui s'est passé, pourquoi (chiffres vérifiés cités), et quoi faire. Si les données sont insuffisantes, dis exactement ce qui manque.`
+  }
   const toolsUsed = []
   // Capture des séries temporelles retournées par les tools (get_metric_series).
   // Auto-injectées en fin de tour comme highlights `chart` pour rendre une vraie
@@ -1029,6 +1050,16 @@ async function askStream({
 
     const responses = await Promise.all(
       out.functionCalls.map(async (call) => {
+        // set_analysis_plan : pas un vrai tool data — on émet l'event SSE
+        // `plan` (checklist visible côté UI pendant l'enquête) et on rend
+        // la main au modèle immédiatement, sans badge tool.
+        if (call.name === 'set_analysis_plan') {
+          const steps = Array.isArray(call.args?.steps)
+            ? call.args.steps.filter((s) => typeof s === 'string' && s.trim()).slice(0, 6)
+            : []
+          if (steps.length > 0) emit({ type: 'plan', steps })
+          return { functionResponse: { name: call.name, response: { result: { ok: true } } } }
+        }
         // Emit le badge "tool running" cote UI (cahier 22b §3.5 — feedback
         // temps reel pendant le streaming). status='running' au depart,
         // status='done' apres l'execution. Le client affiche un chip
