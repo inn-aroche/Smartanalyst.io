@@ -12,6 +12,7 @@ const { logger } = require('../../lib/logger')
 const vault = require('../../lib/vault')
 const { UserFacingError, NotFoundError } = require('../../lib/error-handler')
 const { getConnector, SUPPORTED_SOURCES } = require('../../connectors')
+const { getQueue, QUEUE_NAMES, JOB_NAMES } = require('../../queue-jobs/queues')
 
 const TABLE = 'connectors'
 
@@ -46,6 +47,38 @@ function sanitize(record) {
   return clone
 }
 
+/**
+ * Enqueue le backfill 12 mois d'un connecteur qui vient d'être ajouté.
+ * Fire-and-forget : un échec d'enqueue ne doit jamais faire échouer l'ajout
+ * du connecteur (le prochain cron quotidien rattrapera, fenêtre 7j).
+ */
+async function enqueueBackfill({ workspaceId, connectorId, source }) {
+  try {
+    const dataSyncQueue = getQueue(QUEUE_NAMES.DATA_SYNC)
+    const jobId = `backfill-connector:${connectorId}`
+    await dataSyncQueue.add(
+      JOB_NAMES.DATA_SYNC_CONNECTOR_BACKFILL,
+      { workspaceId, connectorId, source },
+      { jobId },
+    )
+    logger.info(
+      { event: 'connector_backfill_enqueued', workspaceId, connectorId, source, jobId },
+      'Connector backfill job enqueued',
+    )
+  } catch (err) {
+    logger.warn(
+      {
+        event: 'connector_backfill_enqueue_failed',
+        workspaceId,
+        connectorId,
+        source,
+        error: err.message,
+      },
+      'Failed to enqueue connector backfill (next daily cron will catch up)',
+    )
+  }
+}
+
 async function list(workspaceId) {
   const supabase = getServiceRoleClient()
   const { data, error } = await supabase
@@ -76,13 +109,7 @@ async function getById(workspaceId, connectorId) {
  * Ajoute un connecteur basé sur une API key (Stripe, Brevo, etc.).
  * Pour les connecteurs OAuth (GA4, Meta...), utiliser finalizeOAuthConnector.
  */
-async function addApiKeyConnector({
-  workspaceId,
-  source,
-  accountId,
-  accountName,
-  apiKey,
-}) {
+async function addApiKeyConnector({ workspaceId, source, accountId, accountName, apiKey }) {
   if (!SUPPORTED_SOURCES.includes(source)) {
     throw new UserFacingError(`Source "${source}" non supportée.`, {
       statusCode: 400,
@@ -135,6 +162,11 @@ async function addApiKeyConnector({
     { event: 'connector_added', workspaceId, connectorId: data.id, source, mode: 'api_key' },
     'Connector added (API key)',
   )
+
+  // Sans ça, un connecteur API key (Stripe...) n'a AUCUNE donnée avant le
+  // prochain cron quotidien (jusqu'à 24h) — et ce cron ne backfill que 7j.
+  await enqueueBackfill({ workspaceId, connectorId: data.id, source })
+
   return sanitize(data)
 }
 
@@ -163,9 +195,7 @@ async function finalizeOAuthConnector({
   const encryptedRefresh = refreshToken
     ? await vault.encrypt(refreshToken, { ...ctx, field: 'refresh_token' })
     : null
-  const expiresAt = expiresIn
-    ? new Date(Date.now() + expiresIn * 1000).toISOString()
-    : null
+  const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null
 
   const { data, error } = await supabase
     .from(TABLE)
@@ -190,7 +220,12 @@ async function finalizeOAuthConnector({
     .single()
 
   if (error) {
-    logger.error({ event: 'oauth_connector_finalize_failed', workspaceId, source, error: error.message })
+    logger.error({
+      event: 'oauth_connector_finalize_failed',
+      workspaceId,
+      source,
+      error: error.message,
+    })
     throw error
   }
 
@@ -273,4 +308,5 @@ module.exports = {
   test,
   sync,
   sanitize,
+  enqueueBackfill,
 }

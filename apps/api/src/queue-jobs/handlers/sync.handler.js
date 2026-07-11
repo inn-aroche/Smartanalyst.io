@@ -15,6 +15,31 @@ const { logger } = require('../../lib/logger')
 const workspaceService = require('../../services/workspaces/workspace.service')
 const { getConnector } = require('../../connectors')
 
+// Backfill à la connexion : 12 mois d'historique, en chunks de 90 jours pour
+// rester sous les limites de pagination/rate-limit des APIs sources (GA4,
+// Meta Ads, Shopify...) plutôt qu'un seul fetch sur 365 jours. Ordre
+// du chunk le plus récent au plus ancien — le dashboard a des données
+// utiles dès le 1er chunk au lieu d'attendre les 4.
+const BACKFILL_MONTHS = 12
+const BACKFILL_CHUNK_DAYS = 90
+
+function buildBackfillChunks(months = BACKFILL_MONTHS, chunkDays = BACKFILL_CHUNK_DAYS) {
+  const fmt = (d) => d.toISOString().slice(0, 10)
+  const today = new Date()
+  const earliestStart = new Date(today.getTime() - months * 30 * 24 * 60 * 60 * 1000)
+
+  const chunks = []
+  let chunkEnd = today
+  while (chunkEnd > earliestStart) {
+    const chunkStart = new Date(
+      Math.max(chunkEnd.getTime() - chunkDays * 24 * 60 * 60 * 1000, earliestStart.getTime()),
+    )
+    chunks.push({ startDate: fmt(chunkStart), endDate: fmt(chunkEnd) })
+    chunkEnd = new Date(chunkStart.getTime() - 24 * 60 * 60 * 1000)
+  }
+  return chunks
+}
+
 /**
  * Scan-all: fan-out vers un job par workspace actif.
  * @param {Object} ctx - { dataSyncQueue: Queue }
@@ -32,11 +57,7 @@ async function scanAllWorkspaces({ dataSyncQueue }) {
     // pour aujourd'hui, BullMQ le déduplique.
     const today = new Date().toISOString().slice(0, 10)
     const jobId = `sync-workspace:${ws.id}:${today}`
-    await dataSyncQueue.add(
-      'sync-workspace',
-      { workspaceId: ws.id },
-      { jobId },
-    )
+    await dataSyncQueue.add('sync-workspace', { workspaceId: ws.id }, { jobId })
     enqueued.push(ws.id)
   }
 
@@ -79,7 +100,12 @@ async function syncWorkspace(job) {
     try {
       const instance = getConnector(workspaceId, record)
       const r = await instance.sync(range)
-      results.push({ connectorId: record.id, source: record.source, ok: true, metricsCount: r.metricsCount })
+      results.push({
+        connectorId: record.id,
+        source: record.source,
+        ok: true,
+        metricsCount: r.metricsCount,
+      })
     } catch (err) {
       logger.warn(
         {
@@ -109,4 +135,76 @@ async function syncWorkspace(job) {
   return { workspaceId, range, results, okCount, total: results.length }
 }
 
-module.exports = { scanAllWorkspaces, syncWorkspace }
+/**
+ * Backfill l'historique d'UN connecteur (12 mois, par chunks) — déclenché à
+ * la connexion (OAuth callback ou ajout API key) pour que le user voie tout
+ * son historique dès le premier jour au lieu d'attendre que le cron
+ * quotidien (fenêtre 7j) accumule des mois de data.
+ *
+ * @param {Object} job - { data: { workspaceId, connectorId, source } }
+ */
+async function backfillConnector(job) {
+  const { workspaceId, connectorId, source } = job.data
+  const supabase = getServiceRoleClient()
+
+  const { data: record, error } = await supabase
+    .from('connectors')
+    .select('*')
+    .eq('id', connectorId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!record) {
+    logger.warn(
+      { event: 'backfill_connector_not_found', connectorId },
+      'Connector not found for backfill (deleted before job ran)',
+    )
+    return { skipped: true, reason: 'not_found' }
+  }
+
+  const instance = getConnector(workspaceId, record)
+  const chunks = buildBackfillChunks()
+
+  const results = []
+  for (const range of chunks) {
+    try {
+      const r = await instance.sync(range)
+      results.push({ ...range, ok: true, metricsCount: r.metricsCount })
+    } catch (err) {
+      // Un chunk qui échoue échoue probablement pour la même raison que les
+      // suivants (creds invalides, scope manquant) — inutile de tous les
+      // tenter. base.connector.js a déjà marqué le connecteur en erreur et
+      // notifié l'utilisateur (connector-alert.service).
+      logger.warn(
+        {
+          event: 'backfill_chunk_failed',
+          workspaceId,
+          connectorId,
+          source,
+          range,
+          error: err.message,
+        },
+        'Backfill chunk failed — stopping remaining chunks',
+      )
+      results.push({ ...range, ok: false, error: err.message })
+      break
+    }
+  }
+
+  const okCount = results.filter((r) => r.ok).length
+  logger.info(
+    {
+      event: 'backfill_connector_completed',
+      workspaceId,
+      connectorId,
+      source,
+      chunkTotal: results.length,
+      chunkOk: okCount,
+    },
+    'Connector historical backfill completed',
+  )
+
+  return { workspaceId, connectorId, source, chunks: results, okCount }
+}
+
+module.exports = { scanAllWorkspaces, syncWorkspace, backfillConnector, buildBackfillChunks }

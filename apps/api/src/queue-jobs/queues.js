@@ -25,6 +25,7 @@ const JOB_NAMES = {
   // data-sync
   DATA_SYNC_SCAN: 'scan-all-workspaces',
   DATA_SYNC_WORKSPACE: 'sync-workspace',
+  DATA_SYNC_CONNECTOR_BACKFILL: 'backfill-connector',
   // insights
   INSIGHTS_WORKSPACE: 'generate-workspace',
   // reports
