@@ -14,6 +14,7 @@ const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const workspaceService = require('../../services/workspaces/workspace.service')
 const { getConnector } = require('../../connectors')
+const { resyncWindowDays } = require('../../services/connectors/connector.service')
 
 // Backfill à la connexion : 12 mois d'historique, en chunks de 90 jours pour
 // rester sous les limites de pagination/rate-limit des APIs sources (GA4,
@@ -86,17 +87,21 @@ async function syncWorkspace(job) {
     throw error
   }
 
-  // Range par défaut: les 7 derniers jours
   const today = new Date()
-  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
   const fmt = (d) => d.toISOString().slice(0, 10)
-  const range = {
-    startDate: startDate || fmt(weekAgo),
-    endDate: endDate || fmt(today),
-  }
+
+  // Si startDate/endDate est passé explicitement (override), s'applique à
+  // tous les connecteurs. Sinon, chaque connecteur resync sur SA propre
+  // fenêtre (connectors.resync_window_days) — Stripe et Shopify ont besoin
+  // de plus de recul que 7j pour rattraper remboursements/statuts révisés.
+  const explicitRange = startDate && endDate ? { startDate, endDate } : null
 
   const results = []
   for (const record of connectors || []) {
+    const range = explicitRange || {
+      startDate: fmt(new Date(today.getTime() - resyncWindowDays(record) * 24 * 60 * 60 * 1000)),
+      endDate: fmt(today),
+    }
     try {
       const instance = getConnector(workspaceId, record)
       const r = await instance.sync(range)
@@ -105,6 +110,7 @@ async function syncWorkspace(job) {
         source: record.source,
         ok: true,
         metricsCount: r.metricsCount,
+        range,
       })
     } catch (err) {
       logger.warn(
@@ -117,7 +123,13 @@ async function syncWorkspace(job) {
         },
         'Connector sync failed during workspace sync (continuing with next)',
       )
-      results.push({ connectorId: record.id, source: record.source, ok: false, error: err.message })
+      results.push({
+        connectorId: record.id,
+        source: record.source,
+        ok: false,
+        error: err.message,
+        range,
+      })
     }
   }
 
@@ -132,7 +144,7 @@ async function syncWorkspace(job) {
     'Workspace sync completed',
   )
 
-  return { workspaceId, range, results, okCount, total: results.length }
+  return { workspaceId, explicitRange, results, okCount, total: results.length }
 }
 
 /**

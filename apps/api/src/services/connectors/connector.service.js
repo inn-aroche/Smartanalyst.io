@@ -37,6 +37,28 @@ function validateApiKeyFormat(source, apiKey) {
   }
 }
 
+// Fenêtre de resync par défaut à la connexion, calibrée sur le délai de
+// révision réel de chaque source (cron quotidien + sync manuel). Un chiffre
+// nu dans un rapport doit refléter les remboursements/annulations de la
+// veille, pas seulement l'événement d'hier — 7 jours flat ratait ça pour
+// Stripe (litiges/remboursements) et Shopify (statut de commande révisé
+// après livraison). Reste ajustable par connecteur via la colonne DB.
+const SOURCE_DEFAULT_RESYNC_DAYS = {
+  ga4: 7,
+  meta_ads: 7,
+  google_ads: 7,
+  search_console: 7,
+  shopify: 14,
+  stripe: 30,
+}
+const FALLBACK_RESYNC_DAYS = 7
+
+function resyncWindowDays(record) {
+  return (
+    record?.resync_window_days || SOURCE_DEFAULT_RESYNC_DAYS[record?.source] || FALLBACK_RESYNC_DAYS
+  )
+}
+
 // Champs jamais exposés au client (tokens chiffrés)
 const SENSITIVE = ['access_token', 'refresh_token']
 
@@ -146,6 +168,7 @@ async function addApiKeyConnector({ workspaceId, source, accountId, accountName,
         token_expires_at: null,
         status: 'active',
         status_reason: null,
+        resync_window_days: SOURCE_DEFAULT_RESYNC_DAYS[source] || FALLBACK_RESYNC_DAYS,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'workspace_id,source,account_id' },
@@ -212,6 +235,7 @@ async function finalizeOAuthConnector({
         status_reason: null,
         last_error_message: null,
         last_error_at: null,
+        resync_window_days: SOURCE_DEFAULT_RESYNC_DAYS[source] || FALLBACK_RESYNC_DAYS,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'workspace_id,source,account_id' },
@@ -287,12 +311,13 @@ async function sync(workspaceId, connectorId, { startDate, endDate } = {}) {
   const record = await getById(workspaceId, connectorId)
   const instance = getConnector(workspaceId, record)
 
-  // Par défaut: derniers 7 jours
+  // Par défaut: fenêtre du connecteur (resync_window_days, calibrée par
+  // source à la connexion — cf SOURCE_DEFAULT_RESYNC_DAYS).
   if (!startDate || !endDate) {
     const today = new Date()
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const windowStart = new Date(today.getTime() - resyncWindowDays(record) * 24 * 60 * 60 * 1000)
     const fmt = (d) => d.toISOString().slice(0, 10)
-    startDate = startDate || fmt(weekAgo)
+    startDate = startDate || fmt(windowStart)
     endDate = endDate || fmt(today)
   }
 
@@ -309,4 +334,6 @@ module.exports = {
   sync,
   sanitize,
   enqueueBackfill,
+  resyncWindowDays,
+  SOURCE_DEFAULT_RESYNC_DAYS,
 }
