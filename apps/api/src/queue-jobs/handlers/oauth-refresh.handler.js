@@ -28,6 +28,7 @@
 const { getServiceRoleClient } = require('../../lib/supabase')
 const { logger } = require('../../lib/logger')
 const { getConnector } = require('../../connectors')
+const connectorAlert = require('../../services/connectors/connector-alert.service')
 
 // Refresh proactif si le token expire dans les LOOKAHEAD_HOURS prochaines.
 // 24h donne un buffer 6x la fréquence du scan (4h) → plein safety margin
@@ -167,6 +168,16 @@ async function refreshOne(job) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', connectorId)
+
+    // Best-effort : le refresh proactif a échoué malgré la fenêtre de 24h —
+    // prévient l'utilisateur avant même que le prochain sync échoue à son tour.
+    void connectorAlert.notifyConnectorDown({
+      workspaceId,
+      connectorId,
+      source,
+      reason: 'oauth_refresh_failed',
+    })
+
     throw err
   }
 }
