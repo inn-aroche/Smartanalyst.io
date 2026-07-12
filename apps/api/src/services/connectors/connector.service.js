@@ -12,6 +12,7 @@ const { logger } = require('../../lib/logger')
 const vault = require('../../lib/vault')
 const { UserFacingError, NotFoundError } = require('../../lib/error-handler')
 const { getConnector, SUPPORTED_SOURCES } = require('../../connectors')
+const { getQueue, QUEUE_NAMES, JOB_NAMES } = require('../../queue-jobs/queues')
 
 const TABLE = 'connectors'
 
@@ -36,6 +37,28 @@ function validateApiKeyFormat(source, apiKey) {
   }
 }
 
+// Fenêtre de resync par défaut à la connexion, calibrée sur le délai de
+// révision réel de chaque source (cron quotidien + sync manuel). Un chiffre
+// nu dans un rapport doit refléter les remboursements/annulations de la
+// veille, pas seulement l'événement d'hier — 7 jours flat ratait ça pour
+// Stripe (litiges/remboursements) et Shopify (statut de commande révisé
+// après livraison). Reste ajustable par connecteur via la colonne DB.
+const SOURCE_DEFAULT_RESYNC_DAYS = {
+  ga4: 7,
+  meta_ads: 7,
+  google_ads: 7,
+  search_console: 7,
+  shopify: 14,
+  stripe: 30,
+}
+const FALLBACK_RESYNC_DAYS = 7
+
+function resyncWindowDays(record) {
+  return (
+    record?.resync_window_days || SOURCE_DEFAULT_RESYNC_DAYS[record?.source] || FALLBACK_RESYNC_DAYS
+  )
+}
+
 // Champs jamais exposés au client (tokens chiffrés)
 const SENSITIVE = ['access_token', 'refresh_token']
 
@@ -44,6 +67,38 @@ function sanitize(record) {
   const clone = { ...record }
   for (const f of SENSITIVE) delete clone[f]
   return clone
+}
+
+/**
+ * Enqueue le backfill 12 mois d'un connecteur qui vient d'être ajouté.
+ * Fire-and-forget : un échec d'enqueue ne doit jamais faire échouer l'ajout
+ * du connecteur (le prochain cron quotidien rattrapera, fenêtre 7j).
+ */
+async function enqueueBackfill({ workspaceId, connectorId, source }) {
+  try {
+    const dataSyncQueue = getQueue(QUEUE_NAMES.DATA_SYNC)
+    const jobId = `backfill-connector:${connectorId}`
+    await dataSyncQueue.add(
+      JOB_NAMES.DATA_SYNC_CONNECTOR_BACKFILL,
+      { workspaceId, connectorId, source },
+      { jobId },
+    )
+    logger.info(
+      { event: 'connector_backfill_enqueued', workspaceId, connectorId, source, jobId },
+      'Connector backfill job enqueued',
+    )
+  } catch (err) {
+    logger.warn(
+      {
+        event: 'connector_backfill_enqueue_failed',
+        workspaceId,
+        connectorId,
+        source,
+        error: err.message,
+      },
+      'Failed to enqueue connector backfill (next daily cron will catch up)',
+    )
+  }
 }
 
 async function list(workspaceId) {
@@ -76,13 +131,7 @@ async function getById(workspaceId, connectorId) {
  * Ajoute un connecteur basé sur une API key (Stripe, Brevo, etc.).
  * Pour les connecteurs OAuth (GA4, Meta...), utiliser finalizeOAuthConnector.
  */
-async function addApiKeyConnector({
-  workspaceId,
-  source,
-  accountId,
-  accountName,
-  apiKey,
-}) {
+async function addApiKeyConnector({ workspaceId, source, accountId, accountName, apiKey }) {
   if (!SUPPORTED_SOURCES.includes(source)) {
     throw new UserFacingError(`Source "${source}" non supportée.`, {
       statusCode: 400,
@@ -119,6 +168,7 @@ async function addApiKeyConnector({
         token_expires_at: null,
         status: 'active',
         status_reason: null,
+        resync_window_days: SOURCE_DEFAULT_RESYNC_DAYS[source] || FALLBACK_RESYNC_DAYS,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'workspace_id,source,account_id' },
@@ -135,6 +185,11 @@ async function addApiKeyConnector({
     { event: 'connector_added', workspaceId, connectorId: data.id, source, mode: 'api_key' },
     'Connector added (API key)',
   )
+
+  // Sans ça, un connecteur API key (Stripe...) n'a AUCUNE donnée avant le
+  // prochain cron quotidien (jusqu'à 24h) — et ce cron ne backfill que 7j.
+  await enqueueBackfill({ workspaceId, connectorId: data.id, source })
+
   return sanitize(data)
 }
 
@@ -163,9 +218,7 @@ async function finalizeOAuthConnector({
   const encryptedRefresh = refreshToken
     ? await vault.encrypt(refreshToken, { ...ctx, field: 'refresh_token' })
     : null
-  const expiresAt = expiresIn
-    ? new Date(Date.now() + expiresIn * 1000).toISOString()
-    : null
+  const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null
 
   const { data, error } = await supabase
     .from(TABLE)
@@ -182,6 +235,7 @@ async function finalizeOAuthConnector({
         status_reason: null,
         last_error_message: null,
         last_error_at: null,
+        resync_window_days: SOURCE_DEFAULT_RESYNC_DAYS[source] || FALLBACK_RESYNC_DAYS,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'workspace_id,source,account_id' },
@@ -190,7 +244,12 @@ async function finalizeOAuthConnector({
     .single()
 
   if (error) {
-    logger.error({ event: 'oauth_connector_finalize_failed', workspaceId, source, error: error.message })
+    logger.error({
+      event: 'oauth_connector_finalize_failed',
+      workspaceId,
+      source,
+      error: error.message,
+    })
     throw error
   }
 
@@ -252,12 +311,13 @@ async function sync(workspaceId, connectorId, { startDate, endDate } = {}) {
   const record = await getById(workspaceId, connectorId)
   const instance = getConnector(workspaceId, record)
 
-  // Par défaut: derniers 7 jours
+  // Par défaut: fenêtre du connecteur (resync_window_days, calibrée par
+  // source à la connexion — cf SOURCE_DEFAULT_RESYNC_DAYS).
   if (!startDate || !endDate) {
     const today = new Date()
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const windowStart = new Date(today.getTime() - resyncWindowDays(record) * 24 * 60 * 60 * 1000)
     const fmt = (d) => d.toISOString().slice(0, 10)
-    startDate = startDate || fmt(weekAgo)
+    startDate = startDate || fmt(windowStart)
     endDate = endDate || fmt(today)
   }
 
@@ -273,4 +333,7 @@ module.exports = {
   test,
   sync,
   sanitize,
+  enqueueBackfill,
+  resyncWindowDays,
+  SOURCE_DEFAULT_RESYNC_DAYS,
 }

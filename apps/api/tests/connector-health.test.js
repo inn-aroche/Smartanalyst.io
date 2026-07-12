@@ -64,7 +64,22 @@ test('unknown : status=active jamais syncé mais créé récemment (grace period
   assert.equal(h.silent_failure, false)
 })
 
-test('expired : token OAuth KO, jamais silent (explicite côté UI)', () => {
+test('expired : token OAuth KO récent (< FAILING_AFTER_MS) → pas encore silent', () => {
+  const h = computeHealthState(
+    {
+      status: 'expired',
+      status_reason: 'INVALID_GRANT',
+      last_synced_at: isoMinus(5 * 3600 * 1000),
+      last_error_at: isoMinus(2 * 3600 * 1000),
+    },
+    NOW,
+  )
+  assert.equal(h.state, 'expired')
+  assert.equal(h.reason, 'INVALID_GRANT')
+  assert.equal(h.silent_failure, false)
+})
+
+test('expired : sans last_error_at (info manquante) → pas silent, pas de fausse alerte', () => {
   const h = computeHealthState(
     {
       status: 'expired',
@@ -73,9 +88,20 @@ test('expired : token OAuth KO, jamais silent (explicite côté UI)', () => {
     },
     NOW,
   )
-  assert.equal(h.state, 'expired')
-  assert.equal(h.reason, 'INVALID_GRANT')
   assert.equal(h.silent_failure, false)
+})
+
+test('expired : depuis > FAILING_AFTER_MS → silent_failure (filet de sécurité du cron santé)', () => {
+  const h = computeHealthState(
+    {
+      status: 'expired',
+      status_reason: 'INVALID_GRANT',
+      last_error_at: isoMinus(FAILING_AFTER_MS + 3600_000),
+    },
+    NOW,
+  )
+  assert.equal(h.state, 'expired')
+  assert.equal(h.silent_failure, true)
 })
 
 test('failing : status=error récent (< FAILING_AFTER_MS) → pas encore silent', () => {

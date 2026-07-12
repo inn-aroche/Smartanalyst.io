@@ -13,6 +13,7 @@
 const { logger } = require('../../lib/logger')
 const connectorService = require('../../services/connectors/connector.service')
 const connectorHealth = require('../../services/connectors/connector-health.service')
+const connectorAlert = require('../../services/connectors/connector-alert.service')
 const workspaceService = require('../../services/workspaces/workspace.service')
 
 async function scanAllWorkspaces({ alertsQueue }) {
@@ -55,6 +56,15 @@ async function checkConnectorsHealth(workspaceId) {
       },
       'Connector silent failure detected',
     )
+    // Best-effort — voir connector-alert.service.js. Ce cron (4h) est le
+    // filet de sécurité : même si sync()/refreshOne n'ont rien notifié
+    // (ex: connecteur 'stale' sans erreur explicite), l'user est prévenu.
+    void connectorAlert.notifyConnectorDown({
+      workspaceId,
+      connectorId: c.id,
+      source: c.source,
+      reason: c.health_state.reason || c.health_state.state,
+    })
   }
   logger.info(
     {

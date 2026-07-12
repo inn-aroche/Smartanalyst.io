@@ -54,13 +54,20 @@ function computeHealthState(connector, now = Date.now()) {
   const lastSyncMs = tsMs(connector.last_synced_at)
   const lastErrorMs = tsMs(connector.last_error_at)
 
-  // Token KO → l'utilisateur doit reconnecter, indépendamment de la
-  // fraîcheur. C'est explicite : pas un échec silencieux.
+  // Token KO → l'utilisateur doit reconnecter. Pas un échec silencieux dans
+  // les FAILING_AFTER_MS suivant la panne (sync()/refreshOne() viennent de
+  // notifier — cf connector-alert.service). Au-delà, on le traite quand même
+  // comme silencieux : c'est le filet de sécurité du cron santé (4h) pour le
+  // cas où, pour une raison quelconque, plus rien ne retente le sync/refresh
+  // de ce connecteur (l'incident qui a motivé ce service : un connecteur
+  // resté 'expired' 12 jours sans qu'aucune alerte ne soit posée).
   if (status === 'expired') {
+    const errAgeMs = lastErrorMs ? now - lastErrorMs : null
+    const isSilent = errAgeMs !== null && errAgeMs > FAILING_AFTER_MS
     return {
       state: 'expired',
       reason,
-      silent_failure: false,
+      silent_failure: isSilent,
       last_synced_at: connector.last_synced_at || null,
     }
   }

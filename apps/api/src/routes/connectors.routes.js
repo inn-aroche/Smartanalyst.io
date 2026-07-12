@@ -20,7 +20,6 @@ const providersService = require('../services/connectors/providers.service')
 const accountResolver = require('../services/connectors/account-resolver.service')
 const oauthGeneric = require('../services/auth/oauth-generic.service')
 const oauthState = require('../services/auth/oauth-state.service')
-const { getQueue, QUEUE_NAMES, JOB_NAMES } = require('../queue-jobs/queues')
 const { logger } = require('../lib/logger')
 
 const router = express.Router()
@@ -134,7 +133,7 @@ router.get('/oauth/callback', async (req, res) => {
       )
     }
 
-    await connectorService.finalizeOAuthConnector({
+    const connector = await connectorService.finalizeOAuthConnector({
       workspaceId,
       source,
       accountId: resolvedAccountId,
@@ -144,32 +143,13 @@ router.get('/oauth/callback', async (req, res) => {
       expiresIn: tokens.expiresIn,
     })
 
-    // Trigger un sync immédiat sur 30j — sinon le user voit un dashboard
-    // vide jusqu'au prochain cron quotidien (3h UTC). Fire-and-forget :
-    // si l'enqueue échoue, on log mais on ne casse pas le redirect.
-    try {
-      const today = new Date()
-      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
-      const fmt = (d) => d.toISOString().slice(0, 10)
-      const dataSyncQueue = getQueue(QUEUE_NAMES.DATA_SYNC)
-      // jobId stable = idempotence si l'user re-clique sur le même OAuth flow
-      // (double callback peut arriver si refresh navigateur). Granularité minute.
-      const jobId = `sync-workspace:${workspaceId}:post-oauth:${Date.now().toString().slice(0, -3)}`
-      await dataSyncQueue.add(
-        JOB_NAMES.DATA_SYNC_WORKSPACE,
-        { workspaceId, startDate: fmt(monthAgo), endDate: fmt(today) },
-        { jobId },
-      )
-      logger.info(
-        { event: 'post_oauth_sync_enqueued', workspaceId, source, jobId },
-        'Post-OAuth sync job enqueued',
-      )
-    } catch (enqueueErr) {
-      logger.warn(
-        { event: 'post_oauth_sync_enqueue_failed', workspaceId, source, error: enqueueErr.message },
-        'Failed to enqueue post-OAuth sync (next cron will catch up)',
-      )
-    }
+    // Trigger un backfill 12 mois du connecteur qui vient d'être connecté —
+    // sinon le user voit un dashboard vide jusqu'au prochain cron quotidien
+    // (3h UTC, fenêtre 7j seulement). Scopé au connecteur (pas toute la
+    // workspace) pour ne pas re-syncer inutilement des connecteurs déjà
+    // sains. jobId stable par connecteur = idempotence si l'user re-clique
+    // sur le même OAuth flow (double callback possible si refresh navigateur).
+    await connectorService.enqueueBackfill({ workspaceId, connectorId: connector.id, source })
 
     const successParams = new URLSearchParams({ status: 'connected', source })
     if (scopeMismatch && scopeMismatch.length > 0) {

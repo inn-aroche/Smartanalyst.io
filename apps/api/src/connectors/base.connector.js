@@ -12,6 +12,7 @@
 const { getServiceRoleClient } = require('../lib/supabase')
 const { logger } = require('../lib/logger')
 const canonicalMetricsService = require('../services/metrics/canonical-metrics.service')
+const connectorAlert = require('../services/connectors/connector-alert.service')
 
 const TOKEN_REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000 // 7 jours
 
@@ -68,7 +69,9 @@ class BaseConnector {
    * Doit mettre à jour `connectors.access_token`, `refresh_token`, `token_expires_at`.
    */
   async _doRefresh() {
-    throw new Error(`${this.constructor.name}._doRefresh() must be implemented for OAuth connectors`)
+    throw new Error(
+      `${this.constructor.name}._doRefresh() must be implemented for OAuth connectors`,
+    )
   }
 
   // ━━━ Concrete helpers (logique partagée) ━━━
@@ -190,11 +193,21 @@ class BaseConnector {
       // Status spécifique selon l'erreur
       const isAuthError =
         error.code === 'INVALID_CREDENTIALS' || error.statusCode === 401 || error.statusCode === 403
+      const statusReason = error.code || error.name || 'sync_failed'
       await this.updateStatus({
         status: isAuthError ? 'expired' : 'error',
-        status_reason: error.code || error.name || 'sync_failed',
+        status_reason: statusReason,
         last_error_message: error.message,
         last_error_at: new Date().toISOString(),
+      })
+
+      // Best-effort : prévient l'utilisateur (in-app + email) qu'il doit
+      // reconnecter la source. Ne bloque jamais le throw ci-dessous.
+      void connectorAlert.notifyConnectorDown({
+        workspaceId: this.workspaceId,
+        connectorId: this.connector.id,
+        source: this.source,
+        reason: statusReason,
       })
 
       throw error

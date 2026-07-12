@@ -101,6 +101,17 @@ function start() {
       )
       return result
     }
+    if (job.name === JOB_NAMES.DATA_SYNC_CONNECTOR_BACKFILL) {
+      const result = await syncHandler.backfillConnector(job)
+      // Nouvelles données historiques → régénère les insights du workspace.
+      const insightsQueue = getQueue(QUEUE_NAMES.INSIGHTS)
+      await insightsQueue.add(
+        JOB_NAMES.INSIGHTS_WORKSPACE,
+        { workspaceId: job.data.workspaceId },
+        { jobId: `insights:${job.data.workspaceId}:${Date.now()}` },
+      )
+      return result
+    }
     throw new Error(`Unknown job in data-sync queue: ${job.name}`)
   })
 
